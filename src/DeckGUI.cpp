@@ -487,19 +487,35 @@ void DeckGUI::resized()
 	double cellLength = (getWidth() * 18.5 / 32 - 105) / 3;
 	double cellHeight = 44.45;
 
-	// Tab buttons above cue/grid/jump/loop/quantize/sync/fx area (9 tabs total)
-	double tabAreaWidth = cellLength * 3;
-	double tabWidth = (tabAreaWidth - 16) / 9; // 9 tabs with 2px gaps (×8 = 16)
-	double tabHeight = 20;
-	cueTabButton      .setBounds(xOffset + (tabWidth + 2) * 0, yOffset - tabHeight - 2, tabWidth, tabHeight);
-	gridTabButton     .setBounds(xOffset + (tabWidth + 2) * 1, yOffset - tabHeight - 2, tabWidth, tabHeight);
-	jumpTabButton     .setBounds(xOffset + (tabWidth + 2) * 2, yOffset - tabHeight - 2, tabWidth, tabHeight);
-	loopTabButton     .setBounds(xOffset + (tabWidth + 2) * 3, yOffset - tabHeight - 2, tabWidth, tabHeight);
-	quantizeTabButton .setBounds(xOffset + (tabWidth + 2) * 4, yOffset - tabHeight - 2, tabWidth, tabHeight);
-	syncTabButton     .setBounds(xOffset + (tabWidth + 2) * 5, yOffset - tabHeight - 2, tabWidth, tabHeight);
-	padFxTabButton    .setBounds(xOffset + (tabWidth + 2) * 6, yOffset - tabHeight - 2, tabWidth, tabHeight);
-	beatFxTabButton   .setBounds(xOffset + (tabWidth + 2) * 7, yOffset - tabHeight - 2, tabWidth, tabHeight);
-	releaseFxTabButton.setBounds(xOffset + (tabWidth + 2) * 8, yOffset - tabHeight - 2, tabWidth, tabHeight);
+	// Vertical tab rail on the deck's outer edge.
+	// Deck 1 (aqua) keeps the rail on the LEFT edge, Deck 2 (hotpink) on the
+	// RIGHT edge — so the active tab's theme tint appears closest to the
+	// screen edge, mirroring the symmetric "two decks meeting in the middle"
+	// layout. Each tab is square (≈ railW) and stacked top→bottom under the
+	// waveform header.
+	const bool deck2 = (theme == juce::Colours::hotpink);
+	const int railW = 44;
+	const int railTop = (int)(rowH * 2 + 4);
+	const int railBottom = (int)(getHeight() - 6);
+	const int railH = juce::jmax(180, railBottom - railTop);
+	const int railX = deck2 ? (getWidth() - railW - 2) : 2;
+
+	const int tabCount = 9;
+	const int tabSpacing = 2;
+	const int tabSlot = juce::jmax(28, (railH - (tabCount - 1) * tabSpacing) / tabCount);
+
+	auto setTab = [&](juce::Component& c, int row) {
+		c.setBounds(railX, railTop + row * (tabSlot + tabSpacing), railW, tabSlot);
+	};
+	setTab(cueTabButton,      0);
+	setTab(gridTabButton,     1);
+	setTab(jumpTabButton,     2);
+	setTab(loopTabButton,     3);
+	setTab(quantizeTabButton, 4);
+	setTab(syncTabButton,     5);
+	setTab(padFxTabButton,    6);
+	setTab(beatFxTabButton,   7);
+	setTab(releaseFxTabButton, 8);
 
 	// Cue buttons (same as before)
 	for (auto i = 0; i < 3; ++i) {

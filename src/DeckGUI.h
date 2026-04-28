@@ -14,6 +14,7 @@
 #include "BeatSyncManager.h"
 #include "FxIds.h"
 #include "DeckQueue.h"
+#include "IconTabButton.h"
 //==============================================================================
 
 /**
@@ -340,28 +341,28 @@ private:
 	CueGridMode cueGridMode = CueGridMode::HotCues;
 
 	/// Tab button for hot cues
-	juce::TextButton cueTabButton{ "CUES" };
+	IconTabButton cueTabButton{ "Hot Cues", BinaryData::iconCues_svg, BinaryData::iconCues_svgSize };
 
 	/// Tab button for beat grid controls
-	juce::TextButton gridTabButton{ "GRID" };
+	IconTabButton gridTabButton{ "Beat Grid", BinaryData::iconGrid_svg, BinaryData::iconGrid_svgSize };
 
 	/// Tab button for beat jump controls
-	juce::TextButton jumpTabButton{ "JUMP" };
+	IconTabButton jumpTabButton{ "Beat Jump", BinaryData::iconJump_svg, BinaryData::iconJump_svgSize };
 
 	/// Tab button for loop controls
-	juce::TextButton loopTabButton{ "LOOP" };
+	IconTabButton loopTabButton{ "Loop", BinaryData::iconLoop_svg, BinaryData::iconLoop_svgSize };
 
 	/// Tab button for sync controls
-	juce::TextButton syncTabButton{ "SYNC" };
+	IconTabButton syncTabButton{ "Sync", BinaryData::iconSync_svg, BinaryData::iconSync_svgSize };
 
 	/// Tab button for Pad FX (momentary effects).
-	juce::TextButton padFxTabButton{ "P.FX" };
+	IconTabButton padFxTabButton{ "Pad FX", BinaryData::iconPadFx_svg, BinaryData::iconPadFx_svgSize };
 
 	/// Tab button for Beat FX (latched effects).
-	juce::TextButton beatFxTabButton{ "B.FX" };
+	IconTabButton beatFxTabButton{ "Beat FX", BinaryData::iconBeatFx_svg, BinaryData::iconBeatFx_svgSize };
 
 	/// Tab button for Release FX (momentary release effects).
-	juce::TextButton releaseFxTabButton{ "R.FX" };
+	IconTabButton releaseFxTabButton{ "Release FX", BinaryData::iconReleaseFx_svg, BinaryData::iconReleaseFx_svgSize };
 
 	//==============================================================================
 	// Beat Grid Controls
@@ -456,7 +457,7 @@ private:
 	PendingQuantizeAction pendingAction;
 
 	/// Tab button for quantize controls
-	juce::TextButton quantizeTabButton{ "QNTZ" };
+	IconTabButton quantizeTabButton{ "Quantize", BinaryData::iconQuantize_svg, BinaryData::iconQuantize_svgSize };
 
 	/// Label for quantize combo box
 	juce::Label quantizeLabel{ "Q_LABEL", "QUANTIZE:" };
