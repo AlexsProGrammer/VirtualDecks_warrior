@@ -24,42 +24,9 @@ void BpmAnalysisManager::analyzeTrack(const juce::File& audioFile, const juce::S
 
 	DBG("BpmAnalysisManager::analyzeTrack - queuing: " + audioFile.getFileName() + " hash=" + fileHash);
 
-	// If cached analysis exists with a valid BPM, notify immediately
-	if (TrackDataCache::exists(fileHash))
-	{
-		TrackData cached = TrackDataCache::load(fileHash);
-		if (cached.detectedBpm > 0.0)
-		{
-			auto hash = fileHash;
-			auto bpm = cached.detectedBpm;
-			auto* self = this;
-			juce::MessageManager::callAsync([self, hash, bpm]() {
-				self->notifyListeners(hash, bpm);
-			});
-			return;
-		}
-	}
-
-	// Try metadata first (fast, on calling thread is fine for a quick check)
-	juce::String filePath = audioFile.getFullPathName();
-	double metadataBpm = BpmDetector::readBpmFromMetadata(filePath);
-	if (metadataBpm > 0.0)
-	{
-		TrackData data;
-		data.detectedBpm = metadataBpm;
-		data.confidence = 1.0;
-		data.beatGrid.bpm = metadataBpm;
-		TrackDataCache::save(fileHash, data);
-
-		auto hash = fileHash;
-		auto* self = this;
-		juce::MessageManager::callAsync([self, hash, metadataBpm]() {
-			self->notifyListeners(hash, metadataBpm);
-		});
-		return;
-	}
-
-	// Queue background audio analysis
+	// All disk-touching pre-checks (cache lookup + TagLib metadata read)
+	// have moved into AnalysisJob::runJob so this call returns instantly
+	// and never blocks the UI thread on filesystem I/O.
 	threadPool.addJob(new AnalysisJob(*this, audioFile, fileHash), true);
 }
 
@@ -92,8 +59,50 @@ BpmAnalysisManager::AnalysisJob::AnalysisJob(BpmAnalysisManager& owner, const ju
 
 juce::ThreadPoolJob::JobStatus BpmAnalysisManager::AnalysisJob::runJob()
 {
-	// Create a thread-local AudioFormatManager since the shared one
-	// is not thread-safe for concurrent createReaderFor() calls.
+	// 1) Cache lookup (off-thread now). If a previous analysis already
+	//    stored a valid BPM, fast-path notify and exit.
+	if (TrackDataCache::exists(fileHash))
+	{
+		TrackData cached = TrackDataCache::load(fileHash);
+		if (cached.detectedBpm > 0.0)
+		{
+			double bpm = cached.detectedBpm;
+			auto* mgr = &owner;
+			auto hash = fileHash;
+			juce::MessageManager::callAsync([mgr, hash, bpm]() {
+				mgr->notifyListeners(hash, bpm);
+			});
+			return jobHasFinished;
+		}
+	}
+
+	if (shouldExit())
+		return jobHasFinished;
+
+	// 2) Metadata pre-check (TagLib opens the file header; off-thread now).
+	double metadataBpm = BpmDetector::readBpmFromMetadata(audioFile.getFullPathName());
+	if (metadataBpm > 0.0)
+	{
+		TrackData data;
+		data.detectedBpm = metadataBpm;
+		data.confidence = 1.0;
+		data.beatGrid.bpm = metadataBpm;
+		TrackDataCache::save(fileHash, data);
+
+		auto* mgr = &owner;
+		auto hash = fileHash;
+		juce::MessageManager::callAsync([mgr, hash, metadataBpm]() {
+			mgr->notifyListeners(hash, metadataBpm);
+		});
+		return jobHasFinished;
+	}
+
+	if (shouldExit())
+		return jobHasFinished;
+
+	// 3) Full audio analysis fallback. Create a thread-local
+	// AudioFormatManager since the shared one is not thread-safe for
+	// concurrent createReaderFor() calls.
 	juce::AudioFormatManager localFormatManager;
 	localFormatManager.registerBasicFormats();
 

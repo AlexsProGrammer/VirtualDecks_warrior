@@ -6,6 +6,7 @@
 #include "BpmAnalysisManager.h"
 #include "FileHasher.h"
 #include <JuceHeader.h>
+#include <atomic>
 
 //==============================================================================
 
@@ -88,6 +89,16 @@ public:
    * Opens a directory chooser to import a folder of audio files into the library
    */
   void importFolderFromDisk();
+
+  /// Listener interface for ingest progress changes (used by IngestProgressBar
+  /// or any external observer that wants to react when an ingest job starts,
+  /// progresses, or completes).
+  class IngestProgressListener
+  {
+  public:
+    virtual ~IngestProgressListener() = default;
+    virtual void ingestProgressChanged() = 0;
+  };
 
   //==============================================================================
 
@@ -220,17 +231,120 @@ private:
   /// Button to import a folder of audio files from disk
   juce::TextButton importFolderBtn{"Import Folder"};
 
+  /// Non-modal progress strip shown while ingest jobs are running.
+  juce::Label ingestProgressBar { "ingestProgress", {} };
+
+  /// Refresh the visibility / text of the progress strip from message thread.
+  void refreshIngestProgressUI();
+
   /// File chooser for adding audio files
   std::unique_ptr<juce::FileChooser> fileChooser;
 
   /// Background BPM analysis manager
   BpmAnalysisManager bpmAnalysisManager;
 
+  /// Dedicated thread pool for off-thread folder ingestion (file scanning,
+  /// duration probing, FileHasher hashing, cache lookups).
+  juce::ThreadPool ingestPool { 2 };
+
+  /// True while at least one ingest job is in-flight.
+  std::atomic<bool> ingestActive { false };
+
+  /// Number of in-flight ingest jobs (used to flip ingestActive correctly).
+  std::atomic<int> ingestInFlight { 0 };
+
+  /// Latest progress text ("Importing N / M — filename"), guarded by lock.
+  juce::String ingestProgressText;
+
+  /// CriticalSection guarding ingestProgressText (touched from message thread
+  /// only in current design but kept for safety against future progress
+  /// callbacks dispatched off-thread).
+  juce::CriticalSection ingestProgressLock;
+
+  /// Listeners notified when ingest progress changes.
+  juce::ListenerList<IngestProgressListener> ingestListeners;
+
+  //==============================================================================
+  // Async XML save
+
+  /// Background thread pool (single worker) used for debounced XML save.
+  juce::ThreadPool savePool { 1 };
+
+  /// Coalescing timer: starts on every mutation, fires once 2 s of quiet
+  /// elapses, at which point it builds the tree and dispatches to savePool.
+  std::unique_ptr<juce::Timer> saveDebounceTimer;
+
+  /// Number of pending mutations since last save (debug only).
+  std::atomic<int> saveDirtyCount { 0 };
+
   /// Queue all tracks in a folder for background BPM analysis
   void queueBpmAnalysis(std::vector<track>& tracks);
 
   /// Callback when background BPM analysis completes
   void bpmAnalysisComplete(const juce::String& fileHash, double bpm) override;
+
+  //==============================================================================
+  // Off-thread library ingestion (Phase 2)
+
+  /**
+   * Background ThreadPoolJob that scans a list of audio files (creating a
+   * reader for duration, computing FileHasher hash, looking up cached BPM)
+   * and streams completed track records back to the message thread in
+   * small batches. UI never blocks on disk I/O during ingest.
+   */
+  class LibraryIngestJob;
+  friend class LibraryIngestJob;
+
+  /**
+   * Enqueue an ingest job that scans "files" and appends the resulting
+   * tracks into trackFolders[targetFolderIndex]. If targetFolderIndex == -1
+   * the tracks are gathered under a brand-new folder named "newFolderName".
+   *
+   * Safe to call from the message thread only.
+   */
+  void enqueueIngest(juce::Array<juce::File> files,
+                     int targetFolderIndex,
+                     juce::String newFolderName);
+
+  /// Message-thread callback invoked by LibraryIngestJob to merge a batch
+  /// of finished tracks into the model and refresh the UI.
+  void onIngestBatchReady(int targetFolderIndex,
+                          juce::String newFolderName,
+                          std::vector<track> batch,
+                          int processedCount,
+                          int totalCount,
+                          juce::String currentFileName,
+                          bool isFinalBatch);
+
+  //==============================================================================
+  // Async XML persistence (Phase 2.5)
+
+  /**
+   * Snapshot trackFolders into a juce::ValueTree and write it to disk on
+   * a background thread. Subsequent calls within ~2 s are coalesced.
+   */
+  void scheduleAsyncSave();
+
+  /// Synchronously builds a ValueTree snapshot of trackFolders. Must run
+  /// on the message thread (only the latest tree is then handed to the
+  /// background save thread).
+  juce::ValueTree buildPersistenceTree() const;
+
+  /// Background-thread helper that serialises a ValueTree to disk.
+  static void persistTreeToDisk(juce::ValueTree tree, juce::String filePath);
+
+  /// Build the tree on the message thread and dispatch the actual write
+  /// onto the savePool. Called by the debounce timer when quiet.
+  void flushSaveNow();
+
+  /// True while at least one ingest job is in-flight (drives progress UI).
+  bool isIngesting() const { return ingestActive.load(std::memory_order_acquire); }
+
+  /// Latest progress label text (safe from any thread).
+  juce::String getIngestProgressText() const;
+
+  void addIngestProgressListener   (IngestProgressListener* l) { ingestListeners.add(l); }
+  void removeIngestProgressListener(IngestProgressListener* l) { ingestListeners.remove(l); }
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Library)
 };

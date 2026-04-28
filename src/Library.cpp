@@ -90,6 +90,16 @@ Library::Library(juce::AudioFormatManager &_formatManager)
   addAndMakeVisible(importFolderBtn);
   importFolderBtn.setColour(juce::TextButton::buttonColourId, buttonColour);
 
+  // Progress strip — hidden until an ingest job is running.
+  addAndMakeVisible(ingestProgressBar);
+  ingestProgressBar.setJustificationType(juce::Justification::centredLeft);
+  ingestProgressBar.setColour(juce::Label::backgroundColourId,
+                              juce::Colour::fromRGBA(0, 0, 0, 200));
+  ingestProgressBar.setColour(juce::Label::textColourId, juce::Colours::white);
+  ingestProgressBar.setFont(juce::Font(13.0f, juce::Font::bold));
+  ingestProgressBar.setVisible(false);
+  ingestProgressBar.setInterceptsMouseClicks(false, false);
+
   addFolderBtn.addListener(this);
   removeFolderBtn.addListener(this);
   renameFolderBtn.addListener(this);
@@ -99,9 +109,49 @@ Library::Library(juce::AudioFormatManager &_formatManager)
 
   bpmAnalysisManager.addListener(this);
 
-  // Queue BPM analysis for any tracks missing BPM data
-  for (auto& folder : trackFolders)
-    queueBpmAnalysis(folder.second);
+  // Defer hashing + BPM dispatch for legacy tracks (those persisted before
+  // fileHash was a field) onto a background thread so the constructor
+  // returns immediately and the UI can paint.
+  juce::Thread::launch([this]() {
+    // Build a snapshot of (identity, file) pairs that need hashing.
+    struct Pending { juce::String identity; juce::File file; };
+    std::vector<Pending> pending;
+
+    {
+      // Read trackFolders on a brief message-thread hop to capture a snapshot.
+      juce::WaitableEvent done;
+      juce::MessageManager::callAsync([this, &pending, &done]() {
+        for (auto& folder : trackFolders)
+          for (auto& t : folder.second)
+            if (t.fileHash.isEmpty())
+              pending.push_back({ t.identity, t.url.getLocalFile() });
+        done.signal();
+      });
+      done.wait(2000);
+    }
+
+    // Hash off-thread.
+    for (auto& p : pending) {
+      if (! p.file.existsAsFile())
+        continue;
+      auto hash = FileHasher::computeHash(p.file);
+      if (hash.isEmpty())
+        continue;
+      auto identity = p.identity;
+      juce::MessageManager::callAsync([this, identity, hash]() {
+        for (auto& folder : trackFolders)
+          for (auto& t : folder.second)
+            if (t.identity == identity && t.fileHash.isEmpty())
+              t.fileHash = hash;
+      });
+    }
+
+    // Dispatch BPM analysis once hashing is broadly settled.
+    juce::MessageManager::callAsync([this]() {
+      for (auto& folder : trackFolders)
+        queueBpmAnalysis(folder.second);
+    });
+  });
 }
 
 /**
@@ -114,33 +164,23 @@ Library::Library(juce::AudioFormatManager &_formatManager)
 Library::~Library() {
   bpmAnalysisManager.removeListener(this);
 
+  // Stop coalescing timer first so it cannot dispatch a new save mid-shutdown.
+  if (saveDebounceTimer != nullptr)
+    saveDebounceTimer->stopTimer();
+
+  // Drain any in-flight ingest jobs (will respect shouldExit()).
+  ingestPool.removeAllJobs(true, 5000);
+
+  // Wait for any pending background save to flush.
+  savePool.removeAllJobs(true, 5000);
+
+  // Final synchronous save so the latest state hits disk.
   juce::File file(filePath);
   file.deleteFile();
-
-  juce::ValueTree main(juce::Identifier("main"));
-  for (auto i = 0; i < trackFolders.size(); ++i) {
-    juce::ValueTree folder(juce::Identifier(std::to_string(i)));
-    folder.setProperty(juce::Identifier("name"), trackFolders[i].first,
-                       nullptr);
-    for (auto j = 0; j < trackFolders[i].second.size(); ++j) {
-      juce::ValueTree song(juce::Identifier(std::to_string(j)));
-      song.setProperty("title", trackFolders[i].second[j].title, nullptr);
-      song.setProperty("length", trackFolders[i].second[j].lengthInSeconds,
-                       nullptr);
-      song.setProperty("url", trackFolders[i].second[j].url.toString(false),
-                       nullptr);
-      song.setProperty("identity", trackFolders[i].second[j].identity, nullptr);
-      song.setProperty("fileHash", trackFolders[i].second[j].fileHash, nullptr);
-      song.setProperty("bpm", trackFolders[i].second[j].bpm, nullptr);
-      folder.addChild(song, j, nullptr);
-    }
-    main.addChild(folder, i, nullptr);
-  }
-
-  DBG("FILE SAVING");
   file.create();
-  juce::FileOutputStream outstream(file);
-  main.writeToStream(outstream);
+  juce::ValueTree tree = buildPersistenceTree();
+  Library::persistTreeToDisk(tree, filePath);
+  DBG("FILE SAVED (shutdown)");
 }
 
 //==============================================================================
@@ -245,6 +285,10 @@ void Library::resized() {
   auto trackBtnWidth = playlistWidth / 2;
   addFilesBtn.setBounds(playlistX, contentHeight, trackBtnWidth, buttonBarHeight);
   removeTrackBtn.setBounds(playlistX + trackBtnWidth, contentHeight, playlistWidth - trackBtnWidth, buttonBarHeight);
+
+  // Progress strip overlays the bottom button bar across full width while
+  // an ingest job is running.
+  ingestProgressBar.setBounds(0, contentHeight, getWidth(), buttonBarHeight);
 }
 
 //==============================================================================
@@ -347,88 +391,35 @@ bool Library::isInterestedInFileDrag(const juce::StringArray &files) {
  *
  */
 void Library::filesDropped(const juce::StringArray &files, int x, int y) {
-  auto t = std::time(nullptr);
-  auto tm = *std::localtime(&t);
-
-  std::ostringstream oss;
-  oss << std::put_time(&tm, "%d-%m-%Y %H-%M-%S");
-  auto timeString = oss.str();
-
+  // Drop on playlist area => add to currently selected folder.
+  // Drop on directory area => create new folder per dropped directory and
+  // import its contents.
   if (x > 1.5 * getWidth() / 8) {
-    if (selectedFolderIndex != -1) {
-      for (auto i = 0; i < files.size(); ++i) {
-        DBG("YES ADDED FILE " << files.size());
-        auto audioFile = juce::File{files[i]};
-        audioReader.reset(formatManager.createReaderFor(audioFile));
-        if (audioReader != nullptr) {
-          DBG("YES ADDED FILE");
-          std::hash<std::string> hasher;
-          track thisTrack = {audioFile.getFileNameWithoutExtension(),
-                             audioReader->lengthInSamples /
-                                 audioReader->sampleRate,
-                             juce::URL{audioFile}};
-          size_t hash = hasher(
-              thisTrack.title.toStdString() +
-              std::to_string(thisTrack.lengthInSeconds) +
-              thisTrack.url.toString(false).toStdString() +
-              std::to_string(trackFolders[selectedFolderIndex].second.size()) +
-              timeString);
-          char hashString[256] = "";
-          snprintf(hashString, sizeof hashString, "%zu", hash);
-          DBG(hashString);
-          thisTrack.identity = juce::String(hashString);
-          thisTrack.fileHash = FileHasher::computeHash(audioFile);
-          if (thisTrack.fileHash.isNotEmpty() && TrackDataCache::exists(thisTrack.fileHash))
-            thisTrack.bpm = TrackDataCache::load(thisTrack.fileHash).detectedBpm;
-          trackFolders[selectedFolderIndex].second.push_back(thisTrack);
-        }
+    if (selectedFolderIndex < 0)
+      return;
+
+    juce::Array<juce::File> audioFiles;
+    for (auto i = 0; i < files.size(); ++i) {
+      juce::File f { files[i] };
+      if (f.isDirectory()) {
+        for (auto& child : f.findChildFiles(juce::File::TypesOfFileToFind::findFiles, false))
+          audioFiles.add(child);
+      } else {
+        audioFiles.add(f);
       }
     }
+    enqueueIngest(audioFiles, selectedFolderIndex, {});
   } else {
     for (auto i = 0; i < files.size(); ++i) {
-      auto audioFile = juce::File{files[i]};
+      juce::File audioFile { files[i] };
       if (audioFile.isDirectory()) {
-        std::pair<juce::String, std::vector<track>> thisFolder;
-        thisFolder.first = audioFile.getFileNameWithoutExtension();
-        auto folder = audioFile.findChildFiles(
+        juce::Array<juce::File> contents = audioFile.findChildFiles(
             juce::File::TypesOfFileToFind::findFiles, false);
-        for (auto &file : folder) {
-          audioReader.reset(formatManager.createReaderFor(file));
-          if (audioReader != nullptr) {
-            std::hash<std::string> hasher;
-            track thisTrack = {file.getFileNameWithoutExtension(),
-                               audioReader->lengthInSamples /
-                                   audioReader->sampleRate,
-                               juce::URL{file}};
-            size_t hash =
-                hasher(thisTrack.title.toStdString() +
-                       std::to_string(thisTrack.lengthInSeconds) +
-                       thisTrack.url.toString(false).toStdString() +
-                       std::to_string(
-                           trackFolders[selectedFolderIndex].second.size()) +
-                       timeString);
-            char hashString[256] = "";
-            snprintf(hashString, sizeof hashString, "%zu", hash);
-            DBG(hashString);
-            thisTrack.identity = juce::String(hashString);
-            thisTrack.fileHash = FileHasher::computeHash(file);
-            if (thisTrack.fileHash.isNotEmpty() && TrackDataCache::exists(thisTrack.fileHash))
-              thisTrack.bpm = TrackDataCache::load(thisTrack.fileHash).detectedBpm;
-            thisFolder.second.push_back(thisTrack);
-          }
-        }
-        trackFolders.push_back(thisFolder);
-        selectedFolderIndex = trackFolders.size() - 1;
+        enqueueIngest(contents, -1, audioFile.getFileNameWithoutExtension());
       }
     }
   }
-  if (selectedFolderIndex != -1) {
-    queueBpmAnalysis(trackFolders[selectedFolderIndex].second);
-    playlist.setTrackTitles(trackFolders[selectedFolderIndex].second);
-  }
-  directoryComponent.updateContent();
-  directoryComponent.selectRow(selectedFolderIndex, true);
-};
+}
 
 //==============================================================================
 
@@ -478,6 +469,7 @@ void Library::addFolder() {
           directoryComponent.updateContent();
           directoryComponent.selectRow(selectedFolderIndex);
           playlist.setTrackTitles(trackFolders[selectedFolderIndex].second);
+          scheduleAsyncSave();
         }
       }
       delete editor;
@@ -498,6 +490,7 @@ void Library::removeFolder() {
     directoryComponent.updateContent();
     directoryComponent.selectRow(selectedFolderIndex);
     playlist.setTrackTitles(trackFolders[selectedFolderIndex].second);
+    scheduleAsyncSave();
   }
 }
 
@@ -527,6 +520,7 @@ void Library::renameFolder() {
           trackFolders[selectedFolderIndex].first = name;
           directoryComponent.updateContent();
           directoryComponent.repaint();
+          scheduleAsyncSave();
         }
       }
       delete editor;
@@ -557,39 +551,10 @@ void Library::addFilesToFolder() {
         auto results = chooser.getResults();
         if (results.isEmpty())
           return;
-
-        auto t = std::time(nullptr);
-        auto tm = *std::localtime(&t);
-        std::ostringstream oss;
-        oss << std::put_time(&tm, "%d-%m-%Y %H-%M-%S");
-        auto timeString = oss.str();
-
-        for (auto &audioFile : results) {
-          audioReader.reset(formatManager.createReaderFor(audioFile));
-          if (audioReader != nullptr) {
-            std::hash<std::string> hasher;
-            track thisTrack = {audioFile.getFileNameWithoutExtension(),
-                               audioReader->lengthInSamples /
-                                   audioReader->sampleRate,
-                               juce::URL{audioFile}};
-            size_t hash = hasher(
-                thisTrack.title.toStdString() +
-                std::to_string(thisTrack.lengthInSeconds) +
-                thisTrack.url.toString(false).toStdString() +
-                std::to_string(
-                    trackFolders[selectedFolderIndex].second.size()) +
-                timeString);
-            char hashString[256] = "";
-            snprintf(hashString, sizeof hashString, "%zu", hash);
-            thisTrack.identity = juce::String(hashString);
-            thisTrack.fileHash = FileHasher::computeHash(audioFile);
-            if (thisTrack.fileHash.isNotEmpty() && TrackDataCache::exists(thisTrack.fileHash))
-              thisTrack.bpm = TrackDataCache::load(thisTrack.fileHash).detectedBpm;
-            trackFolders[selectedFolderIndex].second.push_back(thisTrack);
-          }
-        }
-        queueBpmAnalysis(trackFolders[selectedFolderIndex].second);
-        playlist.setTrackTitles(trackFolders[selectedFolderIndex].second);
+        if (selectedFolderIndex < 0 ||
+            selectedFolderIndex >= static_cast<int>(trackFolders.size()))
+          return;
+        enqueueIngest(results, selectedFolderIndex, {});
       });
 }
 
@@ -612,51 +577,14 @@ void Library::importFolderFromDisk() {
         if (!result.isDirectory())
           return;
 
-        auto t = std::time(nullptr);
-        auto tm = *std::localtime(&t);
-        std::ostringstream oss;
-        oss << std::put_time(&tm, "%d-%m-%Y %H-%M-%S");
-        auto timeString = oss.str();
-
-        std::pair<juce::String, std::vector<track>> thisFolder;
-        thisFolder.first = result.getFileNameWithoutExtension();
-
         auto childFiles = result.findChildFiles(
             juce::File::TypesOfFileToFind::findFiles, false,
             formatManager.getWildcardForAllFormats());
 
-        for (auto &file : childFiles) {
-          audioReader.reset(formatManager.createReaderFor(file));
-          if (audioReader != nullptr) {
-            std::hash<std::string> hasher;
-            track thisTrack = {file.getFileNameWithoutExtension(),
-                               audioReader->lengthInSamples /
-                                   audioReader->sampleRate,
-                               juce::URL{file}};
-            size_t hash = hasher(
-                thisTrack.title.toStdString() +
-                std::to_string(thisTrack.lengthInSeconds) +
-                thisTrack.url.toString(false).toStdString() +
-                std::to_string(thisFolder.second.size()) +
-                timeString);
-            char hashString[256] = "";
-            snprintf(hashString, sizeof hashString, "%zu", hash);
-            thisTrack.identity = juce::String(hashString);
-            thisTrack.fileHash = FileHasher::computeHash(file);
-            if (thisTrack.fileHash.isNotEmpty() && TrackDataCache::exists(thisTrack.fileHash))
-              thisTrack.bpm = TrackDataCache::load(thisTrack.fileHash).detectedBpm;
-            thisFolder.second.push_back(thisTrack);
-          }
-        }
+        if (childFiles.isEmpty())
+          return;
 
-        if (!thisFolder.second.empty()) {
-          trackFolders.push_back(thisFolder);
-          selectedFolderIndex = static_cast<int>(trackFolders.size()) - 1;
-          directoryComponent.updateContent();
-          directoryComponent.selectRow(selectedFolderIndex);
-          queueBpmAnalysis(trackFolders[selectedFolderIndex].second);
-          playlist.setTrackTitles(trackFolders[selectedFolderIndex].second);
-        }
+        enqueueIngest(childFiles, -1, result.getFileNameWithoutExtension());
       });
 }
 
@@ -682,6 +610,7 @@ void Library::removeSelectedTrack() {
     }
   }
   playlist.setTrackTitles(trackFolders[selectedFolderIndex].second);
+  scheduleAsyncSave();
 }
 
 //==============================================================================
@@ -742,4 +671,344 @@ void Library::bpmAnalysisComplete(const juce::String& fileHash, double bpm)
 	{
 		playlist.setTrackTitles(trackFolders[selectedFolderIndex].second);
 	}
+
+	if (updated)
+		scheduleAsyncSave();
+}
+
+//==============================================================================
+// Phase 2 — Off-thread library ingestion
+
+/**
+ * Background ingest job. Builds completed track records (probing duration via
+ * a thread-local AudioFormatManager, computing FileHasher hash, looking up
+ * cached BPM) and streams them back to the message thread in small batches
+ * so the UI can update progressively.
+ */
+class Library::LibraryIngestJob : public juce::ThreadPoolJob
+{
+public:
+	LibraryIngestJob(Library& ownerRef,
+	                 juce::Array<juce::File> filesToScan,
+	                 int targetFolderIdx,
+	                 juce::String newFolderNameIn)
+		: juce::ThreadPoolJob("LibraryIngest"),
+		  owner(ownerRef),
+		  files(std::move(filesToScan)),
+		  targetFolderIndex(targetFolderIdx),
+		  newFolderName(std::move(newFolderNameIn))
+	{}
+
+	juce::ThreadPoolJob::JobStatus runJob() override
+	{
+		// Use a thread-local AudioFormatManager: the shared one is not
+		// guaranteed thread-safe for concurrent createReaderFor() calls.
+		juce::AudioFormatManager localFormatManager;
+		localFormatManager.registerBasicFormats();
+
+		auto t = std::time(nullptr);
+		auto tm = *std::localtime(&t);
+		std::ostringstream oss;
+		oss << std::put_time(&tm, "%d-%m-%Y %H-%M-%S");
+		const std::string timeString = oss.str();
+
+		std::vector<track> batch;
+		const int batchSize     = 8;
+		const int totalCount    = files.size();
+		int       processedSoFar = 0;
+		std::hash<std::string> hasher;
+
+		for (auto& audioFile : files)
+		{
+			if (shouldExit())
+				break;
+
+			++processedSoFar;
+			juce::String currentName = audioFile.getFileName();
+
+			std::unique_ptr<juce::AudioFormatReader> reader(
+				localFormatManager.createReaderFor(audioFile));
+			if (reader == nullptr)
+			{
+				notifyProgressOnly(processedSoFar, totalCount, currentName);
+				continue;
+			}
+
+			track t {
+				audioFile.getFileNameWithoutExtension(),
+				reader->lengthInSamples / reader->sampleRate,
+				juce::URL { audioFile }
+			};
+
+			size_t h = hasher(
+				t.title.toStdString() +
+				std::to_string(t.lengthInSeconds) +
+				t.url.toString(false).toStdString() +
+				std::to_string(processedSoFar) +
+				timeString);
+			char hashString[64] = "";
+			std::snprintf(hashString, sizeof hashString, "%zu", h);
+			t.identity = juce::String(hashString);
+
+			t.fileHash = FileHasher::computeHash(audioFile);
+			if (t.fileHash.isNotEmpty() && TrackDataCache::exists(t.fileHash))
+				t.bpm = TrackDataCache::load(t.fileHash).detectedBpm;
+
+			batch.push_back(std::move(t));
+
+			if (static_cast<int>(batch.size()) >= batchSize)
+				flushBatch(batch, processedSoFar, totalCount, currentName, false);
+		}
+
+		// Always send a final batch (even if empty) so the UI knows we are done.
+		flushBatch(batch, processedSoFar, totalCount, {}, true);
+		return jobHasFinished;
+	}
+
+private:
+	void flushBatch(std::vector<track>& batch,
+	                int processed,
+	                int total,
+	                juce::String currentName,
+	                bool isFinal)
+	{
+		auto* ownerPtr = &owner;
+		int   idx      = targetFolderIndex;
+		auto  name     = newFolderName;
+		auto  payload  = std::make_shared<std::vector<track>>(std::move(batch));
+		batch.clear();
+
+		juce::MessageManager::callAsync([ownerPtr, idx, name, payload, processed, total, currentName, isFinal]() {
+			ownerPtr->onIngestBatchReady(idx, name, std::move(*payload),
+			                              processed, total, currentName, isFinal);
+		});
+	}
+
+	void notifyProgressOnly(int processed, int total, juce::String currentName)
+	{
+		auto* ownerPtr = &owner;
+		juce::MessageManager::callAsync([ownerPtr, processed, total, currentName]() {
+			{
+				juce::ScopedLock sl(ownerPtr->ingestProgressLock);
+				ownerPtr->ingestProgressText = "Importing " + juce::String(processed) + " / "
+				                              + juce::String(total) + "  \u2014  " + currentName;
+			}
+			ownerPtr->ingestListeners.call([](IngestProgressListener& l){ l.ingestProgressChanged(); });
+			ownerPtr->refreshIngestProgressUI();
+		});
+	}
+
+	Library&                  owner;
+	juce::Array<juce::File>   files;
+	int                       targetFolderIndex;
+	juce::String              newFolderName;
+};
+
+void Library::enqueueIngest(juce::Array<juce::File> files,
+                            int targetFolderIndex,
+                            juce::String newFolderName)
+{
+	if (files.isEmpty())
+		return;
+
+	ingestInFlight.fetch_add(1, std::memory_order_acq_rel);
+	ingestActive.store(true, std::memory_order_release);
+
+	{
+		juce::ScopedLock sl(ingestProgressLock);
+		ingestProgressText = "Importing 0 / " + juce::String(files.size()) + "\u2026";
+	}
+	ingestListeners.call([](IngestProgressListener& l){ l.ingestProgressChanged(); });
+
+	refreshIngestProgressUI();
+
+	ingestPool.addJob(new LibraryIngestJob(*this, std::move(files),
+	                                       targetFolderIndex,
+	                                       std::move(newFolderName)),
+	                  true);
+}
+
+void Library::onIngestBatchReady(int targetFolderIndex,
+                                 juce::String newFolderName,
+                                 std::vector<track> batch,
+                                 int processedCount,
+                                 int totalCount,
+                                 juce::String currentFileName,
+                                 bool isFinalBatch)
+{
+	// Resolve / lazily create the destination folder.
+	int destIndex = targetFolderIndex;
+	if (destIndex < 0)
+	{
+		// New-folder ingest: create the folder on the first batch that
+		// arrives, then remember its index for subsequent batches by
+		// matching the name (cheap because batches arrive serially).
+		int existing = -1;
+		for (int i = 0; i < (int) trackFolders.size(); ++i)
+			if (trackFolders[i].first == newFolderName)
+				{ existing = i; break; }
+
+		if (existing < 0)
+		{
+			std::pair<juce::String, std::vector<track>> folder;
+			folder.first = newFolderName;
+			trackFolders.push_back(std::move(folder));
+			destIndex = static_cast<int>(trackFolders.size()) - 1;
+			selectedFolderIndex = destIndex;
+			directoryComponent.updateContent();
+			directoryComponent.selectRow(destIndex);
+		}
+		else
+		{
+			destIndex = existing;
+		}
+	}
+
+	if (destIndex >= 0 && destIndex < static_cast<int>(trackFolders.size()))
+	{
+		auto& dest = trackFolders[destIndex].second;
+		for (auto& t : batch)
+			dest.push_back(std::move(t));
+
+		if (selectedFolderIndex == destIndex)
+			playlist.setTrackTitles(dest);
+	}
+
+	// Update progress text + notify listeners.
+	{
+		juce::ScopedLock sl(ingestProgressLock);
+		if (isFinalBatch)
+			ingestProgressText = {};
+		else
+			ingestProgressText = "Importing " + juce::String(processedCount) + " / "
+			                    + juce::String(totalCount)
+			                    + (currentFileName.isNotEmpty()
+			                           ? juce::String("  \u2014  ") + currentFileName
+			                           : juce::String());
+	}
+	ingestListeners.call([](IngestProgressListener& l){ l.ingestProgressChanged(); });
+
+	refreshIngestProgressUI();
+
+	if (isFinalBatch)
+	{
+		auto remaining = ingestInFlight.fetch_sub(1, std::memory_order_acq_rel) - 1;
+		if (remaining <= 0)
+			ingestActive.store(false, std::memory_order_release);
+
+		// Newly-imported tracks need BPM analysis dispatch (cache lookup + queue).
+		if (destIndex >= 0 && destIndex < static_cast<int>(trackFolders.size()))
+			queueBpmAnalysis(trackFolders[destIndex].second);
+
+		scheduleAsyncSave();
+	}
+}
+
+juce::String Library::getIngestProgressText() const
+{
+	juce::ScopedLock sl(ingestProgressLock);
+	return ingestProgressText;
+}
+
+void Library::refreshIngestProgressUI()
+{
+	const auto text = getIngestProgressText();
+	ingestProgressBar.setText("  " + text, juce::dontSendNotification);
+	ingestProgressBar.setVisible(text.isNotEmpty());
+	if (text.isNotEmpty())
+		ingestProgressBar.toFront(false);
+}
+
+//==============================================================================
+// Phase 2.5 — Async XML persistence
+
+void Library::scheduleAsyncSave()
+{
+	saveDirtyCount.fetch_add(1, std::memory_order_relaxed);
+
+	if (saveDebounceTimer == nullptr)
+	{
+		struct DebTimer : public juce::Timer
+		{
+			Library* lib;
+			explicit DebTimer(Library* l) : lib(l) {}
+			void timerCallback() override
+			{
+				stopTimer();
+				lib->flushSaveNow();
+			}
+		};
+		saveDebounceTimer = std::make_unique<DebTimer>(this);
+	}
+
+	// Restart the debounce window. Multiple rapid mutations coalesce into
+	// a single write 2 s after the last edit.
+	saveDebounceTimer->startTimer(2000);
+}
+
+void Library::flushSaveNow()
+{
+	saveDirtyCount.store(0, std::memory_order_relaxed);
+
+	juce::ValueTree tree = buildPersistenceTree();
+	juce::String    path = filePath;
+
+	struct SaveJob : public juce::ThreadPoolJob
+	{
+		juce::ValueTree tree;
+		juce::String    path;
+		SaveJob(juce::ValueTree t, juce::String p)
+			: juce::ThreadPoolJob("LibrarySave"),
+			  tree(std::move(t)),
+			  path(std::move(p)) {}
+
+		juce::ThreadPoolJob::JobStatus runJob() override
+		{
+			Library::persistTreeToDisk(tree, path);
+			return jobHasFinished;
+		}
+	};
+
+	savePool.addJob(new SaveJob(std::move(tree), std::move(path)), true);
+}
+
+juce::ValueTree Library::buildPersistenceTree() const
+{
+	juce::ValueTree main(juce::Identifier("main"));
+	for (size_t i = 0; i < trackFolders.size(); ++i)
+	{
+		juce::ValueTree folder(juce::Identifier(std::to_string(i)));
+		folder.setProperty(juce::Identifier("name"), trackFolders[i].first, nullptr);
+		for (size_t j = 0; j < trackFolders[i].second.size(); ++j)
+		{
+			juce::ValueTree song(juce::Identifier(std::to_string(j)));
+			const auto& tr = trackFolders[i].second[j];
+			song.setProperty("title", tr.title, nullptr);
+			song.setProperty("length", tr.lengthInSeconds, nullptr);
+			song.setProperty("url", tr.url.toString(false), nullptr);
+			song.setProperty("identity", tr.identity, nullptr);
+			song.setProperty("fileHash", tr.fileHash, nullptr);
+			song.setProperty("bpm", tr.bpm, nullptr);
+			folder.addChild(song, static_cast<int>(j), nullptr);
+		}
+		main.addChild(folder, static_cast<int>(i), nullptr);
+	}
+	return main;
+}
+
+void Library::persistTreeToDisk(juce::ValueTree tree, juce::String filePath)
+{
+	juce::File file(filePath);
+	juce::TemporaryFile temp(file);
+	{
+		juce::FileOutputStream out(temp.getFile());
+		if (out.openedOk())
+		{
+			out.setPosition(0);
+			out.truncate();
+			tree.writeToStream(out);
+		}
+	}
+	if (! temp.overwriteTargetFileWithTemporary())
+		DBG("Library::persistTreeToDisk - failed to overwrite " + filePath);
 }
