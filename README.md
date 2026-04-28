@@ -58,6 +58,14 @@ The DJDecks project is a DJ audio player application aimed at providing users wi
 | **🔌 Integrations**    | The codebase integrates well with the JUCE framework, leveraging its powerful audio and UI capabilities. As JUCE is highly extensible, additional integrations with audio processing libraries, hardware interfaces, or cloud-based music platforms can be implemented through the existing architecture.    |
 | **📶 Scalability**     | The codebase should be scalable since it follows modularity principles. As the system grows, new components can be added, existing components can be extended, and externals dependencies can be integrated. These design decisions contribute to the application's ability to accommodate future enhancements and expansions.    |
 
+- update to cmake - easy to use in VS Code
+- fully update to the file and folders, added button to easily add/create/remove/rename folder and add/remove files
+- added manual loop feature
+- added beat jump feature
+- added beat grid
+- added quantization for beat jump, loop, start/stop playback (orange pending state; only triggers when 1beat, 1/2beat, ... matches with the decks playback)
+- TODO: beat sync, pad/release/beat fx, ui rework
+
 ---
 
 
@@ -143,5 +151,6 @@ The DJDecks project is a DJ audio player application aimed at providing users wi
 ## 👏 Acknowledgments
 
 > - `ℹ️  Juce Framework`
+> - [DJDecks - dubstep-warrior](https://github.com/dubstep-warrior/djdecks)
 
 ---
