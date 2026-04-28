@@ -167,6 +167,12 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	};
 	addChildComponent(snapBox);
 
+	// Reset button: clears master, disengages sync, restores speed to 1.0.
+	syncResetBtn.addListener(this);
+	syncResetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	syncResetBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+	addChildComponent(syncResetBtn);
+
 	// Quantize tab button and controls
 	addAndMakeVisible(quantizeTabButton);
 	quantizeTabButton.addListener(this);
@@ -483,15 +489,17 @@ void DeckGUI::resized()
 	quantizeLabel.setBounds(xOffset, yOffset + 4, qContentWidth, 20);
 	quantizeComboBox.setBounds(xOffset, yOffset + 26, qContentWidth, 28);
 
-	// Sync controls layout (same area as cue buttons): 3 columns x 2 rows.
+	// Sync controls layout (same area as cue buttons): 4 cols x 2 rows.
 	double syncRow1Y = yOffset + 4;
 	double syncRow2Y = yOffset + cellHeight + 4;
-	double syncColWidth = (cellLength * 3 - 4) / 3 - 3;
-	masterToggleBtn.setBounds(xOffset, syncRow1Y, syncColWidth, cellHeight - 4);
-	syncEngageBtn.setBounds(xOffset + (syncColWidth + 4), syncRow1Y, syncColWidth, cellHeight - 4);
-	targetBpmLabel.setBounds(xOffset + (syncColWidth + 4) * 2, syncRow1Y, syncColWidth, cellHeight - 4);
+	double syncTotalW = cellLength * 3 - 4;
+	double syncCol4W  = (syncTotalW - 4 * 3) / 4;
+	masterToggleBtn.setBounds(xOffset + (syncCol4W + 4) * 0, syncRow1Y, syncCol4W, cellHeight - 4);
+	syncEngageBtn  .setBounds(xOffset + (syncCol4W + 4) * 1, syncRow1Y, syncCol4W, cellHeight - 4);
+	targetBpmLabel .setBounds(xOffset + (syncCol4W + 4) * 2, syncRow1Y, syncCol4W, cellHeight - 4);
+	syncResetBtn   .setBounds(xOffset + (syncCol4W + 4) * 3, syncRow1Y, syncCol4W, cellHeight - 4);
 	// Row 2: ×½ ×1 ×2 (3 buttons), snap dropdown, status label.
-	double row2TotalW = cellLength * 3 - 4;
+	double row2TotalW = syncTotalW;
 	double multBtnWidth = row2TotalW * 0.16;
 	double snapBoxWidth = row2TotalW * 0.28;
 	double statusWidth  = row2TotalW - multBtnWidth * 3 - snapBoxWidth - 4 * 4;
@@ -699,6 +707,15 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		if (button == &multHalfBtn) syncManager->setSlaveMultiplier(deckIndex, 0.5);
 		if (button == &multOneBtn)  syncManager->setSlaveMultiplier(deckIndex, 1.0);
 		if (button == &multTwoBtn)  syncManager->setSlaveMultiplier(deckIndex, 2.0);
+		if (button == &syncResetBtn) {
+			// Restore everything to default: disengage sync, clear master if
+			// this deck was master, reset multiplier, and slam speed to 1.0.
+			syncManager->disengageSync(deckIndex);
+			if (syncManager->isMaster(deckIndex))
+				syncManager->setMaster(BeatSyncManager::MasterDeck::None);
+			syncManager->setSlaveMultiplier(deckIndex, 1.0);
+			speedSlider.setValue(1.0, juce::sendNotification);
+		}
 	}
 
 	// Beat jump buttons (quantized)
@@ -884,11 +901,23 @@ void DeckGUI::sliderValueChanged(juce::Slider* slider) {
 
 	if (slider == &speedSlider) {
 		DBG("MainComponent::sliderValueChanged: They change the speed slider " << slider->getValue());
-		player->setSpeed(slider->getValue());
+		// Capture the user's intended value before any side-effects can overwrite it.
+		double userSpeed = slider->getValue();
+		// User-initiated speed change while synced — break sync. (Programmatic
+		// updates from BeatSyncManager use dontSendNotification, so this path
+		// only triggers from real user input or the right-click reset.)
+		if (syncManager != nullptr && syncManager->isSynced(deckIndex)) {
+			syncManager->disengageSync(deckIndex);
+			// syncStateChanged() stamped the OLD sync ratio onto the slider;
+			// restore the user's intended value now that the player speed is correct.
+			if (std::abs(speedSlider.getValue() - userSpeed) > 1e-4)
+				speedSlider.setValue(userSpeed, juce::dontSendNotification);
+		}
+		player->setSpeed(userSpeed);
 		// Immediately propagate new speed to waveform displays for live visual feedback
 		const BeatGrid& grid = player->getBeatGrid();
 		for (auto* display : displays)
-			display->setBeatGrid(grid.bpm, grid.gridOffsetSecs, slider->getValue());
+			display->setBeatGrid(grid.bpm, grid.gridOffsetSecs, userSpeed);
 	}
 
 	if (slider == &filter) {
@@ -967,6 +996,9 @@ void DeckGUI::timerCallback() {
 			if (displays[i]->isSliderDragged()) {
 				draggedIndex = i;
 				canContinue = false;
+				// User scrubbing the waveform breaks sync.
+				if (syncManager != nullptr && syncManager->isSynced(deckIndex))
+					syncManager->disengageSync(deckIndex);
 				if (displays[i] == &waveformDisplay) {
 					player->stop();
 				}
@@ -1218,6 +1250,7 @@ void DeckGUI::setSyncControlsVisible(bool visible) {
 	targetBpmLabel.setVisible(visible);
 	syncStatusLabel.setVisible(visible);
 	snapBox.setVisible(visible);
+	syncResetBtn.setVisible(visible);
 }
 
 //==============================================================================
@@ -1263,9 +1296,16 @@ void DeckGUI::syncStateChanged() {
 	// retain manual control. The actual sync ratio may exceed the slider's
 	// visual range; we don't try to mirror it on the slider — targetBpmLabel
 	// shows the resolved BPM instead.
-	bool sliderEnabled = !isSynced;
-	if (speedSlider.isEnabled() != sliderEnabled)
-		speedSlider.setEnabled(sliderEnabled);
+	// Keep the slider enabled and mirror the engine ratio onto it (slider
+	// auto-clamps to its visual range). Any user interaction will fire
+	// sliderValueChanged, where we then disengage sync — so the slider acts
+	// as a quick-disengage handle while still showing the synced position.
+	if (!speedSlider.isEnabled())
+		speedSlider.setEnabled(true);
+
+	double sr = player->getSpeedRatio();
+	if (std::abs(speedSlider.getValue() - sr) > 1e-4)
+		speedSlider.setValue(sr, juce::dontSendNotification);
 
 	// Master can't simultaneously be a slave: disable the SYNC engage button.
 	syncEngageBtn.setEnabled(!isMaster);

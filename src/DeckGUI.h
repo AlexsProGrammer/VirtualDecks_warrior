@@ -435,6 +435,9 @@ private:
 	/// Compact fast-sync button placed near play/load buttons.
 	juce::TextButton fastSyncBtn{ "SYNC" };
 
+	/// Resets sync + master + speed back to defaults (track plays normally).
+	juce::TextButton syncResetBtn{ "RESET" };
+
 	/// Snap-quantisation combo for sync phase alignment (1 BAR / 1/2 / 1/4).
 	juce::ComboBox snapBox;
 
