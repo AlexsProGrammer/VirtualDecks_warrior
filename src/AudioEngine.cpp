@@ -147,6 +147,31 @@ const DJAudioPlayer& AudioEngine::getPlayer(int deckIndex) const noexcept
 }
 
 //==============================================================================
+// Headphone cue routing
+
+void AudioEngine::setCueDeck(int deckIndex) noexcept
+{
+	const int old = cueDeckIndex.exchange(deckIndex, std::memory_order_acq_rel);
+	if (old == 0 || old == 1)
+		getPlayer(old).enableCueTap(false);
+	if ((deckIndex == 0 || deckIndex == 1) && deckIndex != old)
+		getPlayer(deckIndex).enableCueTap(true);
+}
+
+int AudioEngine::getCuedDeckIndex() const noexcept
+{
+	return cueDeckIndex.load(std::memory_order_acquire);
+}
+
+DJAudioPlayer* AudioEngine::getCuedPlayer() noexcept
+{
+	const int idx = cueDeckIndex.load(std::memory_order_acquire);
+	if (idx == 0 || idx == 1)
+		return &getPlayer(idx);
+	return nullptr;
+}
+
+//==============================================================================
 
 void AudioEngine::requestLoad(int deckIndex,
                               juce::URL audioURL,

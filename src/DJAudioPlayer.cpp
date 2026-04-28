@@ -64,8 +64,24 @@ void DJAudioPlayer::getNextAudioBlock(const juce::AudioSourceChannelInfo& buffer
 
 	// 2) Pull audio through the filter chain + FX chain.
 	fxChain.getNextAudioBlock(bufferToFill);
-
-	// 3) Loop: if active and playhead has passed the out point, jump back to in point.
+	// 2b) Headphone cue tap: copy processed output into the ring buffer so
+	//     a separate device callback can read it without blocking this thread.
+	if (cueTapEnabled.load(std::memory_order_acquire))
+	{
+		const int numSamples = bufferToFill.numSamples;
+		int start1, size1, start2, size2;
+		cueFifo.prepareToWrite(numSamples, start1, size1, start2, size2);
+		const int toCopy = size1 + size2;
+		for (int ch = 0; ch < juce::jmin(2, bufferToFill.buffer->getNumChannels()); ++ch)
+		{
+			const float* src = bufferToFill.buffer->getReadPointer(ch, bufferToFill.startSample);
+			if (size1 > 0)
+				juce::FloatVectorOperations::copy(cueBuffer.getWritePointer(ch, start1), src, size1);
+			if (size2 > 0)
+				juce::FloatVectorOperations::copy(cueBuffer.getWritePointer(ch, start2), src + size1, size2);
+		}
+		cueFifo.finishedWrite(toCopy);
+	}
 	const bool   activeNow = loopActive.load(std::memory_order_acquire);
 	const double inSecs    = loopInSecs.load(std::memory_order_acquire);
 	const double outSecs   = loopOutSecs.load(std::memory_order_acquire);
@@ -99,6 +115,49 @@ void DJAudioPlayer::drainCommands() noexcept {
 	commandFifo.drain([this](const AudioCommand& cmd) noexcept {
 		applyCommand(cmd);
 	});
+}
+
+//==============================================================================
+
+/**
+ * Enables or disables the headphone cue tap. When disabling, the ring buffer
+ * is flushed so stale audio does not play on the next enable.
+ */
+void DJAudioPlayer::enableCueTap(bool enable) noexcept
+{
+	if (!enable)
+	{
+		cueTapEnabled.store(false, std::memory_order_release);
+		cueFifo.reset();
+	}
+	else
+	{
+		cueTapEnabled.store(true, std::memory_order_release);
+	}
+}
+
+/**
+ * Reads up to numSamples frames from the cue ring buffer. Returns the number
+ * of frames actually read. The caller is responsible for zeroing any deficit.
+ */
+int DJAudioPlayer::readCueTap(float* const* destChannels, int numChannels, int numSamples) noexcept
+{
+	int start1, size1, start2, size2;
+	cueFifo.prepareToRead(numSamples, start1, size1, start2, size2);
+	const int totalRead = size1 + size2;
+
+	for (int ch = 0; ch < numChannels; ++ch)
+	{
+		const int srcCh = juce::jmin(ch, cueBuffer.getNumChannels() - 1);
+		if (size1 > 0)
+			juce::FloatVectorOperations::copy(destChannels[ch],
+			                                  cueBuffer.getReadPointer(srcCh, start1), size1);
+		if (size2 > 0)
+			juce::FloatVectorOperations::copy(destChannels[ch] + size1,
+			                                  cueBuffer.getReadPointer(srcCh, start2), size2);
+	}
+	cueFifo.finishedRead(totalRead);
+	return totalRead;
 }
 
 /**

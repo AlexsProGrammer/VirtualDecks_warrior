@@ -8,6 +8,9 @@
 #include "CustomLookAndFeel.h"
 #include "BeatSyncManager.h"
 #include "DeckLibrarySidebar.h"
+#include "CueAudioCallback.h"
+#include "AppSettings.h"
+#include "SettingsPanel.h"
 
 //==============================================================================
 /*
@@ -147,6 +150,33 @@ private:
 	/// @return The on-screen and off-screen bounds for the given deck's sidebar.
 	juce::Rectangle<int> sidebarOpenBounds (int deckIndex) const;
 	juce::Rectangle<int> sidebarClosedBounds(int deckIndex) const;
+
+	//==============================================================================
+	// Headphone cue output
+
+	/// Separate device manager for the headphone / cue output channel.
+	juce::AudioDeviceManager cueDeviceManager;
+
+	/// Callback that reads the cued deck's ring buffer and feeds the headphone device.
+	CueAudioCallback cueCallback;
+
+	/// Slide-in panel for configuring master and headphone output devices.
+	std::unique_ptr<SettingsPanel> settingsPanel;
+
+	/// Gear button that opens / closes the settings panel (placed above crossfader).
+	juce::TextButton settingsButton{ "\u2699" };
+
+	/// Animate the settings panel into view from the top.
+	void openSettings();
+
+	/// Animate the settings panel out of view.
+	void closeSettings();
+
+	/// @return Bounds used when settings panel is fully open.
+	juce::Rectangle<int> settingsPanelOpenBounds()  const;
+
+	/// @return Bounds used when settings panel is fully closed (off-screen top).
+	juce::Rectangle<int> settingsPanelClosedBounds() const;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

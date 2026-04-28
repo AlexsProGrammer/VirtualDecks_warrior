@@ -57,6 +57,49 @@ MainComponent::MainComponent()
 	deckGUI1.onLoadButtonClicked = [this](int) { openSidebar(0); };
 	deckGUI2.onLoadButtonClicked = [this](int) { openSidebar(1); };
 
+	// Wire the CUE buttons: toggling routes that deck to the headphone output.
+	auto cueCb = [this](int deckIndex)
+	{
+		const int current = audioEngine.getCuedDeckIndex();
+		if (current == deckIndex)
+		{
+			// Same deck pressed again → turn off cue.
+			audioEngine.setCueDeck(-1);
+			deckGUI1.setCueActive(false);
+			deckGUI2.setCueActive(false);
+		}
+		else
+		{
+			audioEngine.setCueDeck(deckIndex);
+			deckGUI1.setCueActive(deckIndex == 0);
+			deckGUI2.setCueActive(deckIndex == 1);
+		}
+	};
+	deckGUI1.onCueButtonClicked = cueCb;
+	deckGUI2.onCueButtonClicked = cueCb;
+
+	// Headphone / cue output device manager.
+	cueCallback.setEngine(&audioEngine);
+	{
+		auto savedState = AppSettings::loadHeadphoneDeviceState();
+		cueDeviceManager.initialise(0, 2, savedState.get(), false);
+	}
+	cueDeviceManager.addAudioCallback(&cueCallback);
+
+	// Settings panel (hidden off-screen until the gear button is pressed).
+	settingsPanel = std::make_unique<SettingsPanel>(
+		deviceManager,
+		cueDeviceManager,
+		[this]() { closeSettings(); });
+	addChildComponent(*settingsPanel);
+
+	settingsButton.setColour(juce::TextButton::buttonColourId,
+	                         juce::Colour::fromRGBA(60, 60, 60, 255));
+	settingsButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+	settingsButton.setTooltip("Audio device settings");
+	settingsButton.onClick = [this]() { openSettings(); };
+	addAndMakeVisible(settingsButton);
+
 	// Wire decks into the beat-sync manager (decks already know about it via
 	// constructor injection in MainComponent.h).
 	beatSyncManager.setDeck(0, &audioEngine.getPlayer(0), &deckGUI1);
@@ -85,6 +128,7 @@ MainComponent::MainComponent()
  */
 MainComponent::~MainComponent()
 {
+	cueDeviceManager.removeAudioCallback(&cueCallback);
 	shutdownAudio();
 }
 
@@ -173,6 +217,18 @@ void MainComponent::resized()
 	const double deckRowH = std::min(deckH / 9.0, 40.0);
 	crossFader.setBounds(getWidth() / 2 - 80, (int)(deckY + deckRowH * 6.5), 160, 37);
 
+	// Gear / settings button — centred, just above the crossfader.
+	settingsButton.setBounds(getWidth() / 2 - 13, (int)(deckY + deckRowH * 6.5) - 30, 26, 26);
+
+	// Settings panel: full-width strip at the top when open, parked off-screen when closed.
+	if (settingsPanel != nullptr)
+	{
+		if (settingsPanel->isVisible())
+			settingsPanel->setBounds(settingsPanelOpenBounds());
+		else
+			settingsPanel->setBounds(settingsPanelClosedBounds());
+	}
+
 	// Sidebars track their visibility-driven position. If currently visible,
 	// reposition them to the open bounds; otherwise park them off-screen.
 	auto fitSidebar = [this](DeckLibrarySidebar* s, int idx)
@@ -237,6 +293,44 @@ void MainComponent::closeSidebar(int deckIndex)
 	juce::Component::SafePointer<DeckLibrarySidebar> safe(target);
 	juce::Timer::callAfterDelay(240, [safe]() {
 		if (auto* s = safe.getComponent()) s->setVisible(false);
+	});
+}
+
+//==============================================================================
+// Settings panel
+
+juce::Rectangle<int> MainComponent::settingsPanelOpenBounds() const
+{
+	return { 0, 0, getWidth(), juce::jmin(getHeight(), 380) };
+}
+
+juce::Rectangle<int> MainComponent::settingsPanelClosedBounds() const
+{
+	return { 0, -380, getWidth(), 380 };
+}
+
+void MainComponent::openSettings()
+{
+	if (settingsPanel == nullptr) return;
+	if (settingsPanel->isVisible()) return;
+
+	settingsPanel->setBounds(settingsPanelClosedBounds());
+	settingsPanel->setVisible(true);
+	settingsPanel->toFront(false);
+	juce::Desktop::getInstance().getAnimator().animateComponent(
+		settingsPanel.get(), settingsPanelOpenBounds(), 1.0f, 220, false, 1.0, 0.0);
+}
+
+void MainComponent::closeSettings()
+{
+	if (settingsPanel == nullptr || !settingsPanel->isVisible()) return;
+
+	juce::Desktop::getInstance().getAnimator().animateComponent(
+		settingsPanel.get(), settingsPanelClosedBounds(), 1.0f, 220, false, 1.0, 0.0);
+
+	juce::Component::SafePointer<SettingsPanel> safe(settingsPanel.get());
+	juce::Timer::callAfterDelay(240, [safe]() {
+		if (auto* p = safe.getComponent()) p->setVisible(false);
 	});
 }
 

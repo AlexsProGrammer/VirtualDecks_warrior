@@ -63,6 +63,15 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	addAndMakeVisible(midBandFilter);
 	addAndMakeVisible(highBandFilter);
 
+	cueButton.setColour(juce::TextButton::buttonColourId,
+	                    juce::Colour::fromRGBA(50, 50, 50, 255));
+	cueButton.setColour(juce::TextButton::buttonOnColourId,  theme.withAlpha(0.85f));
+	cueButton.setColour(juce::TextButton::textColourOffId,   juce::Colours::white);
+	cueButton.setColour(juce::TextButton::textColourOnId,    juce::Colours::black);
+	cueButton.setClickingTogglesState(false);
+	cueButton.addListener(this);
+	addAndMakeVisible(cueButton);
+
 	// Per-deck queue widget. Click a row to jump to that track.
 	queueWidget = std::make_unique<DeckQueue>(theme, [this](const track& t) { loadDeck(t); });
 	addAndMakeVisible(*queueWidget);
@@ -462,6 +471,11 @@ void DeckGUI::resized()
 	playButton.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 5 - 10, rowH * 0.7, rowH * 0.7);
 	fastSyncBtn.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 5 - 10 + rowH * 0.7 + 4, rowH * 0.7, rowH * 0.5);
 
+	// CUE button — below playButton, same column
+	cueButton.setBounds(mainXOffset + (int)(getWidth() * 22.5 / 32),
+	                    (int)(rowH * 5 - 10 + rowH * 0.7 + 4 + rowH * 0.5 + 4),
+	                    (int)(rowH * 0.7), 20);
+
 	waveformDisplay.setBounds(0, 0, getWidth(), rowH * 2);
 	loadingLabel.setBounds(waveformDisplay.getBounds());
 
@@ -697,6 +711,12 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 			onLoadButtonClicked(deckIndex);
 		else if (library != nullptr && library->selectionIsValid())
 			loadDeck(library->getSelectedTrack());
+	}
+
+	if (button == &cueButton)
+	{
+		if (onCueButtonClicked)
+			onCueButtonClicked(deckIndex);
 	}
 
 	// Tab switching
@@ -2208,6 +2228,18 @@ void DeckGUI::loadTrack(const track& t) {
 void DeckGUI::enqueueTrack(const track& t) {
 	if (queueWidget != nullptr)
 		queueWidget->pushBack(t);
+}
+
+/**
+ * Update the CUE button's visual state to reflect whether this deck is
+ * currently routed to the headphone output.
+ */
+void DeckGUI::setCueActive(bool active) noexcept
+{
+	cueButton.setColour(juce::TextButton::buttonColourId,
+	                    active ? theme.withAlpha(0.85f)
+	                           : juce::Colour::fromRGBA(50, 50, 50, 255));
+	cueButton.repaint();
 }
 
 //==============================================================================

@@ -23,6 +23,9 @@ set(SOURCE_FILES
     FxParameterModal.cpp
     DeckLibrarySidebar.cpp
     DeckQueue.cpp
+    CueAudioCallback.cpp
+    AppSettings.cpp
+    SettingsPanel.cpp
 )
 
 if(TARGET juceDjApp)

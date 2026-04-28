@@ -96,8 +96,24 @@ public:
 	void removeListener(Listener* l);
 
 	//==============================================================================
+	// Headphone cue routing
 
-private:
+	/**
+	 * Route the processed output of deck deckIndex to the cue ring buffer.
+	 * Pass -1 to disable cue monitoring for all decks.
+	 * If the same deckIndex is already active this is a no-op (caller handles
+	 * the toggle logic).
+	 */
+	void setCueDeck(int deckIndex) noexcept;
+
+	/// Returns the index of the deck currently sending to the cue output,
+	/// or -1 if none.
+	int getCuedDeckIndex() const noexcept;
+
+	/// Returns a pointer to the cue-active player, or nullptr if none.
+	DJAudioPlayer* getCuedPlayer() noexcept;
+
+	//==============================================================================
 
 	/// Background ThreadPool job that creates a reader source off the message thread.
 	class LoadJob;
@@ -143,6 +159,10 @@ private:
 	/// Generation counter per deck to invalidate in-flight loads if a newer
 	/// requestLoad is issued before the previous one completes.
 	std::atomic<int> loadGeneration[2] { {0}, {0} };
+
+	/// Index of the deck currently routed to the cue (headphone) output.
+	/// -1 means no deck is cued. Written on message thread, read on headphone thread.
+	std::atomic<int> cueDeckIndex { -1 };
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioEngine)
 };

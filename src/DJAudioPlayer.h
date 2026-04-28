@@ -309,8 +309,24 @@ public:
 	const FxChain& getFxChain() const noexcept { return fxChain; }
 
 	//==============================================================================
+	// Headphone cue tap
 
-private:
+	/**
+	 * Enable or disable copying this deck's processed output into the cue ring
+	 * buffer so a separate headphone device callback can consume it.
+	 * Safe to call from the message thread at any time.
+	 */
+	void enableCueTap(bool enable) noexcept;
+
+	/**
+	 * Read up to numSamples frames from the cue ring buffer into destChannels.
+	 * Returns the number of frames actually read (may be less if buffer is
+	 * starved). Remaining output frames are zeroed by the caller.
+	 * Must be called from the headphone audio thread only.
+	 */
+	int readCueTap(float* const* destChannels, int numChannels, int numSamples) noexcept;
+
+	//==============================================================================
 
 	/// Drain pending commands from the audio thread. Allocation- and lock-free.
 	void drainCommands() noexcept;
@@ -399,4 +415,18 @@ private:
 	/// Worst-case getNextAudioBlock duration in microseconds (written by audio thread,
 	/// read by destructor on message thread after audio device is closed).
 	std::atomic<int64_t> worstCaseCallbackMicros { 0 };
+
+	//==============================================================================
+	// Headphone cue tap ring buffer (SPSC: audio thread writes, headphone thread reads)
+
+	static constexpr int kCueFifoSize = 65536;
+
+	/// True when the cue tap is active. Written on message thread, read on audio thread.
+	std::atomic<bool> cueTapEnabled { false };
+
+	/// Lock-free SPSC index tracker for the cue ring buffer.
+	juce::AbstractFifo cueFifo { kCueFifoSize };
+
+	/// Ring buffer that holds the tapped stereo audio. Allocated once.
+	juce::AudioBuffer<float> cueBuffer { 2, kCueFifoSize };
 };

@@ -75,6 +75,13 @@ public:
 	/// load button is a no-op.
 	std::function<void(int deckIndex)> onLoadButtonClicked;
 
+	/// Optional callback fired when the user clicks the CUE button.
+	/// MainComponent wires this to toggle headphone cue routing via AudioEngine.
+	std::function<void(int deckIndex)> onCueButtonClicked;
+
+	/// Update the visual state of the CUE button (lit = active, unlit = inactive).
+	void setCueActive(bool active) noexcept;
+
 	//==============================================================================
 
 private:
@@ -209,6 +216,9 @@ private:
 
 	/// juce::DrawableButton for the load button component
 	juce::DrawableButton loadButton{ "Load", juce::DrawableButton::ButtonStyle::ImageFitted };
+
+	/// Button that routes this deck's audio to the headphone (cue) output.
+	juce::TextButton cueButton{ "CUE" };
 
 	/// juce::Colour to define the theme of the DeckGUI
 	juce::Colour theme;
