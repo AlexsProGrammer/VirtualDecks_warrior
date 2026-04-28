@@ -183,13 +183,17 @@ void DJAudioPlayer::applyCommand(const AudioCommand& cmd) noexcept {
 			break;
 		case AudioCommand::Tag::SetFilter: {
 			const double freq = cmd.doublePayload;
-			if (freq > 0 && freq < 20000) {
+			if (freq > 0) {
+				// Log-mapped HP: at +1 ~20Hz (inaudible), at +20000 ~20kHz (full cut)
+				const double hpCutoff = 20.0 * std::pow(1000.0, freq / 20000.0);
 				audioLPFilter.makeInactive();
-				audioHPFilter.setCoefficients(juce::IIRCoefficients::makeHighPass(thisSampleRate, freq));
+				audioHPFilter.setCoefficients(juce::IIRCoefficients::makeHighPass(thisSampleRate, hpCutoff));
 			}
-			else if (freq < 0 && freq > -20000) {
+			else if (freq < 0) {
+				// Log-mapped LP: at -1 ~19993Hz (inaudible), at -20000 ~20Hz (full cut)
+				const double lpCutoff = 20000.0 / std::pow(1000.0, (-freq) / 20000.0);
 				audioHPFilter.makeInactive();
-				audioLPFilter.setCoefficients(juce::IIRCoefficients::makeLowPass(thisSampleRate, 20000 + freq));
+				audioLPFilter.setCoefficients(juce::IIRCoefficients::makeLowPass(thisSampleRate, lpCutoff));
 			}
 			else {
 				audioHPFilter.makeInactive();
