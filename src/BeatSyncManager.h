@@ -117,6 +117,18 @@ public:
 	/// completed). If a sync was previously out-of-range, this attempts to retry.
 	void onBpmUpdated(int deckIdx);
 
+	//==============================================================================
+
+	/**
+	 * Set the phase-snap granularity in beats. Valid values: 4 (1 bar), 2
+	 * (1/2 bar), 1 (1/4 bar). Applied to subsequent engages and immediately
+	 * re-aligns any active slave.
+	 */
+	void setSnapBeats(int beats);
+
+	/// Returns the current phase-snap granularity in beats (default 4).
+	int getSnapBeats() const;
+
 private:
 	//==============================================================================
 
@@ -149,9 +161,14 @@ private:
 
 	//==============================================================================
 
-	/// Speed slider range constants matching DeckGUI's speedSlider.
+	/// Speed slider range constants (manual user range, slider visual cap).
 	static constexpr double kMinSpeed = 0.8;
 	static constexpr double kMaxSpeed = 1.2;
+
+	/// Wider range used when the engine drives speed during sync. Slider is
+	/// locked while synced, so we are free to push the resampler further.
+	static constexpr double kSyncMinSpeed = 0.5;
+	static constexpr double kSyncMaxSpeed = 2.0;
 
 	/// Polling interval for master speed changes (ms).
 	static constexpr int    kTimerIntervalMs = 50;
@@ -168,6 +185,8 @@ private:
 	double          slaveMultiplier[2] = { 1.0, 1.0 };
 	double          lastAppliedSpeed[2] = { 0.0, 0.0 };
 	juce::String    statusText[2];
+	bool            pendingRealign[2] = { false, false };
+	int             snapBeats = 4;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BeatSyncManager)
 };

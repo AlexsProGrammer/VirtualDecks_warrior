@@ -116,7 +116,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	syncEngageBtn.setClickingTogglesState(true);
 	syncEngageBtn.addListener(this);
 	syncEngageBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	syncEngageBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::limegreen.withAlpha(0.8f));
+	syncEngageBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::dodgerblue.withAlpha(0.85f));
 	syncEngageBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 	syncEngageBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
 	addChildComponent(syncEngageBtn);
@@ -144,56 +144,28 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	fastSyncBtn.setClickingTogglesState(true);
 	fastSyncBtn.addListener(this);
 	fastSyncBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	fastSyncBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::limegreen.withAlpha(0.8f));
+	fastSyncBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::dodgerblue.withAlpha(0.85f));
 	fastSyncBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 	fastSyncBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
 	addAndMakeVisible(fastSyncBtn);
-	syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 
-	// Sync tab controls (initially hidden until SYNC tab selected).
-	masterToggleBtn.setClickingTogglesState(true);
-	masterToggleBtn.addListener(this);
-	masterToggleBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	masterToggleBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange.withAlpha(0.8f));
-	masterToggleBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-	masterToggleBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
-	addChildComponent(masterToggleBtn);
-
-	syncEngageBtn.setClickingTogglesState(true);
-	syncEngageBtn.addListener(this);
-	syncEngageBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	syncEngageBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::limegreen.withAlpha(0.8f));
-	syncEngageBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-	syncEngageBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
-	addChildComponent(syncEngageBtn);
-
-	for (auto* btn : { &multHalfBtn, &multOneBtn, &multTwoBtn }) {
-		btn->addListener(this);
-		btn->setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-		addChildComponent(*btn);
-	}
-
-	targetBpmLabel.setEditable(false);
-	targetBpmLabel.setJustificationType(juce::Justification::centred);
-	targetBpmLabel.setColour(juce::Label::textColourId, theme);
-	targetBpmLabel.setFont(juce::Font(juce::FontOptions(12.0f)).boldened());
-	addChildComponent(targetBpmLabel);
-
-	syncStatusLabel.setEditable(false);
-	syncStatusLabel.setJustificationType(juce::Justification::centred);
-	syncStatusLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-	syncStatusLabel.setFont(juce::Font(juce::FontOptions(10.0f)));
-	addChildComponent(syncStatusLabel);
-
-	// Fast-sync compact button (always visible near play/load).
-	fastSyncBtn.setClickingTogglesState(true);
-	fastSyncBtn.addListener(this);
-	fastSyncBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	fastSyncBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::limegreen.withAlpha(0.8f));
-	fastSyncBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-	fastSyncBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
-	addAndMakeVisible(fastSyncBtn);
+	// Snap-quantisation combo for sync (1 BAR / 1/2 / 1/4).
+	snapBox.addItem("1 BAR",   1);
+	snapBox.addItem("1/2 BAR", 2);
+	snapBox.addItem("1/4 BAR", 3);
+	snapBox.setSelectedId(1, juce::dontSendNotification);
+	snapBox.setColour(juce::ComboBox::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	snapBox.setColour(juce::ComboBox::textColourId, juce::Colours::white);
+	snapBox.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
+	snapBox.onChange = [this]() {
+		if (syncManager == nullptr) return;
+		switch (snapBox.getSelectedId()) {
+			case 1: syncManager->setSnapBeats(4); break; // 1 bar
+			case 2: syncManager->setSnapBeats(2); break; // 1/2 bar
+			case 3: syncManager->setSnapBeats(1); break; // 1/4 bar
+		}
+	};
+	addChildComponent(snapBox);
 
 	// Quantize tab button and controls
 	addAndMakeVisible(quantizeTabButton);
@@ -518,11 +490,18 @@ void DeckGUI::resized()
 	masterToggleBtn.setBounds(xOffset, syncRow1Y, syncColWidth, cellHeight - 4);
 	syncEngageBtn.setBounds(xOffset + (syncColWidth + 4), syncRow1Y, syncColWidth, cellHeight - 4);
 	targetBpmLabel.setBounds(xOffset + (syncColWidth + 4) * 2, syncRow1Y, syncColWidth, cellHeight - 4);
-	double multBtnWidth = syncColWidth * 0.8;
-	multHalfBtn.setBounds(xOffset, syncRow2Y, multBtnWidth, cellHeight - 4);
-	multOneBtn.setBounds(xOffset + (multBtnWidth + 4), syncRow2Y, multBtnWidth, cellHeight - 4);
-	multTwoBtn.setBounds(xOffset + (multBtnWidth + 4) * 2, syncRow2Y, multBtnWidth, cellHeight - 4);
-	syncStatusLabel.setBounds(xOffset + (multBtnWidth + 4) * 3, syncRow2Y, cellLength * 3 - 4 - (multBtnWidth + 4) * 3, cellHeight - 4);
+	// Row 2: ×½ ×1 ×2 (3 buttons), snap dropdown, status label.
+	double row2TotalW = cellLength * 3 - 4;
+	double multBtnWidth = row2TotalW * 0.16;
+	double snapBoxWidth = row2TotalW * 0.28;
+	double statusWidth  = row2TotalW - multBtnWidth * 3 - snapBoxWidth - 4 * 4;
+	if (statusWidth < 0) statusWidth = 0;
+	double cx = xOffset;
+	multHalfBtn.setBounds(cx, syncRow2Y, multBtnWidth, cellHeight - 4); cx += multBtnWidth + 4;
+	multOneBtn.setBounds (cx, syncRow2Y, multBtnWidth, cellHeight - 4); cx += multBtnWidth + 4;
+	multTwoBtn.setBounds (cx, syncRow2Y, multBtnWidth, cellHeight - 4); cx += multBtnWidth + 4;
+	snapBox.setBounds    (cx, syncRow2Y, snapBoxWidth, cellHeight - 4); cx += snapBoxWidth + 4;
+	syncStatusLabel.setBounds(cx, syncRow2Y, statusWidth, cellHeight - 4);
 
 	lowBandFilter.setBounds(xOffset, rowH * 5.8, 50, 50);
 	midBandFilter.setBounds(xOffset + getWidth() / 5, rowH * 5.8, 50, 50);
@@ -1238,6 +1217,7 @@ void DeckGUI::setSyncControlsVisible(bool visible) {
 	multTwoBtn.setVisible(visible);
 	targetBpmLabel.setVisible(visible);
 	syncStatusLabel.setVisible(visible);
+	snapBox.setVisible(visible);
 }
 
 //==============================================================================
@@ -1254,11 +1234,20 @@ void DeckGUI::syncStateChanged() {
 
 	bool isMaster = syncManager->isMaster(deckIndex);
 	bool isSynced = syncManager->isSynced(deckIndex);
+	juce::String status = syncManager->getStatus(deckIndex);
+	bool outOfRange = (status == "OUT OF RANGE");
 
 	// Toggle states (without firing handlers).
 	masterToggleBtn.setToggleState(isMaster, juce::dontSendNotification);
-	syncEngageBtn.setToggleState(isSynced, juce::dontSendNotification);
-	fastSyncBtn.setToggleState(isSynced, juce::dontSendNotification);
+	syncEngageBtn.setToggleState(isSynced && !outOfRange, juce::dontSendNotification);
+	fastSyncBtn.setToggleState(isSynced && !outOfRange, juce::dontSendNotification);
+
+	// Status-driven tint on the engage + fast-sync buttons.
+	juce::Colour offColour = juce::Colour::fromRGBA(25, 25, 25, 255);
+	if (isSynced && outOfRange)
+		offColour = juce::Colours::orange.withAlpha(0.6f);
+	syncEngageBtn.setColour(juce::TextButton::buttonColourId, offColour);
+	fastSyncBtn.setColour  (juce::TextButton::buttonColourId, offColour);
 
 	// Target BPM display.
 	double tgt = syncManager->getTargetBpm(deckIndex);
@@ -1268,23 +1257,25 @@ void DeckGUI::syncStateChanged() {
 		targetBpmLabel.setText(juce::String(juce::CharPointer_UTF8("\xe2\x86\x92 ---")), juce::dontSendNotification);
 
 	// Status label.
-	syncStatusLabel.setText(syncManager->getStatus(deckIndex), juce::dontSendNotification);
+	syncStatusLabel.setText(status, juce::dontSendNotification);
 
 	// Lock slave's speed slider while synced; master and disengaged decks
-	// retain manual control.
+	// retain manual control. The actual sync ratio may exceed the slider's
+	// visual range; we don't try to mirror it on the slider — targetBpmLabel
+	// shows the resolved BPM instead.
 	bool sliderEnabled = !isSynced;
 	if (speedSlider.isEnabled() != sliderEnabled)
 		speedSlider.setEnabled(sliderEnabled);
 
-	// Reflect new speed on slider for visibility (won't fire listener).
-	if (isSynced) {
-		double sr = player->getSpeedRatio();
-		if (std::abs(speedSlider.getValue() - sr) > 1e-4)
-			speedSlider.setValue(sr, juce::dontSendNotification);
-	}
-
 	// Master can't simultaneously be a slave: disable the SYNC engage button.
 	syncEngageBtn.setEnabled(!isMaster);
+	fastSyncBtn.setEnabled(!isMaster);
+
+	// Reflect manager's snap selection in the combo box.
+	int sb = syncManager->getSnapBeats();
+	int wantId = (sb == 4 ? 1 : sb == 2 ? 2 : 3);
+	if (snapBox.getSelectedId() != wantId)
+		snapBox.setSelectedId(wantId, juce::dontSendNotification);
 
 	repaint();
 }

@@ -86,11 +86,12 @@ bool BeatSyncManager::engageSync(int slaveDeckIdx) {
 		return false;
 	}
 
-	// Auto-resolve multiplier so ratio falls in [0.8, 1.2].
+	// Auto-resolve multiplier so ratio falls in the wider sync range.
 	slaveMultiplier[slaveDeckIdx] = autoResolveMultiplier(mGrid.bpm, sGrid.bpm);
 
 	double ratio = computeSpeedRatio(slaveDeckIdx);
-	if (ratio < kMinSpeed - 1e-9 || ratio > kMaxSpeed + 1e-9) {
+	if (ratio < kSyncMinSpeed - 1e-9 || ratio > kSyncMaxSpeed + 1e-9) {
+		DBG("BeatSyncManager::engageSync: ratio out of sync range = " << ratio);
 		statusText[slaveDeckIdx] = "OUT OF RANGE";
 		refreshDeckUIs();
 		return false;
@@ -101,6 +102,9 @@ bool BeatSyncManager::engageSync(int slaveDeckIdx) {
 
 	applySlaveSpeed(slaveDeckIdx);
 	phaseAlignSlave(slaveDeckIdx);
+	// Re-align once on the next timer tick to compensate for any latency in
+	// the resampler picking up the new ratio.
+	pendingRealign[slaveDeckIdx] = true;
 	refreshDeckUIs();
 	return true;
 }
@@ -111,6 +115,7 @@ void BeatSyncManager::disengageSync(int slaveDeckIdx) {
 
 	syncEngaged[slaveDeckIdx]      = false;
 	lastAppliedSpeed[slaveDeckIdx] = 0.0;
+	pendingRealign[slaveDeckIdx]   = false;
 	statusText[slaveDeckIdx]       = "";
 	refreshDeckUIs();
 }
@@ -130,12 +135,13 @@ void BeatSyncManager::setSlaveMultiplier(int deckIdx, double mult) {
 
 	if (syncEngaged[deckIdx]) {
 		double ratio = computeSpeedRatio(deckIdx);
-		if (ratio < kMinSpeed - 1e-9 || ratio > kMaxSpeed + 1e-9) {
+		if (ratio < kSyncMinSpeed - 1e-9 || ratio > kSyncMaxSpeed + 1e-9) {
 			statusText[deckIdx] = "OUT OF RANGE";
 		}
 		else {
 			statusText[deckIdx] = "SYNCED";
 			applySlaveSpeed(deckIdx);
+			phaseAlignSlave(deckIdx);
 		}
 	}
 	refreshDeckUIs();
@@ -173,8 +179,10 @@ void BeatSyncManager::onTrackLoaded(int deckIdx) {
 			disengageSync(slave);
 	}
 
-	slaveMultiplier[deckIdx] = 1.0;
-	statusText[deckIdx]      = "";
+	slaveMultiplier[deckIdx]  = 1.0;
+	lastAppliedSpeed[deckIdx] = 0.0;
+	pendingRealign[deckIdx]   = false;
+	statusText[deckIdx]       = "";
 	refreshDeckUIs();
 }
 
@@ -190,9 +198,10 @@ void BeatSyncManager::onBpmUpdated(int deckIdx) {
 			if (mb > 0.0 && sb > 0.0) {
 				slaveMultiplier[deckIdx] = autoResolveMultiplier(mb, sb);
 				double ratio = computeSpeedRatio(deckIdx);
-				if (ratio >= kMinSpeed - 1e-9 && ratio <= kMaxSpeed + 1e-9) {
+				if (ratio >= kSyncMinSpeed - 1e-9 && ratio <= kSyncMaxSpeed + 1e-9) {
 					statusText[deckIdx] = "SYNCED";
 					applySlaveSpeed(deckIdx);
+					phaseAlignSlave(deckIdx);
 				}
 			}
 		}
@@ -212,6 +221,10 @@ void BeatSyncManager::timerCallback() {
 		if (i == mIdx)         continue;
 		if (!syncEngaged[i])   continue;
 		applySlaveSpeed(i);
+		if (pendingRealign[i]) {
+			pendingRealign[i] = false;
+			phaseAlignSlave(i);
+		}
 	}
 }
 
@@ -224,7 +237,7 @@ void BeatSyncManager::applySlaveSpeed(int slaveDeckIdx) {
 	double ratio = computeSpeedRatio(slaveDeckIdx);
 	if (ratio <= 0.0) return;
 
-	if (ratio < kMinSpeed - 1e-9 || ratio > kMaxSpeed + 1e-9) {
+	if (ratio < kSyncMinSpeed - 1e-9 || ratio > kSyncMaxSpeed + 1e-9) {
 		// Stay engaged but flag — don't push out-of-range ratio to the audio engine.
 		if (statusText[slaveDeckIdx] != "OUT OF RANGE") {
 			statusText[slaveDeckIdx] = "OUT OF RANGE";
@@ -265,13 +278,21 @@ void BeatSyncManager::phaseAlignSlave(int slaveDeckIdx) {
 	double mPosSecs = players[mIdx]->getPositionRelative() * mLen;
 	double sPosSecs = players[slaveDeckIdx]->getPositionRelative() * sLen;
 
+	double N = (double)juce::jmax(1, snapBeats);
+
 	double mBeats = (mPosSecs - mGrid.gridOffsetSecs) * mGrid.bpm / 60.0;
-	double phi    = mBeats - std::floor(mBeats);  // [0, 1)
+	// Master phase within an N-beat window, normalised to [0, N).
+	double phi = std::fmod(mBeats, N);
+	if (phi < 0.0) phi += N;
 
 	double sBeats = (sPosSecs - sGrid.gridOffsetSecs) * sGrid.bpm / 60.0;
-	double newSBeats = std::round(sBeats - phi) + phi;
+	double newSBeats = std::round((sBeats - phi) / N) * N + phi;
 
 	double newSPosSecs = sGrid.gridOffsetSecs + newSBeats * 60.0 / sGrid.bpm;
+
+	// If the snap landed before the start of the file, advance one window.
+	if (newSPosSecs < 0.0)
+		newSPosSecs += N * 60.0 / sGrid.bpm;
 
 	// Clamp into valid range.
 	if (newSPosSecs < 0.0)    newSPosSecs = 0.0;
@@ -314,7 +335,7 @@ double BeatSyncManager::autoResolveMultiplier(double masterBpm, double slaveBpm)
 
 	for (double mult : candidates) {
 		double ratio = masterBpm / (slaveBpm * mult);
-		if (ratio < kMinSpeed - 1e-9 || ratio > kMaxSpeed + 1e-9)
+		if (ratio < kSyncMinSpeed - 1e-9 || ratio > kSyncMaxSpeed + 1e-9)
 			continue;
 
 		double distance = std::abs(ratio - 1.0);
@@ -344,4 +365,22 @@ int BeatSyncManager::masterIndex() const {
 
 int BeatSyncManager::otherIndex(int idx) {
 	return idx == 0 ? 1 : 0;
+}
+
+//==============================================================================
+
+void BeatSyncManager::setSnapBeats(int beats) {
+	if (beats != 1 && beats != 2 && beats != 4) return;
+	if (snapBeats == beats) return;
+	snapBeats = beats;
+
+	// Re-align any active slave to the new snap granularity.
+	for (int i = 0; i < 2; ++i) {
+		if (syncEngaged[i])
+			phaseAlignSlave(i);
+	}
+}
+
+int BeatSyncManager::getSnapBeats() const {
+	return snapBeats;
 }
