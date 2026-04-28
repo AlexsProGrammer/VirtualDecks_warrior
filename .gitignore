@@ -11,3 +11,7 @@ build_linux
 lib/JUCE/
 lib/taglib/
 lib/xwax/
+
+
+build/
+build-tsan/

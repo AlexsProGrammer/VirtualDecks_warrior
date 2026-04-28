@@ -1,5 +1,6 @@
 
 #include "DJAudioPlayer.h"
+#include <chrono>
 #include <fileref.h>
 #include <tag.h>
 #include <tpropertymap.h>
@@ -21,7 +22,12 @@ DJAudioPlayer::DJAudioPlayer(juce::AudioFormatManager& _formatManager)
  * Implementation of a destructor for DJAudioPlayer
  *
  */
-DJAudioPlayer::~DJAudioPlayer() {};
+DJAudioPlayer::~DJAudioPlayer()
+{
+	const int64_t worst = worstCaseCallbackMicros.load(std::memory_order_relaxed);
+	if (worst > 0)
+		DBG("[DJAudioPlayer] worst-case getNextAudioBlock: " << worst << " µs");
+}
 
 //==============================================================================
 
@@ -49,6 +55,8 @@ void DJAudioPlayer::prepareToPlay(int samplesPerBlockExpected, double sampleRate
  *
  */
 void DJAudioPlayer::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill) {
+	const auto t0 = std::chrono::steady_clock::now();
+
 	// 1) Drain UI → audio commands first. Allocation- and lock-free.
 	drainCommands();
 
@@ -65,9 +73,18 @@ void DJAudioPlayer::getNextAudioBlock(const juce::AudioSourceChannelInfo& buffer
 	}
 
 	// 4) Update RMS for UI meters.
-	float rmsLevelLeft = juce::Decibels::gainToDecibels(bufferToFill.buffer->getRMSLevel(0, 0, bufferToFill.buffer->getNumSamples()));
-	float rmsLevelRight = juce::Decibels::gainToDecibels(bufferToFill.buffer->getRMSLevel(1, 0, bufferToFill.buffer->getNumSamples()));
+	const float rmsLevelLeft  = juce::Decibels::gainToDecibels(bufferToFill.buffer->getRMSLevel(0, 0, bufferToFill.buffer->getNumSamples()));
+	const float rmsLevelRight = juce::Decibels::gainToDecibels(bufferToFill.buffer->getRMSLevel(1, 0, bufferToFill.buffer->getNumSamples()));
 	level.store((rmsLevelLeft + rmsLevelRight) / 2.0f, std::memory_order_release);
+
+	// 5) Track worst-case callback duration for profiling (printed on shutdown).
+	const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+		std::chrono::steady_clock::now() - t0).count();
+	int64_t prev = worstCaseCallbackMicros.load(std::memory_order_relaxed);
+	while (elapsed > prev &&
+	       !worstCaseCallbackMicros.compare_exchange_weak(prev, elapsed,
+	                                                       std::memory_order_relaxed))
+	{}
 };
 
 //==============================================================================
@@ -221,7 +238,8 @@ void DJAudioPlayer::releaseResources() {
  *
  */
 void DJAudioPlayer::start() {
-	transportSource.start();
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::Start;
+	commandFifo.push(cmd);
 };
 
 /**
@@ -231,7 +249,8 @@ void DJAudioPlayer::start() {
  *
  */
 void DJAudioPlayer::stop() {
-	transportSource.stop();
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::Stop;
+	commandFifo.push(cmd);
 };
 
 /**
@@ -361,19 +380,15 @@ double DJAudioPlayer::getLengthInSeconds() {
  *
  */
 void DJAudioPlayer::setGain(double gain, bool isVol) {
-	if (isVol) {
-		playerVol = gain;
-	}
-	else {
-		crossFadeVol = gain;
-	}
 	if (gain < 0 || gain > 1.0) {
 		DBG("DJAudioPlayer:: setGain Gain should be between 0 and 1");
+		return;
 	}
-	else {
-		transportSource.setGain(playerVol * crossFadeVol);
-	}
-
+	AudioCommand cmd;
+	cmd.tag = isVol ? AudioCommand::Tag::SetGainPlayer
+	                : AudioCommand::Tag::SetGainCrossfade;
+	cmd.doublePayload = gain;
+	commandFifo.push(cmd);
 };
 
 /**
@@ -387,12 +402,15 @@ void DJAudioPlayer::setGain(double gain, bool isVol) {
  */
 void DJAudioPlayer::setSpeed(double ratio) {
 	if (ratio < 0 || ratio > 100.0) {
-		DBG("DJAudioPlayer:: setGain Gain should be between 0 and 100");
+		DBG("DJAudioPlayer:: setSpeed Ratio should be between 0 and 100");
+		return;
 	}
-	else {
-		resampleSource.setResamplingRatio(ratio);
-		currentSpeedRatio.store(ratio, std::memory_order_release);
-	}
+	// Update the UI-visible cached ratio immediately so getSpeedRatio() and
+	// any beat-grid display logic see the latest value before the audio
+	// thread drains the command.
+	currentSpeedRatio.store(ratio, std::memory_order_release);
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::SetSpeed; cmd.doublePayload = ratio;
+	commandFifo.push(cmd);
 };
 
 /**
@@ -403,7 +421,8 @@ void DJAudioPlayer::setSpeed(double ratio) {
  *
  */
 void DJAudioPlayer::setPosition(double posInSecs) {
-	transportSource.setPosition(posInSecs);
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::SetPosition; cmd.doublePayload = posInSecs;
+	commandFifo.push(cmd);
 };
 
 /**
@@ -416,11 +435,10 @@ void DJAudioPlayer::setPosition(double posInSecs) {
 void DJAudioPlayer::setPositionRelative(double pos) {
 	if (pos < 0 || pos > 1) {
 		DBG("DJAudioPlayer:: setPositionRelative pos should be between 0 and 1");
+		return;
 	}
-	else {
-		double posInSecs = transportSource.getLengthInSeconds() * pos;
-		setPosition(posInSecs);
-	}
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::SetPositionRelative; cmd.doublePayload = pos;
+	commandFifo.push(cmd);
 }
 
 /**
@@ -432,18 +450,8 @@ void DJAudioPlayer::setPositionRelative(double pos) {
  *
  */
 void DJAudioPlayer::setFilter(double freq) {
-	if (freq > 0 && freq < 20000) {
-		audioLPFilter.makeInactive();
-		audioHPFilter.setCoefficients(juce::IIRCoefficients::makeHighPass(thisSampleRate, freq));
-	}
-	else if (freq < 0 && freq > -20000) {
-		audioHPFilter.makeInactive();
-		audioLPFilter.setCoefficients(juce::IIRCoefficients::makeLowPass(thisSampleRate, 20000 + freq));
-	}
-	else if (freq == 0) {
-		audioHPFilter.makeInactive();
-		audioLPFilter.makeInactive();
-	}
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::SetFilter; cmd.doublePayload = freq;
+	commandFifo.push(cmd);
 }
 
 /**
@@ -454,7 +462,8 @@ void DJAudioPlayer::setFilter(double freq) {
  *
  */
 void DJAudioPlayer::setLBFilter(double gain) {
-	audioLBFilter.setCoefficients(juce::IIRCoefficients::makeLowShelf(thisSampleRate, 500, 1.0 / juce::MathConstants<double>::sqrt2, gain));
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::SetLBFilter; cmd.doublePayload = gain;
+	commandFifo.push(cmd);
 };
 
 /**
@@ -465,7 +474,8 @@ void DJAudioPlayer::setLBFilter(double gain) {
  *
  */
 void DJAudioPlayer::setMBFilter(double gain) {
-	audioMBFilter.setCoefficients(juce::IIRCoefficients::makePeakFilter(thisSampleRate, 3250, 1.0 / juce::MathConstants<double>::sqrt2, gain));
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::SetMBFilter; cmd.doublePayload = gain;
+	commandFifo.push(cmd);
 };
 
 /**
@@ -476,7 +486,8 @@ void DJAudioPlayer::setMBFilter(double gain) {
  *
  */
 void DJAudioPlayer::setHBFilter(double gain) {
-	audioHBFilter.setCoefficients(juce::IIRCoefficients::makeHighShelf(thisSampleRate, 5000, 1.0 / juce::MathConstants<double>::sqrt2, gain));
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::SetHBFilter; cmd.doublePayload = gain;
+	commandFifo.push(cmd);
 };
 
 //==============================================================================
@@ -527,18 +538,19 @@ void DJAudioPlayer::beatJump(int beats) {
 	if (! loaded.load(std::memory_order_acquire) || beatGrid.bpm <= 0.0)
 		return;
 
-	double secondsPerBeat = 60.0 / beatGrid.bpm;
-	double jumpSecs = beats * secondsPerBeat;
-	double currentPos = transportSource.getCurrentPosition();
-	double newPos = currentPos + jumpSecs;
+	const double secondsPerBeat = 60.0 / beatGrid.bpm;
+	const double jumpSecs       = beats * secondsPerBeat;
+	const double currentPos     = transportSource.getCurrentPosition();
+	double       newPos         = currentPos + jumpSecs;
 
-	// Clamp to valid range
-	if (newPos < 0.0)
-		newPos = 0.0;
-	else if (newPos > transportSource.getLengthInSeconds())
-		newPos = transportSource.getLengthInSeconds();
+	if (newPos < 0.0) newPos = 0.0;
+	const double len = transportSource.getLengthInSeconds();
+	if (newPos > len) newPos = len;
 
-	transportSource.setPosition(newPos);
+	// Route the actual seek through the FIFO so the audio thread is the
+	// only thing that calls transportSource.setPosition.
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::SetPosition; cmd.doublePayload = newPos;
+	commandFifo.push(cmd);
 }
 
 //==============================================================================
@@ -549,15 +561,9 @@ void DJAudioPlayer::beatJump(int beats) {
  * Stores the current playback position as the loop-in point.
  */
 void DJAudioPlayer::setLoopIn() {
-	if (! loaded.load(std::memory_order_acquire))
-		return;
-	const double pos = transportSource.getCurrentPosition();
-	loopInSecs.store(pos, std::memory_order_release);
-	const double out = loopOutSecs.load(std::memory_order_acquire);
-	if (out >= 0.0 && pos >= out) {
-		loopOutSecs.store(-1.0, std::memory_order_release);
-		loopActive.store(false, std::memory_order_release);
-	}
+	if (! loaded.load(std::memory_order_acquire)) return;
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::SetLoopIn;
+	commandFifo.push(cmd);
 }
 
 /**
@@ -567,14 +573,9 @@ void DJAudioPlayer::setLoopIn() {
  * and activates looping if the in point is already set.
  */
 void DJAudioPlayer::setLoopOut() {
-	if (! loaded.load(std::memory_order_acquire))
-		return;
-	const double pos = transportSource.getCurrentPosition();
-	const double in  = loopInSecs.load(std::memory_order_acquire);
-	if (in >= 0.0 && pos > in) {
-		loopOutSecs.store(pos, std::memory_order_release);
-		loopActive.store(true, std::memory_order_release);
-	}
+	if (! loaded.load(std::memory_order_acquire)) return;
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::SetLoopOut;
+	commandFifo.push(cmd);
 }
 
 /**
@@ -583,14 +584,8 @@ void DJAudioPlayer::setLoopOut() {
  * Toggles loop on/off. When re-enabling, jumps back to the loop-in point.
  */
 void DJAudioPlayer::toggleReloop() {
-	const double in  = loopInSecs.load(std::memory_order_acquire);
-	const double out = loopOutSecs.load(std::memory_order_acquire);
-	if (in < 0.0 || out < 0.0)
-		return;
-	const bool nowActive = ! loopActive.load(std::memory_order_acquire);
-	loopActive.store(nowActive, std::memory_order_release);
-	if (nowActive)
-		transportSource.setPosition(in);
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::ToggleReloop;
+	commandFifo.push(cmd);
 }
 
 /**
@@ -599,15 +594,8 @@ void DJAudioPlayer::toggleReloop() {
  * Halves the loop length by moving the out point halfway between in and current out.
  */
 void DJAudioPlayer::halveLoop() {
-	const double in  = loopInSecs.load(std::memory_order_acquire);
-	const double out = loopOutSecs.load(std::memory_order_acquire);
-	if (in < 0.0 || out <= in)
-		return;
-	const double halfLength = (out - in) / 2.0;
-	const double newOut = in + halfLength;
-	loopOutSecs.store(newOut, std::memory_order_release);
-	if (loopActive.load(std::memory_order_acquire) && transportSource.getCurrentPosition() >= newOut)
-		transportSource.setPosition(in);
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::HalveLoop;
+	commandFifo.push(cmd);
 }
 
 /**
@@ -616,16 +604,8 @@ void DJAudioPlayer::halveLoop() {
  * Doubles the loop length by extending the out point, clamped to track length.
  */
 void DJAudioPlayer::doubleLoop() {
-	const double in  = loopInSecs.load(std::memory_order_acquire);
-	const double out = loopOutSecs.load(std::memory_order_acquire);
-	if (in < 0.0 || out <= in)
-		return;
-	const double currentLength = out - in;
-	double newOut = in + currentLength * 2.0;
-	const double trackLen = transportSource.getLengthInSeconds();
-	if (newOut > trackLen)
-		newOut = trackLen;
-	loopOutSecs.store(newOut, std::memory_order_release);
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::DoubleLoop;
+	commandFifo.push(cmd);
 }
 
 /**
@@ -634,9 +614,8 @@ void DJAudioPlayer::doubleLoop() {
  * Clears all loop points and deactivates looping.
  */
 void DJAudioPlayer::clearLoop() {
-	loopInSecs.store(-1.0,  std::memory_order_release);
-	loopOutSecs.store(-1.0, std::memory_order_release);
-	loopActive.store(false, std::memory_order_release);
+	AudioCommand cmd; cmd.tag = AudioCommand::Tag::ClearLoop;
+	commandFifo.push(cmd);
 }
 
 /**

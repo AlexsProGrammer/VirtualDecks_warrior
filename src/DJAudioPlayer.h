@@ -377,4 +377,8 @@ private:
 
 	/// Whether the loop is currently active. Atomic for audio-thread reads.
 	std::atomic<bool> loopActive { false };
+
+	/// Worst-case getNextAudioBlock duration in microseconds (written by audio thread,
+	/// read by destructor on message thread after audio device is closed).
+	std::atomic<int64_t> worstCaseCallbackMicros { 0 };
 };
