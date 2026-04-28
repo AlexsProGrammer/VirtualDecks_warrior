@@ -94,9 +94,19 @@ MainComponent::MainComponent()
 		[this]() { closeSettings(); });
 	addChildComponent(*settingsPanel);
 
-	settingsButton.setColour(juce::TextButton::buttonColourId,
-	                         juce::Colour::fromRGBA(60, 60, 60, 255));
-	settingsButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+	// Settings gear — DrawableButton with SVG icons (normal + hover).
+	{
+		auto normalImg = juce::Drawable::createFromImageData(BinaryData::iconSettings_svg, BinaryData::iconSettings_svgSize);
+		auto overImg   = juce::Drawable::createFromImageData(BinaryData::iconSettingsHover_svg, BinaryData::iconSettingsHover_svgSize);
+		if (normalImg != nullptr)
+			normalImg->replaceColour(juce::Colours::white, juce::Colour::fromRGB(200, 200, 200));
+		// Hover variant ships in white — keep it for the brighter hover state.
+		settingsButton.setImages(normalImg.get(), overImg.get(), overImg.get(), nullptr,
+		                         normalImg.get(), overImg.get(), overImg.get(), nullptr);
+		settingsButton.setEdgeIndent(2);
+	}
+	settingsButton.setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
+	settingsButton.setColour(juce::DrawableButton::backgroundOnColourId, juce::Colours::transparentBlack);
 	settingsButton.setTooltip("Audio device settings");
 	settingsButton.onClick = [this]() { openSettings(); };
 	addAndMakeVisible(settingsButton);

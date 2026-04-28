@@ -222,7 +222,7 @@ private:
 	juce::DrawableButton loadButton{ "Load", juce::DrawableButton::ButtonStyle::ImageFitted };
 
 	/// Button that routes this deck's audio to the headphone (cue) output.
-	juce::TextButton cueButton{ "CUE" };
+	IconTabButton cueButton{ "Cue (headphone)", BinaryData::iconHeadphone_svg, BinaryData::iconHeadphone_svgSize };
 
 	/// juce::Colour to define the theme of the DeckGUI
 	juce::Colour theme;
@@ -513,7 +513,7 @@ private:
 	juce::Label syncStatusLabel{ "SYNC_ST", "" };
 
 	/// Compact fast-sync button placed near play/load buttons.
-	juce::TextButton fastSyncBtn{ "SYNC" };
+	IconTabButton fastSyncBtn{ "Fast Sync", BinaryData::iconSyncBolt_svg, BinaryData::iconSyncBolt_svgSize };
 
 	/// Resets sync + master + speed back to defaults (track plays normally).
 	juce::TextButton syncResetBtn{ "RESET" };

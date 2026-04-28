@@ -163,8 +163,8 @@ private:
 	/// Slide-in panel for configuring master and headphone output devices.
 	std::unique_ptr<SettingsPanel> settingsPanel;
 
-	/// Gear button that opens / closes the settings panel (placed above crossfader).
-	juce::TextButton settingsButton{ "\u2699" };
+	/// Gear button (SVG-icon) that opens / closes the settings panel above the crossfader.
+	juce::DrawableButton settingsButton{ "settings", juce::DrawableButton::ImageFitted };
 
 	/// Animate the settings panel into view from the top.
 	void openSettings();
