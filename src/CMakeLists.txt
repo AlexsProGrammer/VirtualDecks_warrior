@@ -18,10 +18,14 @@ set(SOURCE_FILES
     BpmAnalysisManager.cpp
     BeatSyncManager.cpp
     FileHasher.cpp
+    FxFactory.cpp
+    FxSettings.cpp
+    FxParameterModal.cpp
 )
 
 if(TARGET juceDjApp)
-    target_sources(juceDjApp PRIVATE ${SOURCE_FILES})
+    target_sources(juceDjApp PRIVATE ${SOURCE_FILES}
+        FxParameterModal.cpp)
     target_include_directories(juceDjApp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     # (JUCE header generation moved after binary-data setup below)
     # Ensure binary data used by the sources is bundled and linked into the top-level app

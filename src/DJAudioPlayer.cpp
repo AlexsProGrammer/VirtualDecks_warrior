@@ -16,6 +16,7 @@
 DJAudioPlayer::DJAudioPlayer(juce::AudioFormatManager& _formatManager)
 	: formatManager(_formatManager)
 {
+	fxChain.buildSlots();
 };
 
 /**
@@ -45,6 +46,7 @@ void DJAudioPlayer::prepareToPlay(int samplesPerBlockExpected, double sampleRate
 	audioLBFilter.prepareToPlay(samplesPerBlockExpected, sampleRate);
 	audioMBFilter.prepareToPlay(samplesPerBlockExpected, sampleRate);
 	audioHBFilter.prepareToPlay(samplesPerBlockExpected, sampleRate);
+	fxChain.prepareToPlay(samplesPerBlockExpected, sampleRate);
 	thisSampleRate = sampleRate;
 };
 
@@ -60,8 +62,8 @@ void DJAudioPlayer::getNextAudioBlock(const juce::AudioSourceChannelInfo& buffer
 	// 1) Drain UI → audio commands first. Allocation- and lock-free.
 	drainCommands();
 
-	// 2) Pull audio through the filter chain.
-	audioLPFilter.getNextAudioBlock(bufferToFill);
+	// 2) Pull audio through the filter chain + FX chain.
+	fxChain.getNextAudioBlock(bufferToFill);
 
 	// 3) Loop: if active and playhead has passed the out point, jump back to in point.
 	const bool   activeNow = loopActive.load(std::memory_order_acquire);
@@ -216,6 +218,27 @@ void DJAudioPlayer::applyCommand(const AudioCommand& cmd) noexcept {
 			// For now this branch is unused (BeatJump never enqueued yet).
 			break;
 		}
+		case AudioCommand::Tag::FxSelect: {
+			const int packed = cmd.intPayload;
+			const int cat    = packed / 1000;
+			const int idx    = packed - cat * 1000;
+			if (cat >= 0 && cat < (int) FxCategory::Count)
+				fxChain.setActiveIndex((FxCategory) cat, idx);
+			break;
+		}
+		case AudioCommand::Tag::FxSetEngaged: {
+			const int packed = cmd.intPayload;
+			const int cat    = packed / 1000;
+			const int flag   = packed - cat * 1000;
+			if (cat >= 0 && cat < (int) FxCategory::Count) {
+				if (auto* fx = fxChain.getActiveProcessor((FxCategory) cat))
+					fx->setEngaged(flag != 0);
+			}
+			break;
+		}
+		case AudioCommand::Tag::FxSetBpm:
+			fxChain.setBpm(cmd.doublePayload);
+			break;
 		case AudioCommand::Tag::None:
 		default:
 			break;
@@ -236,6 +259,7 @@ void DJAudioPlayer::releaseResources() {
 	audioHBFilter.releaseResources();
 	audioHPFilter.releaseResources();
 	audioLPFilter.releaseResources();
+	fxChain.releaseResources();
 };
 
 //============================================================================== 

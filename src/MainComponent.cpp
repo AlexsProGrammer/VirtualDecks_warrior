@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "FxSettings.h"
 
 //==============================================================================
 
@@ -76,6 +77,16 @@ MainComponent::~MainComponent()
 void MainComponent::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
 {
 	audioEngine.prepareToPlay(samplesPerBlockExpected, sampleRate);
+
+	// Restore persisted FX settings once both decks' FxChains are prepared.
+	// Subsequent prepareToPlay calls (device changes) won't re-load — guarded
+	// by a static flag.
+	static bool fxSettingsLoaded = false;
+	if (! fxSettingsLoaded) {
+		fxSettingsLoaded = true;
+		FxSettings::loadInto(audioEngine.getPlayer(0).getFxChain(),
+		                     audioEngine.getPlayer(1).getFxChain());
+	}
 }
 
 /**

@@ -4,6 +4,7 @@
 #include <atomic>
 #include "BeatGrid.h"
 #include "AudioCommandFifo.h"
+#include "FxChain.h"
 
 /**
  * Definition of a DJAudioplayer
@@ -296,6 +297,19 @@ public:
 
 	//==============================================================================
 
+	/**
+	 * Direct access to this player's FX chain. The chain is built once in
+	 * the constructor; UI components use it to enumerate processors, drive
+	 * parameter sliders (via atomic FxParameter::set) and read selection
+	 * state. Mutations that affect audio-thread state (selection / engage)
+	 * MUST be posted through postCommand() rather than mutating the chain
+	 * directly.
+	 */
+	FxChain&       getFxChain()       noexcept { return fxChain; }
+	const FxChain& getFxChain() const noexcept { return fxChain; }
+
+	//==============================================================================
+
 private:
 
 	/// Drain pending commands from the audio thread. Allocation- and lock-free.
@@ -331,6 +345,10 @@ private:
 
 	/// IIRFilterAudioSource to manage low pass filter controls
 	juce::IIRFilterAudioSource audioLPFilter{ &audioHPFilter , false };
+
+	/// Per-deck FX engine. Wraps audioLPFilter as its upstream and runs
+	/// Pad / Beat / Release slots in order on every audio block.
+	FxChain fxChain { &audioLPFilter };
 
 	/// juce::String to store the file name of the loaded url
 	juce::String loadedFileName;

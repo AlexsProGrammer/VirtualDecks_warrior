@@ -12,6 +12,7 @@
 #include "Library.h"
 #include "TrackDataCache.h"
 #include "BeatSyncManager.h"
+#include "FxIds.h"
 //==============================================================================
 
 /**
@@ -287,8 +288,8 @@ private:
 	//==============================================================================
 	// Tab mode: Hot Cues vs Beat Grid
 
-	/// Enum for the cue/grid/jump/loop/quantize/sync tab mode
-	enum class CueGridMode { HotCues, BeatGrid, BeatJump, Loop, Quantize, Sync };
+	/// Enum for the cue/grid/jump/loop/quantize/sync/fx tab mode
+	enum class CueGridMode { HotCues, BeatGrid, BeatJump, Loop, Quantize, Sync, PadFx, BeatFx, ReleaseFx };
 
 	/// Current tab mode
 	CueGridMode cueGridMode = CueGridMode::HotCues;
@@ -307,6 +308,15 @@ private:
 
 	/// Tab button for sync controls
 	juce::TextButton syncTabButton{ "SYNC" };
+
+	/// Tab button for Pad FX (momentary effects).
+	juce::TextButton padFxTabButton{ "P.FX" };
+
+	/// Tab button for Beat FX (latched effects).
+	juce::TextButton beatFxTabButton{ "B.FX" };
+
+	/// Tab button for Release FX (momentary release effects).
+	juce::TextButton releaseFxTabButton{ "R.FX" };
 
 	//==============================================================================
 	// Beat Grid Controls
@@ -490,6 +500,88 @@ private:
 
 	/// Updates the grid BPM editor text from the player
 	void updateGridBpmDisplay();
+
+	//==============================================================================
+	// FX panels (Pad / Beat / Release)
+
+	/**
+	 * Small helper button used as an FX tile.
+	 *
+	 * - Left-click & hold engages the effect; releasing the mouse disengages
+	 *   it (Pioneer-style momentary behavior).
+	 * - Right-click opens the parameter modal for the tile's effect.
+	 */
+	struct MomentaryFxTile : public juce::TextButton
+	{
+		std::function<void(bool)> onEngageChanged;
+		std::function<void()>     onShowParameters;
+		void mouseDown(const juce::MouseEvent& e) override
+		{
+			if (e.mods.isPopupMenu()) { if (onShowParameters) onShowParameters(); return; }
+			juce::TextButton::mouseDown(e);
+			if (onEngageChanged) onEngageChanged(true);
+		}
+		void mouseUp(const juce::MouseEvent& e) override
+		{
+			juce::TextButton::mouseUp(e);
+			if (! e.mods.isPopupMenu() && onEngageChanged) onEngageChanged(false);
+		}
+	};
+
+	/// Pad FX tiles (4×2 grid, 8 slots — 7 effects + 1 spare).
+	std::vector<std::unique_ptr<MomentaryFxTile>> padFxTiles;
+
+	/// Release FX tiles (3 slots: V.Brake, R.Echo, Back Spin).
+	std::vector<std::unique_ptr<MomentaryFxTile>> releaseFxTiles;
+
+	/// Beat FX selector (drop-down of all beat-FX algorithms).
+	juce::ComboBox beatFxSelector;
+
+	/// Beat FX beat-division selector (1/16 … 4 beats).
+	juce::ComboBox beatFxDivisionBox;
+
+	/// Beat FX engage toggle (latched).
+	juce::TextButton beatFxOnButton{ "ON / OFF" };
+
+	/// Wet/dry knob for the Beat FX (visible parameter).
+	juce::Slider beatFxWetSlider;
+	juce::Label  beatFxWetLabel{ "B_FX_WET", "WET" };
+
+	/// Opens the parameter modal for the active Beat FX algorithm.
+	juce::TextButton beatFxEditButton{ "EDIT" };
+
+	/// Sets visibility of pad FX controls.
+	void setPadFxControlsVisible(bool visible);
+
+	/// Sets visibility of beat FX controls.
+	void setBeatFxControlsVisible(bool visible);
+
+	/// Sets visibility of release FX controls.
+	void setReleaseFxControlsVisible(bool visible);
+
+	/// Builds the Pad / Beat / Release FX UI controls (called from constructor).
+	void buildFxPanels();
+
+	/// Refreshes the on-screen labels and selected-state of all FX tiles to
+	/// match the FxChain inside the player. Safe to call from the message thread.
+	void refreshFxUi();
+
+	/// Posts an FxSelect command for the given category/processor index.
+	void postFxSelect(FxCategory cat, int processorIndex);
+
+	/// Posts an FxSetEngaged command for the given category.
+	void postFxEngaged(FxCategory cat, bool engaged);
+
+	/// Last BPM pushed via FxSetBpm (avoid spamming the FIFO every timer tick).
+	double lastFxBpmPushed { 0.0 };
+
+	/// Index of the FX tile currently held down (so we can release it on
+	/// timer or unload). -1 = none.
+	int padFxHeldIndex     { -1 };
+	int releaseFxHeldIndex { -1 };
+
+	/// Opens the parameter modal anchored at the given component's bounds.
+	void showFxParameterModal(FxCategory cat, juce::Component* anchor);
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DeckGUI);
 };

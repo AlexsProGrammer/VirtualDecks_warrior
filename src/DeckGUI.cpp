@@ -1,6 +1,12 @@
 
 #include "DeckGUI.h"
 #include "FileHasher.h"
+#include "FxFactory.h"
+#include "FxChain.h"
+#include "FxProcessor.h"
+#include "FxParameterModal.h"
+#include "FxSettings.h"
+#include "AudioEngine.h"
 
 //============================================================================================================================================================
 
@@ -113,6 +119,18 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 	loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 	syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+
+	// FX tab buttons (P.FX / B.FX / R.FX) — registered here so the row is built
+	// in tab-order. Their colour follows the same pattern as the other tabs.
+	addAndMakeVisible(padFxTabButton);
+	addAndMakeVisible(beatFxTabButton);
+	addAndMakeVisible(releaseFxTabButton);
+	padFxTabButton.addListener(this);
+	beatFxTabButton.addListener(this);
+	releaseFxTabButton.addListener(this);
+	padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 
 	// Sync tab controls (initially hidden until SYNC tab selected).
 	masterToggleBtn.setClickingTogglesState(true);
@@ -315,6 +333,11 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	lowBandFilter.setLookAndFeel(&customLookAndFeel);
 	midBandFilter.setLookAndFeel(&customLookAndFeel);
 	highBandFilter.setLookAndFeel(&customLookAndFeel);
+
+	// Build Pad / Beat / Release FX panels (initially hidden — HotCues is the
+	// default tab). Must run after `player` is bound because tile callbacks
+	// post FxSelect / FxSetEngaged commands through `player->postCommand()`.
+	buildFxPanels();
 }
 
 /**
@@ -435,16 +458,19 @@ void DeckGUI::resized()
 	double cellLength = (getWidth() * 18.5 / 32 - 105) / 3;
 	double cellHeight = 44.45;
 
-	// Tab buttons above cue/grid/jump/loop/quantize/sync area
+	// Tab buttons above cue/grid/jump/loop/quantize/sync/fx area (9 tabs total)
 	double tabAreaWidth = cellLength * 3;
-	double tabWidth = (tabAreaWidth - 10) / 6; // 6 tabs with 2px gaps
+	double tabWidth = (tabAreaWidth - 16) / 9; // 9 tabs with 2px gaps (×8 = 16)
 	double tabHeight = 20;
-	cueTabButton.setBounds(xOffset, yOffset - tabHeight - 2, tabWidth, tabHeight);
-	gridTabButton.setBounds(xOffset + (tabWidth + 2), yOffset - tabHeight - 2, tabWidth, tabHeight);
-	jumpTabButton.setBounds(xOffset + (tabWidth + 2) * 2, yOffset - tabHeight - 2, tabWidth, tabHeight);
-	loopTabButton.setBounds(xOffset + (tabWidth + 2) * 3, yOffset - tabHeight - 2, tabWidth, tabHeight);
-	quantizeTabButton.setBounds(xOffset + (tabWidth + 2) * 4, yOffset - tabHeight - 2, tabWidth, tabHeight);
-	syncTabButton.setBounds(xOffset + (tabWidth + 2) * 5, yOffset - tabHeight - 2, tabWidth, tabHeight);
+	cueTabButton      .setBounds(xOffset + (tabWidth + 2) * 0, yOffset - tabHeight - 2, tabWidth, tabHeight);
+	gridTabButton     .setBounds(xOffset + (tabWidth + 2) * 1, yOffset - tabHeight - 2, tabWidth, tabHeight);
+	jumpTabButton     .setBounds(xOffset + (tabWidth + 2) * 2, yOffset - tabHeight - 2, tabWidth, tabHeight);
+	loopTabButton     .setBounds(xOffset + (tabWidth + 2) * 3, yOffset - tabHeight - 2, tabWidth, tabHeight);
+	quantizeTabButton .setBounds(xOffset + (tabWidth + 2) * 4, yOffset - tabHeight - 2, tabWidth, tabHeight);
+	syncTabButton     .setBounds(xOffset + (tabWidth + 2) * 5, yOffset - tabHeight - 2, tabWidth, tabHeight);
+	padFxTabButton    .setBounds(xOffset + (tabWidth + 2) * 6, yOffset - tabHeight - 2, tabWidth, tabHeight);
+	beatFxTabButton   .setBounds(xOffset + (tabWidth + 2) * 7, yOffset - tabHeight - 2, tabWidth, tabHeight);
+	releaseFxTabButton.setBounds(xOffset + (tabWidth + 2) * 8, yOffset - tabHeight - 2, tabWidth, tabHeight);
 
 	// Cue buttons (same as before)
 	for (auto i = 0; i < 3; ++i) {
@@ -524,6 +550,57 @@ void DeckGUI::resized()
 	snapBox.setBounds    (cx, syncRow2Y, snapBoxWidth, cellHeight - 4); cx += snapBoxWidth + 4;
 	syncStatusLabel.setBounds(cx, syncRow2Y, statusWidth, cellHeight - 4);
 
+	// ----- Pad FX layout: 4×2 tile grid in the cue/grid area. -----
+	{
+		double gridW = cellLength * 3;
+		double padCellW = (gridW - 4) / 4;     // 4 columns
+		double padCellH = cellHeight;          // 2 rows × cellHeight matches existing area
+		for (int idx = 0; idx < (int) padFxTiles.size(); ++idx) {
+			int col = idx % 4;
+			int row = idx / 4;
+			padFxTiles[idx]->setBounds(
+				xOffset + col * padCellW,
+				yOffset + 4 + row * padCellH,
+				padCellW - 4,
+				padCellH - 4);
+		}
+	}
+
+	// ----- Beat FX layout: row 1 = effect picker + division + ON/OFF;
+	// row 2 = wet slider + EDIT button. -----
+	{
+		double bfxRow1Y = yOffset + 4;
+		double bfxRow2Y = yOffset + cellHeight + 4;
+		double bfxTotalW = cellLength * 3 - 4;
+		double bfxColW   = (bfxTotalW - 4 * 2) / 3; // 3 cols, 2 gaps
+		beatFxSelector   .setBounds(xOffset + 0,                    bfxRow1Y, bfxColW, cellHeight - 4);
+		beatFxDivisionBox.setBounds(xOffset + (bfxColW + 4),        bfxRow1Y, bfxColW, cellHeight - 4);
+		beatFxOnButton   .setBounds(xOffset + (bfxColW + 4) * 2,    bfxRow1Y, bfxColW, cellHeight - 4);
+
+		double labelW = 36;
+		double editW  = bfxColW;
+		double wetW   = bfxTotalW - labelW - editW - 4 * 2;
+		if (wetW < 40) wetW = 40;
+		beatFxWetLabel .setBounds(xOffset,                              bfxRow2Y, labelW, cellHeight - 4);
+		beatFxWetSlider.setBounds(xOffset + labelW + 4,                 bfxRow2Y, wetW,   cellHeight - 4);
+		beatFxEditButton.setBounds(xOffset + labelW + 4 + wetW + 4,     bfxRow2Y, editW,  cellHeight - 4);
+	}
+
+	// ----- Release FX layout: 3 tiles single row. -----
+	{
+		double rfxTotalW = cellLength * 3;
+		double rfxCellW  = (rfxTotalW - 4) / 3;
+		double rfxH      = cellHeight * 2 - 4;
+		double rfxY      = yOffset + 4;
+		for (int idx = 0; idx < (int) releaseFxTiles.size(); ++idx) {
+			releaseFxTiles[idx]->setBounds(
+				xOffset + idx * rfxCellW,
+				rfxY,
+				rfxCellW - 4,
+				rfxH);
+		}
+	}
+
 	lowBandFilter.setBounds(xOffset, rowH * 5.8, 50, 50);
 	midBandFilter.setBounds(xOffset + getWidth() / 5, rowH * 5.8, 50, 50);
 	highBandFilter.setBounds(xOffset + getWidth() * 2 / 5, rowH * 5.8, 50, 50);
@@ -601,12 +678,18 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		setCueButtonsVisible(true);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(false);
 		setLoopControlsVisible(false);
 		setQuantizeControlsVisible(false);
 		setSyncControlsVisible(false);
+		setPadFxControlsVisible(false);
+		setBeatFxControlsVisible(false);
+		setReleaseFxControlsVisible(false);
 	}
 
 	if (button == &gridTabButton) {
@@ -617,12 +700,18 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		setCueButtonsVisible(false);
 		setGridControlsVisible(true);
 		setBeatJumpControlsVisible(false);
 		setLoopControlsVisible(false);
 		setQuantizeControlsVisible(false);
 		setSyncControlsVisible(false);
+		setPadFxControlsVisible(false);
+		setBeatFxControlsVisible(false);
+		setReleaseFxControlsVisible(false);
 		updateGridBpmDisplay();
 	}
 
@@ -634,12 +723,18 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		setCueButtonsVisible(false);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(true);
 		setLoopControlsVisible(false);
 		setQuantizeControlsVisible(false);
 		setSyncControlsVisible(false);
+		setPadFxControlsVisible(false);
+		setBeatFxControlsVisible(false);
+		setReleaseFxControlsVisible(false);
 	}
 
 	if (button == &loopTabButton) {
@@ -650,12 +745,18 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		setCueButtonsVisible(false);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(false);
 		setLoopControlsVisible(true);
 		setQuantizeControlsVisible(false);
 		setSyncControlsVisible(false);
+		setPadFxControlsVisible(false);
+		setBeatFxControlsVisible(false);
+		setReleaseFxControlsVisible(false);
 	}
 
 	if (button == &quantizeTabButton) {
@@ -666,12 +767,18 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		setCueButtonsVisible(false);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(false);
 		setLoopControlsVisible(false);
 		setQuantizeControlsVisible(true);
 		setSyncControlsVisible(false);
+		setPadFxControlsVisible(false);
+		setBeatFxControlsVisible(false);
+		setReleaseFxControlsVisible(false);
 	}
 
 	if (button == &syncTabButton) {
@@ -682,13 +789,81 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		setCueButtonsVisible(false);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(false);
 		setLoopControlsVisible(false);
 		setQuantizeControlsVisible(false);
 		setSyncControlsVisible(true);
+		setPadFxControlsVisible(false);
+		setBeatFxControlsVisible(false);
+		setReleaseFxControlsVisible(false);
 		syncStateChanged();
+	}
+
+	// FX tab handlers ----------------------------------------------------------
+	auto dimAllNonFxTabs = [this]() {
+		cueTabButton     .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		gridTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		jumpTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		loopTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		syncTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	};
+	auto hideAllPanels = [this]() {
+		setCueButtonsVisible(false);
+		setGridControlsVisible(false);
+		setBeatJumpControlsVisible(false);
+		setLoopControlsVisible(false);
+		setQuantizeControlsVisible(false);
+		setSyncControlsVisible(false);
+		setPadFxControlsVisible(false);
+		setBeatFxControlsVisible(false);
+		setReleaseFxControlsVisible(false);
+	};
+
+	if (button == &padFxTabButton) {
+		cueGridMode = CueGridMode::PadFx;
+		dimAllNonFxTabs();
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		hideAllPanels();
+		setPadFxControlsVisible(true);
+		refreshFxUi();
+	}
+
+	if (button == &beatFxTabButton) {
+		cueGridMode = CueGridMode::BeatFx;
+		dimAllNonFxTabs();
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		hideAllPanels();
+		setBeatFxControlsVisible(true);
+		refreshFxUi();
+	}
+
+	if (button == &releaseFxTabButton) {
+		cueGridMode = CueGridMode::ReleaseFx;
+		dimAllNonFxTabs();
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
+		hideAllPanels();
+		setReleaseFxControlsVisible(true);
+		refreshFxUi();
+	}
+
+	if (button == &beatFxOnButton) {
+		postFxEngaged(FxCategory::Beat, beatFxOnButton.getToggleState());
+	}
+
+	if (button == &beatFxEditButton) {
+		showFxParameterModal(FxCategory::Beat, &beatFxEditButton);
 	}
 
 	// Sync controls
@@ -1060,6 +1235,16 @@ void DeckGUI::timerCallback() {
 	}
 	else {
 		bpmValueLabel.setText("---", juce::dontSendNotification);
+	}
+
+	// Push BPM into the FX chain (drives beat-synced effect timings).
+	// Only post when it actually changes to avoid spamming the FIFO.
+	if (std::abs(currentBpm - lastFxBpmPushed) > 0.05) {
+		AudioCommand bpmCmd;
+		bpmCmd.tag = AudioCommand::Tag::FxSetBpm;
+		bpmCmd.doublePayload = currentBpm;
+		if (player->postCommand(bpmCmd))
+			lastFxBpmPushed = currentBpm;
 	}
 
 	double speedRatio = player->getSpeedRatio();
@@ -1628,6 +1813,287 @@ void DeckGUI::queueOrExecute(PendingQuantizeAction::Type type, juce::Button* btn
 		btn->setColour(juce::TextButton::buttonColourId,
 			juce::Colours::orange.withAlpha(0.8f));
 	}
+}
+
+//==============================================================================
+//
+//                              FX panels (P.FX / B.FX / R.FX)
+//
+//==============================================================================
+
+/**
+ * Builds the Pad / Beat / Release FX UI controls and attaches their listeners.
+ *
+ * Pad FX  : 4×2 grid of momentary tiles (mouseDown engages, mouseUp releases).
+ * Beat FX : drop-down + division box + ON/OFF toggle + WET slider + EDIT button.
+ * Release FX : 3 momentary tiles (V.Brake, R.Echo, Back Spin).
+ *
+ * Tiles are added as child components but kept hidden initially — the HotCues
+ * tab is the default selected tab.
+ */
+void DeckGUI::buildFxPanels()
+{
+	const auto themeMid = juce::Colour::fromRGBA(40, 40, 40, 255);
+
+	// ---- Pad FX tiles --------------------------------------------------------
+	{
+		auto procs = FxFactory::buildCategory(FxCategory::Pad);
+		// Tile 0 of FxFactory output is "None" — we skip it for the display
+		// grid but keep its index inside the chain.
+		const int kTiles = 8;
+		padFxTiles.reserve(kTiles);
+		for (int slot = 0; slot < kTiles; ++slot) {
+			auto tile = std::make_unique<MomentaryFxTile>();
+			int procIdx = slot + 1; // skip None at index 0
+			juce::String label = "—";
+			if (procIdx < (int) procs.size()) {
+				label = procs[procIdx]->getName();
+			}
+			tile->setButtonText(label);
+			tile->setColour(juce::TextButton::buttonColourId, themeMid);
+			tile->setColour(juce::TextButton::buttonOnColourId, theme.withAlpha(0.85f));
+			tile->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+			tile->setColour(juce::TextButton::textColourOnId,  juce::Colours::black);
+
+			tile->onEngageChanged = [this, procIdx](bool engaged) {
+				if (procIdx >= 1) {
+					if (engaged) {
+						postFxSelect(FxCategory::Pad, procIdx);
+						postFxEngaged(FxCategory::Pad, true);
+						padFxHeldIndex = procIdx;
+					}
+					else {
+						postFxEngaged(FxCategory::Pad, false);
+						padFxHeldIndex = -1;
+					}
+				}
+			};
+			tile->onShowParameters = [this, procIdx]() {
+				postFxSelect(FxCategory::Pad, procIdx);
+				showFxParameterModal(FxCategory::Pad, padFxTiles[(size_t) (procIdx - 1)].get());
+			};
+
+			addChildComponent(*tile);
+			padFxTiles.push_back(std::move(tile));
+		}
+	}
+
+	// ---- Beat FX selector / division / on / wet / edit -----------------------
+	{
+		auto procs = FxFactory::buildCategory(FxCategory::Beat);
+		beatFxSelector.clear(juce::dontSendNotification);
+		for (int i = 0; i < (int) procs.size(); ++i) {
+			beatFxSelector.addItem(procs[i]->getName(), i + 1); // ComboBox ids are 1-based
+		}
+		beatFxSelector.setSelectedId(1, juce::dontSendNotification); // None
+		beatFxSelector.setColour(juce::ComboBox::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxSelector.setColour(juce::ComboBox::textColourId, juce::Colours::white);
+		beatFxSelector.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
+		beatFxSelector.onChange = [this]() {
+			int idx = beatFxSelector.getSelectedId() - 1;
+			if (idx >= 0) postFxSelect(FxCategory::Beat, idx);
+		};
+		addChildComponent(beatFxSelector);
+
+		// Beat division: maps 1..7 → 1/16, 1/8, 1/4, 1/2, 1, 2, 4 beats.
+		beatFxDivisionBox.clear(juce::dontSendNotification);
+		const char* divNames[7] = { "1/16", "1/8", "1/4", "1/2", "1 BEAT", "2 BEAT", "4 BEAT" };
+		for (int i = 0; i < 7; ++i)
+			beatFxDivisionBox.addItem(divNames[i], i + 1);
+		beatFxDivisionBox.setSelectedId(3, juce::dontSendNotification); // 1/4 default
+		beatFxDivisionBox.setColour(juce::ComboBox::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxDivisionBox.setColour(juce::ComboBox::textColourId, juce::Colours::white);
+		beatFxDivisionBox.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
+		beatFxDivisionBox.onChange = [this]() {
+			// Atomic parameter write — bypass FIFO.
+			auto& chain = player->getFxChain();
+			if (auto* fx = chain.getActiveProcessor(FxCategory::Beat)) {
+				for (auto& p : fx->getParameters()) {
+					if (p.name == "Time") {
+						double code = beatFxDivisionBox.getSelectedId() - 1; // 0..6
+						p.set(code);
+						break;
+					}
+				}
+			}
+		};
+		addChildComponent(beatFxDivisionBox);
+
+		beatFxOnButton.setClickingTogglesState(true);
+		beatFxOnButton.addListener(this);
+		beatFxOnButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxOnButton.setColour(juce::TextButton::buttonOnColourId, theme.withAlpha(0.85f));
+		beatFxOnButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+		beatFxOnButton.setColour(juce::TextButton::textColourOnId,  juce::Colours::black);
+		addChildComponent(beatFxOnButton);
+
+		beatFxWetSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+		beatFxWetSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+		beatFxWetSlider.setRange(0.0, 1.0, 0.01);
+		beatFxWetSlider.setValue(1.0, juce::dontSendNotification);
+		beatFxWetSlider.setColour(juce::Slider::thumbColourId, theme);
+		beatFxWetSlider.onValueChange = [this]() {
+			auto& chain = player->getFxChain();
+			if (auto* fx = chain.getActiveProcessor(FxCategory::Beat)) {
+				for (auto& p : fx->getParameters()) {
+					if (p.name == "Wet" || p.name == "Mix") {
+						p.set(beatFxWetSlider.getValue());
+						break;
+					}
+				}
+			}
+		};
+		addChildComponent(beatFxWetSlider);
+
+		beatFxWetLabel.setJustificationType(juce::Justification::centred);
+		beatFxWetLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+		addChildComponent(beatFxWetLabel);
+
+		beatFxEditButton.addListener(this);
+		beatFxEditButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxEditButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+		addChildComponent(beatFxEditButton);
+	}
+
+	// ---- Release FX tiles ----------------------------------------------------
+	{
+		auto procs = FxFactory::buildCategory(FxCategory::Release);
+		const int kTiles = 3;
+		releaseFxTiles.reserve(kTiles);
+		for (int slot = 0; slot < kTiles; ++slot) {
+			auto tile = std::make_unique<MomentaryFxTile>();
+			int procIdx = slot + 1;
+			juce::String label = "—";
+			if (procIdx < (int) procs.size()) label = procs[procIdx]->getName();
+			tile->setButtonText(label);
+			tile->setColour(juce::TextButton::buttonColourId, themeMid);
+			tile->setColour(juce::TextButton::buttonOnColourId, theme.withAlpha(0.85f));
+			tile->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+			tile->setColour(juce::TextButton::textColourOnId,  juce::Colours::black);
+
+			tile->onEngageChanged = [this, procIdx](bool engaged) {
+				if (engaged) {
+					postFxSelect(FxCategory::Release, procIdx);
+					postFxEngaged(FxCategory::Release, true);
+					releaseFxHeldIndex = procIdx;
+				}
+				else {
+					postFxEngaged(FxCategory::Release, false);
+					releaseFxHeldIndex = -1;
+				}
+			};
+			tile->onShowParameters = [this, procIdx]() {
+				postFxSelect(FxCategory::Release, procIdx);
+				showFxParameterModal(FxCategory::Release, releaseFxTiles[(size_t) (procIdx - 1)].get());
+			};
+			addChildComponent(*tile);
+			releaseFxTiles.push_back(std::move(tile));
+		}
+	}
+}
+
+//==============================================================================
+
+/** Shows or hides the Pad FX tiles. */
+void DeckGUI::setPadFxControlsVisible(bool visible)
+{
+	for (auto& tile : padFxTiles) tile->setVisible(visible);
+}
+
+/** Shows or hides the Beat FX controls. */
+void DeckGUI::setBeatFxControlsVisible(bool visible)
+{
+	beatFxSelector   .setVisible(visible);
+	beatFxDivisionBox.setVisible(visible);
+	beatFxOnButton   .setVisible(visible);
+	beatFxWetSlider  .setVisible(visible);
+	beatFxWetLabel   .setVisible(visible);
+	beatFxEditButton .setVisible(visible);
+}
+
+/** Shows or hides the Release FX tiles. */
+void DeckGUI::setReleaseFxControlsVisible(bool visible)
+{
+	for (auto& tile : releaseFxTiles) tile->setVisible(visible);
+}
+
+//==============================================================================
+
+/**
+ * Refreshes the on-screen state (toggle/selection) of the FX panels to match
+ * the underlying FxChain. Called whenever an FX tab is opened so the UI
+ * reflects values that may have been loaded from FxSettings.xml.
+ */
+void DeckGUI::refreshFxUi()
+{
+	auto& chain = player->getFxChain();
+
+	// Beat FX selector + ON/OFF + wet/division.
+	int beatIdx = chain.getActiveIndex(FxCategory::Beat);
+	if (beatIdx >= 0) beatFxSelector.setSelectedId(beatIdx + 1, juce::dontSendNotification);
+	if (auto* fx = chain.getActiveProcessor(FxCategory::Beat)) {
+		beatFxOnButton.setToggleState(fx->isEngaged(), juce::dontSendNotification);
+		for (auto& p : fx->getParameters()) {
+			if (p.name == "Wet" || p.name == "Mix") {
+				beatFxWetSlider.setValue(p.get(), juce::dontSendNotification);
+			}
+			else if (p.name == "Time") {
+				int code = (int) std::round(p.get());
+				if (code >= 0 && code <= 6)
+					beatFxDivisionBox.setSelectedId(code + 1, juce::dontSendNotification);
+			}
+		}
+	}
+}
+
+//==============================================================================
+
+/** Posts an FxSelect command. UI thread → audio thread via the SPSC fifo. */
+void DeckGUI::postFxSelect(FxCategory cat, int processorIndex)
+{
+	AudioCommand cmd;
+	cmd.tag = AudioCommand::Tag::FxSelect;
+	cmd.intPayload = (int) cat * 1000 + processorIndex;
+	player->postCommand(cmd);
+}
+
+/** Posts an FxSetEngaged command. */
+void DeckGUI::postFxEngaged(FxCategory cat, bool engaged)
+{
+	AudioCommand cmd;
+	cmd.tag = AudioCommand::Tag::FxSetEngaged;
+	cmd.intPayload = (int) cat * 1000 + (engaged ? 1 : 0);
+	player->postCommand(cmd);
+}
+
+//==============================================================================
+
+/**
+ * Opens the parameter modal for the active processor in the given category.
+ *
+ * The Save button persists *both* decks' current FX state to disk via the
+ * AudioEngine handle. The Reset button only resets parameters of the
+ * processor inside the modal (handled inside FxParameterModal).
+ */
+void DeckGUI::showFxParameterModal(FxCategory cat, juce::Component* anchor)
+{
+	auto& chain = player->getFxChain();
+	auto* fx = chain.getActiveProcessor(cat);
+	if (fx == nullptr) return;
+
+	auto* engine = audioEngine;
+	auto saveCb = [engine]() {
+		if (engine == nullptr) return;
+		FxSettings::saveAll(engine->getPlayer(0).getFxChain(),
+		                    engine->getPlayer(1).getFxChain());
+	};
+
+	auto modal = std::make_unique<FxParameterModal>(*fx, theme, std::move(saveCb));
+
+	auto bounds = anchor != nullptr
+		? anchor->getScreenBounds()
+		: juce::Rectangle<int>(getScreenX() + getWidth() / 2 - 4, getScreenY() + 60, 8, 8);
+	juce::CallOutBox::launchAsynchronously(std::move(modal), bounds, nullptr);
 }
 
 //==============================================================================

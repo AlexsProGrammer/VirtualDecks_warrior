@@ -45,7 +45,13 @@ struct AudioCommand
 		SetHBFilter,          // doublePayload = gain
 
 		// Beat ops
-		BeatJump              // intPayload    = beats
+		BeatJump,             // intPayload    = beats
+
+		// FX engine (see FxChain / FxProcessor for semantics)
+		// Encoding: intPayload = (categoryIndex * 1000) + auxiliary integer.
+		FxSelect,             // intPayload  = cat*1000 + processorIndex
+		FxSetEngaged,         // intPayload  = cat*1000 + (engaged ? 1 : 0)
+		FxSetBpm              // doublePayload = current effective BPM
 	};
 
 	Tag    tag           = Tag::None;
