@@ -69,7 +69,8 @@ public:
 	void drawTableHeaderBackground(juce::Graphics& g, juce::TableHeaderComponent& header) override;
 
 	/**
-		* Overrides LookAndFeelV4::drawButtonText to draw button text at 8px font size
+		* Overrides LookAndFeelV4::drawButtonText. Modern UI uses 11px font with bold weight
+		* when the button is toggled-on so toolbar/tab labels remain readable on dark surfaces.
 		*
 		* @param The graphics object
 		* @param TextButton to be drawn
@@ -77,6 +78,27 @@ public:
 		* @param If the button is down
 	*/
 	void drawButtonText(juce::Graphics& g, juce::TextButton& button, bool isMouseOverButton, bool isButtonDown) override;
+
+	/**
+		* Overrides LookAndFeelV4::drawButtonBackground for a flat, rounded modern button.
+		* Toggled-on buttons get a theme-coloured fill; hovered buttons get a brighter outline.
+	*/
+	void drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour& backgroundColour, bool isMouseOverButton, bool isButtonDown) override;
+
+	//==============================================================================
+
+	/**
+		* Parses an SVG byte buffer (typically a `BinaryData::*_svg` symbol) into a
+		* `juce::Drawable`, optionally tinting every solid colour to `tint`.
+		*
+		* Use this everywhere icons are constructed for `juce::DrawableButton` so the
+		* `XmlDocument::parse` + `Drawable::createFromSVG` boilerplate is centralised.
+		*
+		* @param svgData null-terminated SVG markup (BinaryData symbol)
+		* @param tint   optional fill/stroke override; when transparent, original colours are kept
+		* @return owned drawable, or nullptr if the SVG failed to parse
+	*/
+	static std::unique_ptr<juce::Drawable> loadIcon(const char* svgData, juce::Colour tint = juce::Colours::transparentBlack);
 
 	//==============================================================================
 

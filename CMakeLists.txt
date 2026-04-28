@@ -66,33 +66,48 @@ juce_generate_juce_header(juceDjApp)
 
 # Bundle project assets into JUCE BinaryData and expose to the app target
 set(LoopStationBinaryData_SOURCES)
-if(EXISTS "${CMAKE_SOURCE_DIR}/assets/logo.png")
-    list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/logo.png")
-endif()
-if(EXISTS "${CMAKE_SOURCE_DIR}/assets/horizontalKnob.svg")
-    list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/horizontalKnob.svg")
-endif()
-if(EXISTS "${CMAKE_SOURCE_DIR}/assets/verticalKnob.svg")
-    list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/verticalKnob.svg")
-endif()
-if(EXISTS "${CMAKE_SOURCE_DIR}/assets/playButton.svg")
-    list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/playButton.svg")
-endif()
-if(EXISTS "${CMAKE_SOURCE_DIR}/assets/playButtonHover.svg")
-    list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/playButtonHover.svg")
-endif()
-if(EXISTS "${CMAKE_SOURCE_DIR}/assets/loadButton.svg")
-    list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/loadButton.svg")
-endif()
-if(EXISTS "${CMAKE_SOURCE_DIR}/assets/loadButtonHover.svg")
-    list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/loadButtonHover.svg")
-endif()
-if(EXISTS "${CMAKE_SOURCE_DIR}/assets/pauseButton.svg")
-    list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/pauseButton.svg")
-endif()
-if(EXISTS "${CMAKE_SOURCE_DIR}/assets/pauseButtonHover.svg")
-    list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/pauseButtonHover.svg")
-endif()
+
+# Image / data assets
+foreach(_asset IN ITEMS
+    logo.png
+)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/${_asset}")
+        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/${_asset}")
+    endif()
+endforeach()
+
+# SVG icons (existing controls + Phase 1 modern UI icon set)
+foreach(_svg IN ITEMS
+    horizontalKnob.svg
+    verticalKnob.svg
+    playButton.svg
+    playButtonHover.svg
+    pauseButton.svg
+    pauseButtonHover.svg
+    loadButton.svg
+    loadButtonHover.svg
+    iconSettings.svg
+    iconSettingsHover.svg
+    iconCues.svg
+    iconGrid.svg
+    iconJump.svg
+    iconLoop.svg
+    iconQuantize.svg
+    iconSync.svg
+    iconPadFx.svg
+    iconBeatFx.svg
+    iconReleaseFx.svg
+    iconHeadphone.svg
+    iconSyncBolt.svg
+    iconBpmTap.svg
+    iconNudgeLeft.svg
+    iconNudgeRight.svg
+    iconClose.svg
+)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/${_svg}")
+        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/${_svg}")
+    endif()
+endforeach()
 
 if(LoopStationBinaryData_SOURCES)
     juce_add_binary_data(LoopStationBinaryData SOURCES ${LoopStationBinaryData_SOURCES})

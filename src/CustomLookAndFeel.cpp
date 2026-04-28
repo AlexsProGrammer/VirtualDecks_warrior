@@ -24,15 +24,75 @@ CustomLookAndFeel::CustomLookAndFeel() {
 /**
  * Implementation of drawButtonText for CustomLookAndFeel
  *
- * Draws button text at 8px font size, centred within the button.
+ * Modern UI: 11px (bold when toggled on) for better readability on dark surfaces.
  */
 void CustomLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& button, bool, bool) {
-	g.setFont(8.0f);
-	g.setColour(button.findColour(juce::TextButton::textColourOnId)
-		.withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f));
+	const bool toggled = button.getToggleState();
+	juce::Font font(11.0f, toggled ? juce::Font::bold : juce::Font::plain);
+	g.setFont(font);
+
+	const auto onColour = button.findColour(toggled ? juce::TextButton::textColourOnId
+	                                                : juce::TextButton::textColourOffId);
+	g.setColour(onColour.withMultipliedAlpha(button.isEnabled() ? 1.0f : 0.5f));
 	g.drawFittedText(button.getButtonText(),
-		2, 0, button.getWidth() - 4, button.getHeight(),
+		4, 0, button.getWidth() - 8, button.getHeight(),
 		juce::Justification::centred, 2);
+}
+
+//==============================================================================
+
+/**
+ * Flat, rounded button background. Theme-coloured fill when toggled on,
+ * subtle hover/down state on inactive buttons.
+ */
+void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,
+	const juce::Colour& backgroundColour, bool isMouseOverButton, bool isButtonDown)
+{
+	const float corner = 4.0f;
+	auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
+
+	juce::Colour fill = backgroundColour;
+	if (button.getToggleState())
+		fill = button.findColour(juce::TextButton::buttonOnColourId);
+	if (isButtonDown)
+		fill = fill.darker(0.15f);
+	else if (isMouseOverButton)
+		fill = fill.brighter(0.10f);
+
+	g.setColour(fill);
+	g.fillRoundedRectangle(bounds, corner);
+
+	if (isMouseOverButton || button.getToggleState())
+	{
+		g.setColour(juce::Colours::white.withAlpha(button.getToggleState() ? 0.25f : 0.15f));
+		g.drawRoundedRectangle(bounds, corner, 1.0f);
+	}
+}
+
+//==============================================================================
+
+/**
+ * Implementation of loadIcon helper.
+ *
+ * Centralises the XmlDocument::parse + Drawable::createFromSVG dance and applies
+ * a uniform tint via Drawable::replaceColour when requested.
+ */
+std::unique_ptr<juce::Drawable> CustomLookAndFeel::loadIcon(const char* svgData, juce::Colour tint)
+{
+	if (svgData == nullptr)
+		return nullptr;
+
+	const std::unique_ptr<juce::XmlElement> svgXml(juce::XmlDocument::parse(svgData));
+	if (svgXml == nullptr)
+		return nullptr;
+
+	auto drawable = juce::Drawable::createFromSVG(*svgXml);
+	if (drawable != nullptr && ! tint.isTransparent())
+	{
+		// Replace the white "foreground" used in our authored icon set with the requested tint.
+		drawable->replaceColour(juce::Colours::white, tint);
+	}
+	return drawable;
 }
 
 //============================================================================== 

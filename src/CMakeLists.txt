@@ -35,33 +35,46 @@ if(TARGET juceDjApp)
     # (JUCE header generation moved after binary-data setup below)
     # Ensure binary data used by the sources is bundled and linked into the top-level app
     set(LoopStationBinaryData_SOURCES)
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/logo.png")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/logo.png")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/fonts/default_font.ttf")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/fonts/default_font.ttf")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/effects.json")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/effects.json")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/horizontalKnob.svg")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/horizontalKnob.svg")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/loadButton.svg")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/loadButton.svg")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/loadButtonHover.svg")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/loadButtonHover.svg")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/playButton.svg")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/playButton.svg")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/playButtonHover.svg")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/playButtonHover.svg")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/verticalKnob.svg")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/verticalKnob.svg")
-    endif()
+    foreach(_asset IN ITEMS
+        logo.png
+        fonts/default_font.ttf
+        effects.json
+    )
+        if(EXISTS "${CMAKE_SOURCE_DIR}/assets/${_asset}")
+            list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/${_asset}")
+        endif()
+    endforeach()
+    foreach(_svg IN ITEMS
+        horizontalKnob.svg
+        verticalKnob.svg
+        playButton.svg
+        playButtonHover.svg
+        pauseButton.svg
+        pauseButtonHover.svg
+        loadButton.svg
+        loadButtonHover.svg
+        iconSettings.svg
+        iconSettingsHover.svg
+        iconCues.svg
+        iconGrid.svg
+        iconJump.svg
+        iconLoop.svg
+        iconQuantize.svg
+        iconSync.svg
+        iconPadFx.svg
+        iconBeatFx.svg
+        iconReleaseFx.svg
+        iconHeadphone.svg
+        iconSyncBolt.svg
+        iconBpmTap.svg
+        iconNudgeLeft.svg
+        iconNudgeRight.svg
+        iconClose.svg
+    )
+        if(EXISTS "${CMAKE_SOURCE_DIR}/assets/${_svg}")
+            list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/${_svg}")
+        endif()
+    endforeach()
 
     message(STATUS "LoopStationBinaryData_SOURCES = ${LoopStationBinaryData_SOURCES}")
     if(LoopStationBinaryData_SOURCES)
@@ -105,33 +118,46 @@ else()
 
     # Binary data
     set(LoopStationBinaryData_SOURCES)
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/logo.png")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/logo.png")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/fonts/default_font.ttf")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/fonts/default_font.ttf")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/effects.json")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/effects.json")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/horizontalKnob.svg")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/horizontalKnob.svg")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/loadButton.svg")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/loadButton.svg")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/loadButtonHover.svg")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/loadButtonHover.svg")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/playButton.svg")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/playButton.svg")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/playButtonHover.svg")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/playButtonHover.svg")
-    endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/verticalKnob.svg")
-        list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/verticalKnob.svg")
-    endif()
+    foreach(_asset IN ITEMS
+        logo.png
+        fonts/default_font.ttf
+        effects.json
+    )
+        if(EXISTS "${CMAKE_SOURCE_DIR}/assets/${_asset}")
+            list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/${_asset}")
+        endif()
+    endforeach()
+    foreach(_svg IN ITEMS
+        horizontalKnob.svg
+        verticalKnob.svg
+        playButton.svg
+        playButtonHover.svg
+        pauseButton.svg
+        pauseButtonHover.svg
+        loadButton.svg
+        loadButtonHover.svg
+        iconSettings.svg
+        iconSettingsHover.svg
+        iconCues.svg
+        iconGrid.svg
+        iconJump.svg
+        iconLoop.svg
+        iconQuantize.svg
+        iconSync.svg
+        iconPadFx.svg
+        iconBeatFx.svg
+        iconReleaseFx.svg
+        iconHeadphone.svg
+        iconSyncBolt.svg
+        iconBpmTap.svg
+        iconNudgeLeft.svg
+        iconNudgeRight.svg
+        iconClose.svg
+    )
+        if(EXISTS "${CMAKE_SOURCE_DIR}/assets/${_svg}")
+            list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/${_svg}")
+        endif()
+    endforeach()
 
     message(STATUS "(fallback) LoopStationBinaryData_SOURCES = ${LoopStationBinaryData_SOURCES}")
     if(LoopStationBinaryData_SOURCES)
