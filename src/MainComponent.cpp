@@ -159,11 +159,18 @@ void MainComponent::resized()
 	DBG("MainComponent::resized");
 	double rowH = getHeight() / 8;
 
-	zoomedDisplay1.setBounds(0, 0, getWidth(), 75 + getHeight() / 32);
-	zoomedDisplay2.setBounds(0, 75 + getHeight() / 32, getWidth(), 75 + getHeight() / 32);
-	deckGUI1.setBounds(0, 150 + getHeight() / 16, getWidth() / 2, 300);
-	deckGUI2.setBounds(getWidth() / 2, 150 + getHeight() / 16, getWidth() / 2, 300);
-	crossFader.setBounds(getWidth() / 2 - 80, 412.5 + getHeight() / 16, 160, 37.5);
+	const int zoomH  = 75 + getHeight() / 32;
+	const int deckY  = 150 + getHeight() / 16;
+	const int deckH  = getHeight() - deckY;
+
+	zoomedDisplay1.setBounds(0, 0,        getWidth(),       zoomH);
+	zoomedDisplay2.setBounds(0, zoomH,    getWidth(),       zoomH);
+	deckGUI1.setBounds(0,              deckY, getWidth() / 2, deckH);
+	deckGUI2.setBounds(getWidth() / 2, deckY, getWidth() / 2, deckH);
+	// Crossfader: vertically track the capped rowH used by DeckGUI so it
+	// always sits between the filter knobs and filter labels.
+	const double deckRowH = std::min(deckH / 9.0, 40.0);
+	crossFader.setBounds(getWidth() / 2 - 80, (int)(deckY + deckRowH * 6.5), 160, 37);
 
 	// Sidebars track their visibility-driven position. If currently visible,
 	// reposition them to the open bounds; otherwise park them off-screen.

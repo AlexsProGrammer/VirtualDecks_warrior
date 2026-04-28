@@ -435,7 +435,9 @@ void DeckGUI::paint(juce::Graphics& g)
  */
 void DeckGUI::resized()
 {
-	double rowH = getHeight() / 9;
+	// Cap rowH so the controls don't grow beyond their design size when the
+	// deck panel is taller than the original 300 px (e.g. on large windows).
+	double rowH = std::min(getHeight() / 9.0, 40.0);
 	double volXOffset = theme == juce::Colours::hotpink ? 5.5 : getWidth() - (double)55;
 	volSlider.setBounds(volXOffset, rowH * 2, 50, rowH * 3);
 	volLabel.setBounds(volXOffset, rowH * 5 + 5, 50, rowH * 0.5);
@@ -449,7 +451,7 @@ void DeckGUI::resized()
 
 	speedSlider.setBounds(mainXOffset, rowH * 2, getWidth() / 8, rowH * 3);
 	speedLabel.setBounds(mainXOffset, rowH * 5 + 5, getWidth() / 8, rowH * 0.5);
-	jogWheel.setBounds(mainXOffset + getWidth() * 22.5 / 32 - 98.9, 5 + rowH * 2, (rowH * 3.3) - 10, (rowH * 3.3) - 10);
+	jogWheel.setBounds(mainXOffset + getWidth() * 22.5 / 32 - 98.9, 5 + rowH * 3, (rowH * 3.3) - 10, (rowH * 3.3) - 10);
 	loadButton.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 2 + 5, rowH * 0.7, rowH * 0.7);
 	playButton.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 5 - 10, rowH * 0.7, rowH * 0.7);
 	fastSyncBtn.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 5 - 10 + rowH * 0.7 + 4, rowH * 0.7, rowH * 0.5);
@@ -612,14 +614,15 @@ void DeckGUI::resized()
 	mbLabel.setBounds(xOffset + getWidth() / 5, rowH * 6.9, 50, 50);
 	hbLabel.setBounds(xOffset + getWidth() * 2 / 5, rowH * 6.9, 50, 50);
 
-	// Compact queue widget — placed in the bottom-right corner of the deck
-	// strip (next to the load/play column).
+	// Queue: full-width strip at the bottom of the deck, below the EQ labels.
+	// Y is computed from the filter-label bottom so it never overlaps them.
 	if (queueWidget)
 	{
-		const int qW = 130;
-		const int qH = (int) (rowH * 2.2);
-		const int qX = (int) (mainXOffset + getWidth() * 22.5 / 32 - qW - 6);
-		const int qY = (int) (rowH * 6.0);
+		const int qY = (int)(rowH * 6.9) + 54; // filter label top + 50px label + 4px gap
+		const int qH = std::max(getHeight() - qY - 2, 40);
+		const int qX = (int)xOffset;
+		const int qW = std::max(
+			(int)(mainXOffset + getWidth() * 22.5 / 32 + rowH * 0.7 + 2) - qX, 100);
 		queueWidget->setBounds(qX, qY, qW, qH);
 	}
 }
