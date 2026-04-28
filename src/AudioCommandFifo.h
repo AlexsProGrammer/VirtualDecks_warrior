@@ -20,7 +20,6 @@ struct AudioCommand
 
 		// Transport
 		Start,
-		Stop,
 
 		// Speed / gain
 		SetSpeed,             // doublePayload = ratio

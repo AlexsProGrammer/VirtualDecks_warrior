@@ -108,7 +108,6 @@ void DJAudioPlayer::applyCommand(const AudioCommand& cmd) noexcept {
 	switch (cmd.tag)
 	{
 		case AudioCommand::Tag::Start:                transportSource.start(); break;
-		case AudioCommand::Tag::Stop:                 transportSource.stop();  break;
 		case AudioCommand::Tag::SetSpeed:
 			if (cmd.doublePayload >= 0 && cmd.doublePayload <= 100.0) {
 				resampleSource.setResamplingRatio(cmd.doublePayload);
@@ -230,6 +229,12 @@ void DJAudioPlayer::applyCommand(const AudioCommand& cmd) noexcept {
  *
  */
 void DJAudioPlayer::releaseResources() {
+	transportSource.releaseResources();
+	resampleSource.releaseResources();
+	audioLBFilter.releaseResources();
+	audioMBFilter.releaseResources();
+	audioHBFilter.releaseResources();
+	audioHPFilter.releaseResources();
 	audioLPFilter.releaseResources();
 };
 
@@ -249,12 +254,15 @@ void DJAudioPlayer::start() {
 /**
  * Implementation of stop method for DJAudioPlayer
  *
- *  Calls the stop method on the AudioTransportSource data member
+ * Called from the message thread. Calls stop() directly on the transport
+ * source — AudioTransportSource::stop() is designed for the message thread
+ * and must NOT be dispatched through the FIFO, because it blocks until the
+ * audio thread acknowledges the stop, which would deadlock if the audio
+ * thread were the one calling stop().
  *
  */
 void DJAudioPlayer::stop() {
-	AudioCommand cmd; cmd.tag = AudioCommand::Tag::Stop;
-	commandFifo.push(cmd);
+	transportSource.stop();
 };
 
 /**

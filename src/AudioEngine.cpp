@@ -99,6 +99,10 @@ AudioEngine::AudioEngine(juce::AudioFormatManager& shared)
 	, player2(shared)
 {
 	loadFormatManager.registerBasicFormats();
+	// Register players with the mixer exactly once. Adding them inside
+	// prepareToPlay would duplicate registrations on device re-open.
+	mixerSource.addInputSource(&player1, false);
+	mixerSource.addInputSource(&player2, false);
 }
 
 AudioEngine::~AudioEngine()
@@ -112,11 +116,9 @@ AudioEngine::~AudioEngine()
 
 void AudioEngine::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
 {
-	mixerSource.addInputSource(&player1, false);
-	mixerSource.addInputSource(&player2, false);
-
 	player1.prepareToPlay(samplesPerBlockExpected, sampleRate);
 	player2.prepareToPlay(samplesPerBlockExpected, sampleRate);
+	mixerSource.prepareToPlay(samplesPerBlockExpected, sampleRate);
 }
 
 void AudioEngine::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill)
