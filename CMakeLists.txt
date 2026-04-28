@@ -180,3 +180,19 @@ find_package(CURL QUIET)
 if(CURL_FOUND)
     target_link_libraries(juceDjApp PRIVATE CURL::libcurl)
 endif()
+
+# Enable JACK audio backend so JUCE can enumerate PipeWire/JACK sinks.
+# On modern Linux, pipewire-jack provides this and exposes individual device
+# sinks (Headphones, Speakers, etc.) that are invisible through raw ALSA.
+if(PkgConfig_FOUND)
+    pkg_check_modules(JACK QUIET jack)
+endif()
+if(JACK_FOUND)
+    message(STATUS "JACK found (${JACK_VERSION}); enabling JUCE_JACK backend")
+    target_compile_definitions(juceDjApp PRIVATE JUCE_JACK=1)
+    target_include_directories(juceDjApp PRIVATE ${JACK_INCLUDE_DIRS})
+    target_link_directories(juceDjApp PRIVATE ${JACK_LIBRARY_DIRS})
+    target_link_libraries(juceDjApp PRIVATE ${JACK_LIBRARIES})
+else()
+    message(STATUS "JACK not found; headphone output will use ALSA only")
+endif()

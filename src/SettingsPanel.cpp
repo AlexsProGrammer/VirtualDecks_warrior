@@ -11,12 +11,12 @@ SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
 	  headphoneSelector(headphoneManager, 0, 0, 2, 2, false, false, true, false)
 {
 	masterLabel.setText("Master Output", juce::dontSendNotification);
-	masterLabel.setFont(juce::FontOptions{ 13.0f, juce::Font::bold });
+	masterLabel.setFont(juce::Font(juce::FontOptions{ 13.0f }).boldened());
 	masterLabel.setColour(juce::Label::textColourId, juce::Colours::white);
 	addAndMakeVisible(masterLabel);
 
-	headphoneLabel.setText("Headphone / CUE Output", juce::dontSendNotification);
-	headphoneLabel.setFont(juce::FontOptions{ 13.0f, juce::Font::bold });
+	headphoneLabel.setText("Headphone / CUE Output  (use JACK type for per-sink routing)", juce::dontSendNotification);
+	headphoneLabel.setFont(juce::Font(juce::FontOptions{ 13.0f }).boldened());
 	headphoneLabel.setColour(juce::Label::textColourId, juce::Colours::aqua);
 	addAndMakeVisible(headphoneLabel);
 

@@ -84,6 +84,7 @@ MainComponent::MainComponent()
 		auto savedState = AppSettings::loadHeadphoneDeviceState();
 		cueDeviceManager.initialise(0, 2, savedState.get(), false);
 	}
+
 	cueDeviceManager.addAudioCallback(&cueCallback);
 
 	// Settings panel (hidden off-screen until the gear button is pressed).
