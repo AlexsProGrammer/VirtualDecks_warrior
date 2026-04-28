@@ -926,6 +926,10 @@ void Library::scheduleAsyncSave()
 {
 	saveDirtyCount.fetch_add(1, std::memory_order_relaxed);
 
+	// Fire data-change listeners (sidebars rendering their own UI). Always
+	// dispatched on the message thread.
+	notifyLibraryChanged();
+
 	if (saveDebounceTimer == nullptr)
 	{
 		struct DebTimer : public juce::Timer
@@ -1011,4 +1015,61 @@ void Library::persistTreeToDisk(juce::ValueTree tree, juce::String filePath)
 	}
 	if (! temp.overwriteTargetFileWithTemporary())
 		DBG("Library::persistTreeToDisk - failed to overwrite " + filePath);
+}
+
+//==============================================================================
+// Public read accessors and mutators used by per-deck sidebars.
+
+juce::String Library::getFolderName(int folderIndex) const
+{
+if (folderIndex < 0 || folderIndex >= (int) trackFolders.size())
+return {};
+return trackFolders[(size_t) folderIndex].first;
+}
+
+int Library::getNumTracksInFolder(int folderIndex) const
+{
+if (folderIndex < 0 || folderIndex >= (int) trackFolders.size())
+return 0;
+return (int) trackFolders[(size_t) folderIndex].second.size();
+}
+
+track Library::getTrack(int folderIndex, int trackIndex) const
+{
+if (folderIndex < 0 || folderIndex >= (int) trackFolders.size())
+return {};
+const auto& tracks = trackFolders[(size_t) folderIndex].second;
+if (trackIndex < 0 || trackIndex >= (int) tracks.size())
+return {};
+return tracks[(size_t) trackIndex];
+}
+
+void Library::setActiveFolder(int folderIndex)
+{
+if (folderIndex < 0 || folderIndex >= (int) trackFolders.size())
+return;
+selectedFolderIndex = folderIndex;
+playlist.setTrackTitles(trackFolders[(size_t) folderIndex].second);
+}
+
+void Library::removeTrackAt(int folderIndex, int trackIndex)
+{
+if (folderIndex < 0 || folderIndex >= (int) trackFolders.size())
+return;
+auto& tracks = trackFolders[(size_t) folderIndex].second;
+if (trackIndex < 0 || trackIndex >= (int) tracks.size())
+return;
+tracks.erase(tracks.begin() + trackIndex);
+if (selectedFolderIndex == folderIndex)
+playlist.setTrackTitles(tracks);
+scheduleAsyncSave();
+}
+
+void Library::notifyLibraryChanged()
+{
+auto fire = [this]() { listeners.call([](Listener& l) { l.libraryChanged(); }); };
+if (juce::MessageManager::getInstance()->isThisTheMessageThread())
+fire();
+else
+juce::MessageManager::callAsync(std::move(fire));
 }

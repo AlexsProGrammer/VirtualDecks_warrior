@@ -18,7 +18,7 @@ struct track {
 	juce::String title;
 
 	/// Length of song in seconds
-	double lengthInSeconds;
+	double lengthInSeconds = 0.0;
 
 	/// juce::URL of the track object
 	juce::URL url;

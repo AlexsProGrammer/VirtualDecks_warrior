@@ -32,10 +32,30 @@ MainComponent::MainComponent()
 
 	addAndMakeVisible(deckGUI1);
 	addAndMakeVisible(deckGUI2);
-	addAndMakeVisible(library);
 	addAndMakeVisible(zoomedDisplay1);
 	addAndMakeVisible(zoomedDisplay2);
 	addAndMakeVisible(crossFader);
+
+	// Per-deck library sidebars. Slide in from the opposite side of the deck
+	// when the user clicks that deck's load button.
+	auto loadCb1 = [this](const track& t) { deckGUI1.loadTrack(t); closeSidebar(0); };
+	auto queueCb1 = [this](const track& t) { deckGUI1.enqueueTrack(t); };
+	auto closeCb1 = [this]() { closeSidebar(0); };
+
+	auto loadCb2 = [this](const track& t) { deckGUI2.loadTrack(t); closeSidebar(1); };
+	auto queueCb2 = [this](const track& t) { deckGUI2.enqueueTrack(t); };
+	auto closeCb2 = [this]() { closeSidebar(1); };
+
+	sidebar1 = std::make_unique<DeckLibrarySidebar>(library, juce::Colours::aqua,    0,
+	                                                std::move(loadCb1), std::move(queueCb1), std::move(closeCb1));
+	sidebar2 = std::make_unique<DeckLibrarySidebar>(library, juce::Colours::hotpink, 1,
+	                                                std::move(loadCb2), std::move(queueCb2), std::move(closeCb2));
+
+	addChildComponent(*sidebar1);
+	addChildComponent(*sidebar2);
+
+	deckGUI1.onLoadButtonClicked = [this](int) { openSidebar(0); };
+	deckGUI2.onLoadButtonClicked = [this](int) { openSidebar(1); };
 
 	// Wire decks into the beat-sync manager (decks already know about it via
 	// constructor injection in MainComponent.h).
@@ -53,6 +73,8 @@ MainComponent::MainComponent()
 	crossFader.setLookAndFeel(&customLookAndFeel);
 	library.setLookAndFeel(&customLookAndFeel);
 	library.addKeyListener(this);
+	addKeyListener(this);
+	setWantsKeyboardFocus(true);
 }
 
 /**
@@ -142,8 +164,72 @@ void MainComponent::resized()
 	deckGUI1.setBounds(0, 150 + getHeight() / 16, getWidth() / 2, 300);
 	deckGUI2.setBounds(getWidth() / 2, 150 + getHeight() / 16, getWidth() / 2, 300);
 	crossFader.setBounds(getWidth() / 2 - 80, 412.5 + getHeight() / 16, 160, 37.5);
-	library.setBounds(0, 450 + getHeight() / 16, getWidth(), getHeight() - 450 - getHeight() / 16);
 
+	// Sidebars track their visibility-driven position. If currently visible,
+	// reposition them to the open bounds; otherwise park them off-screen.
+	auto fitSidebar = [this](DeckLibrarySidebar* s, int idx)
+	{
+		if (s == nullptr) return;
+		if (s->isVisible())
+			s->setBounds(sidebarOpenBounds(idx));
+		else
+			s->setBounds(sidebarClosedBounds(idx));
+	};
+	fitSidebar(sidebar1.get(), 0);
+	fitSidebar(sidebar2.get(), 1);
+}
+
+//==============================================================================
+
+juce::Rectangle<int> MainComponent::sidebarOpenBounds(int deckIndex) const
+{
+	const int w = getWidth() / 2;
+	const int h = getHeight();
+	// Deck 0 (left) → sidebar opens on the RIGHT half. Deck 1 (right) → LEFT half.
+	if (deckIndex == 0)
+		return { getWidth() - w, 0, w, h };
+	return { 0, 0, w, h };
+}
+
+juce::Rectangle<int> MainComponent::sidebarClosedBounds(int deckIndex) const
+{
+	const int w = getWidth() / 2;
+	const int h = getHeight();
+	if (deckIndex == 0)
+		return { getWidth(), 0, w, h };   // off-screen right
+	return { -w, 0, w, h };               // off-screen left
+}
+
+void MainComponent::openSidebar(int deckIndex)
+{
+	DeckLibrarySidebar* target = (deckIndex == 0 ? sidebar1.get() : sidebar2.get());
+	DeckLibrarySidebar* other  = (deckIndex == 0 ? sidebar2.get() : sidebar1.get());
+	if (target == nullptr) return;
+
+	// Mutual exclusion: close the peer first.
+	if (other != nullptr && other->isVisible())
+		closeSidebar(deckIndex == 0 ? 1 : 0);
+
+	target->setBounds(sidebarClosedBounds(deckIndex));
+	target->setVisible(true);
+	target->toFront(false);
+	juce::Desktop::getInstance().getAnimator().animateComponent(
+		target, sidebarOpenBounds(deckIndex), 1.0f, 220, false, 1.0, 0.0);
+}
+
+void MainComponent::closeSidebar(int deckIndex)
+{
+	DeckLibrarySidebar* target = (deckIndex == 0 ? sidebar1.get() : sidebar2.get());
+	if (target == nullptr || ! target->isVisible()) return;
+
+	juce::Desktop::getInstance().getAnimator().animateComponent(
+		target, sidebarClosedBounds(deckIndex), 1.0f, 220, false, 1.0, 0.0);
+
+	// Defer hiding until the slide-out finishes.
+	juce::Component::SafePointer<DeckLibrarySidebar> safe(target);
+	juce::Timer::callAfterDelay(240, [safe]() {
+		if (auto* s = safe.getComponent()) s->setVisible(false);
+	});
 }
 
 //==============================================================================

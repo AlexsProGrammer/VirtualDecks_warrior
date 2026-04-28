@@ -90,6 +90,44 @@ public:
    */
   void importFolderFromDisk();
 
+  //==============================================================================
+  // Public read-only data accessors (used by per-deck sidebars that render their
+  // own UI without depending on Library's own widgets).
+
+  /// @return Number of folders in the library.
+  int getNumFolders() const { return (int) trackFolders.size(); }
+
+  /// @return Folder display name at the given index, or empty if out of range.
+  juce::String getFolderName(int folderIndex) const;
+
+  /// @return Number of tracks in the folder at folderIndex (0 if out of range).
+  int getNumTracksInFolder(int folderIndex) const;
+
+  /// @return Track at (folderIndex, trackIndex), or empty track if out of range.
+  track getTrack(int folderIndex, int trackIndex) const;
+
+  /// Programmatically set the active folder (mirrors what cellClicked does
+  /// on the directoryComponent). Safe to call when Library is not visible.
+  void setActiveFolder(int folderIndex);
+
+  /// Remove a single track by absolute index. Persists asynchronously.
+  void removeTrackAt(int folderIndex, int trackIndex);
+
+  /// Listener interface fired when folder list or any folder's track list
+  /// changes (folder added/removed/renamed, tracks added/removed/ingested).
+  class Listener
+  {
+  public:
+    virtual ~Listener() = default;
+    virtual void libraryChanged() = 0;
+  };
+
+  /// Add an external listener for library-data changes.
+  void addListener(Listener* l) { listeners.add(l); }
+
+  /// Remove an external listener.
+  void removeListener(Listener* l) { listeners.remove(l); }
+
   /// Listener interface for ingest progress changes (used by IngestProgressBar
   /// or any external observer that wants to react when an ingest job starts,
   /// progresses, or completes).
@@ -263,6 +301,12 @@ private:
 
   /// Listeners notified when ingest progress changes.
   juce::ListenerList<IngestProgressListener> ingestListeners;
+
+  /// External listeners notified whenever the folder/track data changes.
+  juce::ListenerList<Listener> listeners;
+
+  /// Fire libraryChanged() on all external Listeners on the message thread.
+  void notifyLibraryChanged();
 
   //==============================================================================
   // Async XML save

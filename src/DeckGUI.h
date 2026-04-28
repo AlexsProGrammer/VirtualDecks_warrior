@@ -13,6 +13,7 @@
 #include "TrackDataCache.h"
 #include "BeatSyncManager.h"
 #include "FxIds.h"
+#include "DeckQueue.h"
 //==============================================================================
 
 /**
@@ -58,6 +59,21 @@ public:
 		* Class Destructor for DeckGUI, clears dynamically allocated variables.
 	*/
 	~DeckGUI() override;
+
+	//==============================================================================
+	// Public API for the Library sidebar / queue host (MainComponent).
+
+	/// Load a track into this deck. Public wrapper around loadDeck() so
+	/// external sidebars can drive the deck without coupling to internals.
+	void loadTrack(const track& t);
+
+	/// Append a track to this deck's queue (no playback change).
+	void enqueueTrack(const track& t);
+
+	/// Optional callback fired when the user clicks the deck's load button.
+	/// Wired by MainComponent to open the appropriate sidebar. If unset, the
+	/// load button is a no-op.
+	std::function<void(int deckIndex)> onLoadButtonClicked;
 
 	//==============================================================================
 
@@ -582,6 +598,9 @@ private:
 
 	/// Opens the parameter modal anchored at the given component's bounds.
 	void showFxParameterModal(FxCategory cat, juce::Component* anchor);
+
+	/// Per-deck playback queue, shown as a compact widget on the deck strip.
+	std::unique_ptr<DeckQueue> queueWidget;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DeckGUI);
 };

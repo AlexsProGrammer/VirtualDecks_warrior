@@ -63,6 +63,10 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	addAndMakeVisible(midBandFilter);
 	addAndMakeVisible(highBandFilter);
 
+	// Per-deck queue widget. Click a row to jump to that track.
+	queueWidget = std::make_unique<DeckQueue>(theme, [this](const track& t) { loadDeck(t); });
+	addAndMakeVisible(*queueWidget);
+
 	volSlider.setRange(0, 1);
 	speedSlider.setRange(0.8, 1.2);
 	filter.setRange(-20000, 20000);
@@ -607,6 +611,17 @@ void DeckGUI::resized()
 	lbLabel.setBounds(xOffset, rowH * 6.9, 50, 50);
 	mbLabel.setBounds(xOffset + getWidth() / 5, rowH * 6.9, 50, 50);
 	hbLabel.setBounds(xOffset + getWidth() * 2 / 5, rowH * 6.9, 50, 50);
+
+	// Compact queue widget — placed in the bottom-right corner of the deck
+	// strip (next to the load/play column).
+	if (queueWidget)
+	{
+		const int qW = 130;
+		const int qH = (int) (rowH * 2.2);
+		const int qX = (int) (mainXOffset + getWidth() * 22.5 / 32 - qW - 6);
+		const int qY = (int) (rowH * 6.0);
+		queueWidget->setBounds(qX, qY, qW, qH);
+	}
 }
 
 //============================================================================== 
@@ -665,8 +680,14 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		return;
 	}
 
-	if (button == &loadButton && library->selectionIsValid()) {
-		loadDeck(library->getSelectedTrack());
+	if (button == &loadButton) {
+		// Open the per-deck library sidebar (wired by MainComponent). Falls
+		// back to the legacy "load currently selected library row" behaviour
+		// only when no host has installed a callback (e.g. unit tests).
+		if (onLoadButtonClicked)
+			onLoadButtonClicked(deckIndex);
+		else if (library != nullptr && library->selectionIsValid())
+			loadDeck(library->getSelectedTrack());
 	}
 
 	// Tab switching
@@ -1278,6 +1299,19 @@ void DeckGUI::timerCallback() {
 		double now = juce::Time::getMillisecondCounterHiRes() / 1000.0;
 		if (now >= pendingAction.fireAtRealTime)
 			executePendingAction();
+	}
+
+	// Auto-advance: if the deck was playing and just finished a track, pop the
+	// queue and load the next entry. Heuristic: position has hit ~end and the
+	// transport stopped on its own. Keep modeIsPlaying = true so finishLoadDeck
+	// auto-plays the next track.
+	if (queueWidget != nullptr && !queueWidget->isEmpty() && modeIsPlaying) {
+		double pos = player->getPositionRelative();
+		if (pos >= 0.9995 && !player->isPlaying()) {
+			auto next = queueWidget->popFront();
+			if (next.url.toString(false).isNotEmpty())
+				loadDeck(next);
+		}
 	}
 }
 
@@ -2094,6 +2128,23 @@ void DeckGUI::showFxParameterModal(FxCategory cat, juce::Component* anchor)
 		? anchor->getScreenBounds()
 		: juce::Rectangle<int>(getScreenX() + getWidth() / 2 - 4, getScreenY() + 60, 8, 8);
 	juce::CallOutBox::launchAsynchronously(std::move(modal), bounds, nullptr);
+}
+
+//==============================================================================
+
+/**
+ * Public wrapper for loadDeck — used by external library sidebars.
+ */
+void DeckGUI::loadTrack(const track& t) {
+	loadDeck(t);
+}
+
+/**
+ * Append a track to the deck's queue widget.
+ */
+void DeckGUI::enqueueTrack(const track& t) {
+	if (queueWidget != nullptr)
+		queueWidget->pushBack(t);
 }
 
 //==============================================================================

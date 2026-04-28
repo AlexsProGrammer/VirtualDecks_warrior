@@ -21,6 +21,8 @@ set(SOURCE_FILES
     FxFactory.cpp
     FxSettings.cpp
     FxParameterModal.cpp
+    DeckLibrarySidebar.cpp
+    DeckQueue.cpp
 )
 
 if(TARGET juceDjApp)

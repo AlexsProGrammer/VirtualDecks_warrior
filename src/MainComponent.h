@@ -7,6 +7,7 @@
 #include "Library.h"
 #include "CustomLookAndFeel.h"
 #include "BeatSyncManager.h"
+#include "DeckLibrarySidebar.h"
 
 //==============================================================================
 /*
@@ -119,6 +120,18 @@ private:
 
 	/// Instance of juce::Slider for cross fading functionality.
 	juce::Slider crossFader{ juce::Slider::SliderStyle::LinearHorizontal , juce::Slider::TextEntryBoxPosition::NoTextBox };
+
+	/// Per-deck library sidebars. Slide in from the opposite side of the deck.
+	std::unique_ptr<DeckLibrarySidebar> sidebar1;
+	std::unique_ptr<DeckLibrarySidebar> sidebar2;
+
+	/// Open or close a deck's sidebar with an animated slide.
+	void openSidebar(int deckIndex);
+	void closeSidebar(int deckIndex);
+
+	/// @return The on-screen and off-screen bounds for the given deck's sidebar.
+	juce::Rectangle<int> sidebarOpenBounds (int deckIndex) const;
+	juce::Rectangle<int> sidebarClosedBounds(int deckIndex) const;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
