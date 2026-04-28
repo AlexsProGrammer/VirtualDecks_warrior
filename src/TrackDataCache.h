@@ -2,7 +2,11 @@
 
 #include <JuceHeader.h>
 #include <functional>
+#include <memory>
+#include <vector>
 #include "BeatGrid.h"
+
+struct BandFrame; // forward-declared to avoid pulling WaveformBandAnalyzer.h here
 
 /**
  * Data returned from the track data cache.
@@ -82,7 +86,30 @@ public:
 	static void updateAsync(const juce::String& fileHash,
 	                        std::function<void(TrackData&)> mutator);
 
+	//==============================================================================
+	// Waveform band data (3-band RGB per-frame) — stored as a separate binary
+	// blob next to the JSON track data, keyed by the same content hash.
+
+	/**
+	 * Load cached waveform band data for a track. Returns nullptr if the cache
+	 * file does not exist or fails to parse. Safe to call from any thread.
+	 *
+	 * @param fileHash Content hash of the audio file
+	 * @return Shared pointer to immutable band data, or nullptr on miss/failure
+	 */
+	static std::shared_ptr<const std::vector<BandFrame>> loadBands(const juce::String& fileHash);
+
+	/**
+	 * Persist waveform band data for a track. Overwrites any existing cache
+	 * file. Safe to call from any thread.
+	 *
+	 * @param fileHash Content hash of the audio file
+	 * @param bands    Frames to persist (typically produced by WaveformBandAnalyzer)
+	 */
+	static void saveBands(const juce::String& fileHash, const std::vector<BandFrame>& bands);
+
 private:
 	static juce::File getCacheDirectory();
 	static juce::File getCacheFile(const juce::String& fileHash);
+	static juce::File getBandsFile(const juce::String& fileHash);
 };

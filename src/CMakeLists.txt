@@ -12,6 +12,7 @@ set(SOURCE_FILES
     PlaylistComponent.cpp
     WaveformDisplay.cpp
     ZoomedWaveform.cpp
+    WaveformBandAnalyzer.cpp
     BeatGridConfig.cpp
     TrackDataCache.cpp
     BpmDetector.cpp

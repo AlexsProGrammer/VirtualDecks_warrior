@@ -3,6 +3,7 @@
 
 #include <JuceHeader.h>
 #include "Track.h"
+#include "WaveformBandAnalyzer.h"
 //==============================================================================
 
 /**
@@ -93,6 +94,15 @@ public:
 	 * @param active True if the loop is currently active
 	 */
 	void setLoopRegion(double inRelative, double outRelative, bool active);
+
+	/**
+	 * Install the 3-band waveform colour data computed by WaveformBandAnalyzer.
+	 * When set, paint() renders per-pixel-column RGB tinting (low=R, mid=G,
+	 * high=B). Pass nullptr (or default-construct) to revert to theme colour.
+	 *
+	 * @param data Shared pointer to immutable BandData; ownership shared.
+	 */
+	void setBandData(BandDataPtr data);
 
 	//============================================================================== 
 
@@ -221,4 +231,7 @@ protected:
 
 	/// Whether loop is currently active
 	bool loopIsActive = false;
+
+	/// Optional 3-band colour data for the waveform (nullptr → fall back to theme colour).
+	BandDataPtr bandData;
 };

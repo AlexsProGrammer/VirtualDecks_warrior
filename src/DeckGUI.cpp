@@ -7,6 +7,7 @@
 #include "FxParameterModal.h"
 #include "FxSettings.h"
 #include "AudioEngine.h"
+#include "WaveformBandAnalyzer.h"
 
 //============================================================================================================================================================
 
@@ -24,6 +25,8 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 {
 	if (audioEngine != nullptr)
 		audioEngine->addListener(this);
+
+	formatManager = &formatManagerToUse;
 
 	// "Loading…" overlay (centred over the waveform area, hidden by default).
 	loadingLabel.setJustificationType(juce::Justification::centred);
@@ -1454,15 +1457,38 @@ void DeckGUI::finishLoadDeck() {
 	for (auto& display : displays) {
 		display->loadTrack(t);
 		display->addListener(this);
+		display->setBandData(nullptr); // clear stale colours; will be filled when analysis completes
 	}
 
 	player->setGain(volSlider.getValue(), true);
 	cueTargets.clear();
 
-	// Load beat grid config for this track on a worker thread to avoid
-	// blocking the message thread on JSON disk I/O.
+	// Update current track identity early so async callbacks below can stale-guard against it.
 	currentTrackIdentity = t.identity;
 	currentFileHash = t.fileHash;
+
+	// Kick off off-thread 3-band waveform analysis. Result is delivered on the
+	// message thread; we stale-guard against a newer track being loaded.
+	if (formatManager != nullptr && t.fileHash.isNotEmpty()) {
+		juce::Component::SafePointer<DeckGUI> safeSelf(this);
+		const juce::String requestedHash = t.fileHash;
+		WaveformBandAnalyzer::analyzeAsync(
+			t.url.getLocalFile(),
+			t.fileHash,
+			*formatManager,
+			[safeSelf, requestedHash](BandDataPtr bands) {
+				auto* self = safeSelf.getComponent();
+				if (self == nullptr) return;
+				if (self->currentFileHash != requestedHash) return;
+				if (bands == nullptr || bands->empty()) return;
+				for (auto* display : self->displays) {
+					display->setBandData(bands);
+				}
+			});
+	}
+
+	// Load beat grid config for this track on a worker thread to avoid
+	// blocking the message thread on JSON disk I/O.
 	if (currentFileHash.isNotEmpty()) {
 		juce::Component::SafePointer<DeckGUI> safeSelf(this);
 		const juce::String requestedHash = currentFileHash;

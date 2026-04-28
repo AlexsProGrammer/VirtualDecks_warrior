@@ -43,7 +43,29 @@ void ZoomedWaveform::paint(juce::Graphics& g)
 		double left = thisPos - half;
 		double right = thisPos + half;
 		g.setColour(theme);
-		audioThumb.drawChannel(g, getLocalBounds(), left, right, 0, .7);
+
+		if (bandData != nullptr && ! bandData->empty()) {
+			// 3-band RGB column rendering for the zoomed window.
+			const auto& frames = *bandData;
+			const int numFrames = (int)frames.size();
+			const double total = audioThumb.getTotalLength();
+			const int w = getWidth();
+			const int h = getHeight();
+			const float centerY = (float)h * 0.5f;
+			for (int x = 0; x < w; ++x) {
+				const double t = juce::jmap((double)x, 0.0, (double)juce::jmax(1, w), left, right);
+				if (t < 0.0 || t > total) continue;
+				const int idx = juce::jlimit(0, numFrames - 1, (int)(t / juce::jmax(1e-9, total) * numFrames));
+				const auto& f = frames[(size_t)idx];
+				const float halfH = (f.amp / 255.0f) * centerY;
+				g.setColour(juce::Colour::fromRGB(f.low, f.mid, f.high));
+				g.drawLine((float)x, centerY - halfH, (float)x, centerY + halfH, 1.0f);
+			}
+		}
+		else {
+			audioThumb.drawChannel(g, getLocalBounds(), left, right, 0, .7);
+		}
+
 		if (left < 0) {
 			double widthRect = juce::jmap(fabs(left), (double)0, half * 2, (double)0, (double)getWidth());
 			g.setColour(juce::Colour::fromRGBA(0, 0, 0, 255));

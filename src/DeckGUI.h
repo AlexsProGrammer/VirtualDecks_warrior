@@ -181,6 +181,9 @@ private:
 	/// Pointer to DJAudioPlayer instance.
 	DJAudioPlayer* player;
 
+	/// Audio format manager (held for off-thread waveform-band analysis).
+	juce::AudioFormatManager* formatManager = nullptr;
+
 	/// Optional pointer to the shared AudioEngine for asynchronous track loading.
 	AudioEngine* audioEngine = nullptr;
 

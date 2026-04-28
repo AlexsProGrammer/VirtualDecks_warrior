@@ -130,6 +130,17 @@ void WaveformDisplay::setLoopRegion(double inRelative, double outRelative, bool 
 	}
 };
 
+/**
+ * Implementation of setBandData for WaveformDisplay.
+ *
+ * Replaces the per-column 3-band colour table used by paint(). Pass nullptr
+ * (or an empty data pointer) to revert to the theme-colour render path.
+ */
+void WaveformDisplay::setBandData(BandDataPtr data) {
+	bandData = std::move(data);
+	repaint();
+}
+
 //==============================================================================
 
 /**
@@ -150,7 +161,26 @@ void WaveformDisplay::paint(juce::Graphics& g)
 	g.setColour(theme);
 	if (isLoaded) {
 		g.drawText(songNameLoaded, 5, 5, getWidth() * 3 / 4, 6, juce::Justification::left);
-		audioThumb.drawChannel(g, getLocalBounds(), 0, audioThumb.getTotalLength(), 0, 0.55);
+
+		if (bandData != nullptr && ! bandData->empty()) {
+			// 3-band RGB column rendering (Serato-style).
+			const auto& frames = *bandData;
+			const int numFrames = (int)frames.size();
+			const int w = getWidth();
+			const int h = getHeight();
+			const float centerY = (float)h * 0.5f;
+			for (int x = 0; x < w; ++x) {
+				const int idx = juce::jlimit(0, numFrames - 1, (int)((double)x * numFrames / juce::jmax(1, w)));
+				const auto& f = frames[(size_t)idx];
+				const float halfH = (f.amp / 255.0f) * centerY;
+				g.setColour(juce::Colour::fromRGB(f.low, f.mid, f.high));
+				g.drawLine((float)x, centerY - halfH, (float)x, centerY + halfH, 1.0f);
+			}
+		}
+		else {
+			audioThumb.drawChannel(g, getLocalBounds(), 0, audioThumb.getTotalLength(), 0, 0.55);
+		}
+
 		g.setColour(juce::Colours::lightgreen);
 		g.drawRect(position * getWidth(), 0, 1, getHeight());
 

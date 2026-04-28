@@ -1,4 +1,5 @@
 #include "TrackDataCache.h"
+#include "WaveformBandAnalyzer.h"
 
 //==============================================================================
 
@@ -115,6 +116,14 @@ juce::File TrackDataCache::getCacheFile(const juce::String& fileHash)
 	return getCacheDirectory().getChildFile(fileHash + ".json");
 }
 
+/**
+ * Returns the file for a specific track's cached waveform band data.
+ */
+juce::File TrackDataCache::getBandsFile(const juce::String& fileHash)
+{
+	return getCacheDirectory().getChildFile(fileHash + ".bands");
+}
+
 //==============================================================================
 
 /**
@@ -154,4 +163,87 @@ void TrackDataCache::updateAsync(const juce::String& fileHash,
 		mut(data);
 		TrackDataCache::save(hash, data);
 	});
+}
+
+//==============================================================================
+// Waveform band data — binary on-disk format:
+//   [4 bytes] magic 'B','N','D','1'
+//   [4 bytes] little-endian uint32 frame count
+//   [4*N    ] BandFrame { low, mid, high, amp } as raw uint8 quadruplets
+//==============================================================================
+
+namespace {
+	constexpr char kBandMagic0 = 'B';
+	constexpr char kBandMagic1 = 'N';
+	constexpr char kBandMagic2 = 'D';
+	constexpr char kBandMagic3 = '1';
+}
+
+/**
+ * Implementation of loadBands for TrackDataCache.
+ */
+std::shared_ptr<const std::vector<BandFrame>>
+TrackDataCache::loadBands(const juce::String& fileHash)
+{
+	if (fileHash.isEmpty())
+		return nullptr;
+
+	juce::File file = getBandsFile(fileHash);
+	if (! file.existsAsFile())
+		return nullptr;
+
+	juce::FileInputStream in(file);
+	if (! in.openedOk())
+		return nullptr;
+
+	char magic[4] = {};
+	if (in.read(magic, 4) != 4
+	    || magic[0] != kBandMagic0 || magic[1] != kBandMagic1
+	    || magic[2] != kBandMagic2 || magic[3] != kBandMagic3)
+		return nullptr;
+
+	const int frameCount = (int)in.readInt();
+	if (frameCount <= 0 || frameCount > 1000000)
+		return nullptr;
+
+	auto bands = std::make_shared<std::vector<BandFrame>>();
+	bands->resize((size_t)frameCount);
+	const int bytesExpected = frameCount * (int)sizeof(BandFrame);
+	const int bytesRead = in.read(bands->data(), bytesExpected);
+	if (bytesRead != bytesExpected)
+		return nullptr;
+
+	return std::shared_ptr<const std::vector<BandFrame>>(std::move(bands));
+}
+
+/**
+ * Implementation of saveBands for TrackDataCache.
+ */
+void TrackDataCache::saveBands(const juce::String& fileHash,
+                               const std::vector<BandFrame>& bands)
+{
+	if (fileHash.isEmpty() || bands.empty())
+		return;
+
+	juce::File dir = getCacheDirectory();
+	if (! dir.isDirectory())
+		dir.createDirectory();
+
+	juce::File file = getBandsFile(fileHash);
+	juce::TemporaryFile tmp(file);
+
+	{
+		juce::FileOutputStream out(tmp.getFile());
+		if (! out.openedOk())
+			return;
+		out.writeByte(kBandMagic0);
+		out.writeByte(kBandMagic1);
+		out.writeByte(kBandMagic2);
+		out.writeByte(kBandMagic3);
+		out.writeInt((int)bands.size());
+		out.write(bands.data(), bands.size() * sizeof(BandFrame));
+		out.flush();
+	}
+
+	tmp.overwriteTargetFileWithTemporary();
 }
