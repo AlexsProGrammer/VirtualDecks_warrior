@@ -5,6 +5,7 @@
 #include "DeckGUI.h"
 #include "Library.h"
 #include "CustomLookAndFeel.h"
+#include "BeatSyncManager.h"
 
 //==============================================================================
 /*
@@ -110,11 +111,14 @@ private:
 	/// Instance of ZoomedWaveform class for the right DJ Deck's audio track.
 	ZoomedWaveform zoomedDisplay2{ formatManager, thumbCache,juce::Colours::hotpink };
 
+	/// Cross-deck beat-sync manager (master/slave coordinator).
+	BeatSyncManager beatSyncManager;
+
 	/// Instance of DeckGUI class for the left DJ Deck.
-	DeckGUI deckGUI1{ &player1, formatManager, thumbCache,&zoomedDisplay1 , library,juce::Colours::aqua };
+	DeckGUI deckGUI1{ &player1, formatManager, thumbCache,&zoomedDisplay1 , library,juce::Colours::aqua, &beatSyncManager, 0 };
 
 	/// Instance of DeckGUI class for the right DJ Deck.
-	DeckGUI deckGUI2{ &player2, formatManager, thumbCache,&zoomedDisplay2 , library,juce::Colours::hotpink };
+	DeckGUI deckGUI2{ &player2, formatManager, thumbCache,&zoomedDisplay2 , library,juce::Colours::hotpink, &beatSyncManager, 1 };
 
 	/// Instance of juce::Slider for cross fading functionality.
 	juce::Slider crossFader{ juce::Slider::SliderStyle::LinearHorizontal , juce::Slider::TextEntryBoxPosition::NoTextBox };

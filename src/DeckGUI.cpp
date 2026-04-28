@@ -14,7 +14,7 @@
  * well
  *
  */
-DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManagerToUse, juce::AudioThumbnailCache& cacheToUse, ZoomedWaveform* _zoomedDisplay, Library& _library, juce::Colour _colour) : player(_player), waveformDisplay(formatManagerToUse, cacheToUse, _colour), zoomedDisplay(_zoomedDisplay), jogWheel(formatManagerToUse, cacheToUse, _colour), library(&_library), theme(_colour)
+DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManagerToUse, juce::AudioThumbnailCache& cacheToUse, ZoomedWaveform* _zoomedDisplay, Library& _library, juce::Colour _colour, BeatSyncManager* _syncManager, int _deckIndex) : player(_player), waveformDisplay(formatManagerToUse, cacheToUse, _colour), zoomedDisplay(_zoomedDisplay), jogWheel(formatManagerToUse, cacheToUse, _colour), library(&_library), theme(_colour), syncManager(_syncManager), deckIndex(_deckIndex)
 {
 	std::vector<juce::Label*> labels{ &volLabel, &speedLabel, &filterLabel, &lbLabel, &mbLabel, &hbLabel };
 	for (auto& label : labels) {
@@ -87,19 +87,113 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 		cue->setLookAndFeel(&customLookAndFeel);
 	}
 
-	// Tab buttons for cue/grid/jump/loop switching
+	// Tab buttons for cue/grid/jump/loop/sync switching
 	addAndMakeVisible(cueTabButton);
 	addAndMakeVisible(gridTabButton);
 	addAndMakeVisible(jumpTabButton);
 	addAndMakeVisible(loopTabButton);
+	addAndMakeVisible(syncTabButton);
 	cueTabButton.addListener(this);
 	gridTabButton.addListener(this);
 	jumpTabButton.addListener(this);
 	loopTabButton.addListener(this);
+	syncTabButton.addListener(this);
 	cueTabButton.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
 	gridTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 	jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 	loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+
+	// Sync tab controls (initially hidden until SYNC tab selected).
+	masterToggleBtn.setClickingTogglesState(true);
+	masterToggleBtn.addListener(this);
+	masterToggleBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	masterToggleBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange.withAlpha(0.8f));
+	masterToggleBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+	masterToggleBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+	addChildComponent(masterToggleBtn);
+
+	syncEngageBtn.setClickingTogglesState(true);
+	syncEngageBtn.addListener(this);
+	syncEngageBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	syncEngageBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::limegreen.withAlpha(0.8f));
+	syncEngageBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+	syncEngageBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+	addChildComponent(syncEngageBtn);
+
+	for (auto* btn : { &multHalfBtn, &multOneBtn, &multTwoBtn }) {
+		btn->addListener(this);
+		btn->setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+		addChildComponent(*btn);
+	}
+
+	targetBpmLabel.setEditable(false);
+	targetBpmLabel.setJustificationType(juce::Justification::centred);
+	targetBpmLabel.setColour(juce::Label::textColourId, theme);
+	targetBpmLabel.setFont(juce::Font(juce::FontOptions(12.0f)).boldened());
+	addChildComponent(targetBpmLabel);
+
+	syncStatusLabel.setEditable(false);
+	syncStatusLabel.setJustificationType(juce::Justification::centred);
+	syncStatusLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+	syncStatusLabel.setFont(juce::Font(juce::FontOptions(10.0f)));
+	addChildComponent(syncStatusLabel);
+
+	// Fast-sync compact button (always visible near play/load).
+	fastSyncBtn.setClickingTogglesState(true);
+	fastSyncBtn.addListener(this);
+	fastSyncBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	fastSyncBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::limegreen.withAlpha(0.8f));
+	fastSyncBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+	fastSyncBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+	addAndMakeVisible(fastSyncBtn);
+	syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+
+	// Sync tab controls (initially hidden until SYNC tab selected).
+	masterToggleBtn.setClickingTogglesState(true);
+	masterToggleBtn.addListener(this);
+	masterToggleBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	masterToggleBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange.withAlpha(0.8f));
+	masterToggleBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+	masterToggleBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+	addChildComponent(masterToggleBtn);
+
+	syncEngageBtn.setClickingTogglesState(true);
+	syncEngageBtn.addListener(this);
+	syncEngageBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	syncEngageBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::limegreen.withAlpha(0.8f));
+	syncEngageBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+	syncEngageBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+	addChildComponent(syncEngageBtn);
+
+	for (auto* btn : { &multHalfBtn, &multOneBtn, &multTwoBtn }) {
+		btn->addListener(this);
+		btn->setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+		addChildComponent(*btn);
+	}
+
+	targetBpmLabel.setEditable(false);
+	targetBpmLabel.setJustificationType(juce::Justification::centred);
+	targetBpmLabel.setColour(juce::Label::textColourId, theme);
+	targetBpmLabel.setFont(juce::Font(juce::FontOptions(12.0f)).boldened());
+	addChildComponent(targetBpmLabel);
+
+	syncStatusLabel.setEditable(false);
+	syncStatusLabel.setJustificationType(juce::Justification::centred);
+	syncStatusLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+	syncStatusLabel.setFont(juce::Font(juce::FontOptions(10.0f)));
+	addChildComponent(syncStatusLabel);
+
+	// Fast-sync compact button (always visible near play/load).
+	fastSyncBtn.setClickingTogglesState(true);
+	fastSyncBtn.addListener(this);
+	fastSyncBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	fastSyncBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::limegreen.withAlpha(0.8f));
+	fastSyncBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+	fastSyncBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+	addAndMakeVisible(fastSyncBtn);
 
 	// Quantize tab button and controls
 	addAndMakeVisible(quantizeTabButton);
@@ -341,6 +435,7 @@ void DeckGUI::resized()
 	jogWheel.setBounds(mainXOffset + getWidth() * 22.5 / 32 - 98.9, 5 + rowH * 2, (rowH * 3.3) - 10, (rowH * 3.3) - 10);
 	loadButton.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 2 + 5, rowH * 0.7, rowH * 0.7);
 	playButton.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 5 - 10, rowH * 0.7, rowH * 0.7);
+	fastSyncBtn.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 5 - 10 + rowH * 0.7 + 4, rowH * 0.7, rowH * 0.5);
 
 	waveformDisplay.setBounds(0, 0, getWidth(), rowH * 2);
 
@@ -349,15 +444,16 @@ void DeckGUI::resized()
 	double cellLength = (getWidth() * 18.5 / 32 - 105) / 3;
 	double cellHeight = 44.45;
 
-	// Tab buttons above cue/grid/jump/loop/quantize area
+	// Tab buttons above cue/grid/jump/loop/quantize/sync area
 	double tabAreaWidth = cellLength * 3;
-	double tabWidth = (tabAreaWidth - 8) / 5; // 5 tabs with 2px gaps
+	double tabWidth = (tabAreaWidth - 10) / 6; // 6 tabs with 2px gaps
 	double tabHeight = 20;
 	cueTabButton.setBounds(xOffset, yOffset - tabHeight - 2, tabWidth, tabHeight);
 	gridTabButton.setBounds(xOffset + (tabWidth + 2), yOffset - tabHeight - 2, tabWidth, tabHeight);
 	jumpTabButton.setBounds(xOffset + (tabWidth + 2) * 2, yOffset - tabHeight - 2, tabWidth, tabHeight);
 	loopTabButton.setBounds(xOffset + (tabWidth + 2) * 3, yOffset - tabHeight - 2, tabWidth, tabHeight);
 	quantizeTabButton.setBounds(xOffset + (tabWidth + 2) * 4, yOffset - tabHeight - 2, tabWidth, tabHeight);
+	syncTabButton.setBounds(xOffset + (tabWidth + 2) * 5, yOffset - tabHeight - 2, tabWidth, tabHeight);
 
 	// Cue buttons (same as before)
 	for (auto i = 0; i < 3; ++i) {
@@ -414,6 +510,19 @@ void DeckGUI::resized()
 	double qContentWidth = cellLength * 3 - 4;
 	quantizeLabel.setBounds(xOffset, yOffset + 4, qContentWidth, 20);
 	quantizeComboBox.setBounds(xOffset, yOffset + 26, qContentWidth, 28);
+
+	// Sync controls layout (same area as cue buttons): 3 columns x 2 rows.
+	double syncRow1Y = yOffset + 4;
+	double syncRow2Y = yOffset + cellHeight + 4;
+	double syncColWidth = (cellLength * 3 - 4) / 3 - 3;
+	masterToggleBtn.setBounds(xOffset, syncRow1Y, syncColWidth, cellHeight - 4);
+	syncEngageBtn.setBounds(xOffset + (syncColWidth + 4), syncRow1Y, syncColWidth, cellHeight - 4);
+	targetBpmLabel.setBounds(xOffset + (syncColWidth + 4) * 2, syncRow1Y, syncColWidth, cellHeight - 4);
+	double multBtnWidth = syncColWidth * 0.8;
+	multHalfBtn.setBounds(xOffset, syncRow2Y, multBtnWidth, cellHeight - 4);
+	multOneBtn.setBounds(xOffset + (multBtnWidth + 4), syncRow2Y, multBtnWidth, cellHeight - 4);
+	multTwoBtn.setBounds(xOffset + (multBtnWidth + 4) * 2, syncRow2Y, multBtnWidth, cellHeight - 4);
+	syncStatusLabel.setBounds(xOffset + (multBtnWidth + 4) * 3, syncRow2Y, cellLength * 3 - 4 - (multBtnWidth + 4) * 3, cellHeight - 4);
 
 	lowBandFilter.setBounds(xOffset, rowH * 5.8, 50, 50);
 	midBandFilter.setBounds(xOffset + getWidth() / 5, rowH * 5.8, 50, 50);
@@ -491,11 +600,13 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		setCueButtonsVisible(true);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(false);
 		setLoopControlsVisible(false);
 		setQuantizeControlsVisible(false);
+		setSyncControlsVisible(false);
 	}
 
 	if (button == &gridTabButton) {
@@ -505,11 +616,13 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		setCueButtonsVisible(false);
 		setGridControlsVisible(true);
 		setBeatJumpControlsVisible(false);
 		setLoopControlsVisible(false);
 		setQuantizeControlsVisible(false);
+		setSyncControlsVisible(false);
 		updateGridBpmDisplay();
 	}
 
@@ -520,11 +633,13 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		gridTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		setCueButtonsVisible(false);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(true);
 		setLoopControlsVisible(false);
 		setQuantizeControlsVisible(false);
+		setSyncControlsVisible(false);
 	}
 
 	if (button == &loopTabButton) {
@@ -534,11 +649,13 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		gridTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		setCueButtonsVisible(false);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(false);
 		setLoopControlsVisible(true);
 		setQuantizeControlsVisible(false);
+		setSyncControlsVisible(false);
 	}
 
 	if (button == &quantizeTabButton) {
@@ -548,11 +665,61 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		gridTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
 		setCueButtonsVisible(false);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(false);
 		setLoopControlsVisible(false);
 		setQuantizeControlsVisible(true);
+		setSyncControlsVisible(false);
+	}
+
+	if (button == &syncTabButton) {
+		cueGridMode = CueGridMode::Sync;
+		syncTabButton.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
+		cueTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		gridTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		setCueButtonsVisible(false);
+		setGridControlsVisible(false);
+		setBeatJumpControlsVisible(false);
+		setLoopControlsVisible(false);
+		setQuantizeControlsVisible(false);
+		setSyncControlsVisible(true);
+		syncStateChanged();
+	}
+
+	// Sync controls
+	if (syncManager != nullptr) {
+		if (button == &masterToggleBtn) {
+			if (masterToggleBtn.getToggleState())
+				syncManager->setMaster(deckIndex == 0 ? BeatSyncManager::MasterDeck::Deck1 : BeatSyncManager::MasterDeck::Deck2);
+			else
+				syncManager->setMaster(BeatSyncManager::MasterDeck::None);
+		}
+		if (button == &syncEngageBtn) {
+			if (syncEngageBtn.getToggleState()) {
+				if (!syncManager->engageSync(deckIndex))
+					syncEngageBtn.setToggleState(false, juce::dontSendNotification);
+			}
+			else {
+				syncManager->disengageSync(deckIndex);
+			}
+		}
+		if (button == &fastSyncBtn) {
+			if (fastSyncBtn.getToggleState()) {
+				if (!syncManager->engageSync(deckIndex))
+					fastSyncBtn.setToggleState(false, juce::dontSendNotification);
+			}
+			else {
+				syncManager->disengageSync(deckIndex);
+			}
+		}
+		if (button == &multHalfBtn) syncManager->setSlaveMultiplier(deckIndex, 0.5);
+		if (button == &multOneBtn)  syncManager->setSlaveMultiplier(deckIndex, 1.0);
+		if (button == &multTwoBtn)  syncManager->setSlaveMultiplier(deckIndex, 2.0);
 	}
 
 	// Beat jump buttons (quantized)
@@ -911,6 +1078,12 @@ void DeckGUI::timerCallback() {
  */
 void DeckGUI::loadDeck(track track) {
 	clearPendingAction();
+
+	// Notify sync manager BEFORE loading so any active sync involving this
+	// deck (or this deck as master) is disengaged cleanly first.
+	if (syncManager != nullptr)
+		syncManager->onTrackLoaded(deckIndex);
+
 	player->loadURL(track.url);
 	if (player->isLoaded()) {
 		for (auto& display : displays) {
@@ -1048,6 +1221,87 @@ void DeckGUI::setLoopControlsVisible(bool visible) {
 void DeckGUI::setQuantizeControlsVisible(bool visible) {
 	quantizeLabel.setVisible(visible);
 	quantizeComboBox.setVisible(visible);
+}
+
+//==============================================================================
+
+/**
+ * Implementation of setSyncControlsVisible method for DeckGUI
+ *
+ * Shows or hides the sync tab controls.
+ */
+void DeckGUI::setSyncControlsVisible(bool visible) {
+	masterToggleBtn.setVisible(visible);
+	syncEngageBtn.setVisible(visible);
+	multHalfBtn.setVisible(visible);
+	multOneBtn.setVisible(visible);
+	multTwoBtn.setVisible(visible);
+	targetBpmLabel.setVisible(visible);
+	syncStatusLabel.setVisible(visible);
+}
+
+//==============================================================================
+
+/**
+ * Implementation of syncStateChanged method for DeckGUI
+ *
+ * Called by BeatSyncManager when sync state changes. Refreshes UI controls
+ * (button toggle states, target BPM, status label) and locks/unlocks the
+ * speed slider for slaves.
+ */
+void DeckGUI::syncStateChanged() {
+	if (syncManager == nullptr) return;
+
+	bool isMaster = syncManager->isMaster(deckIndex);
+	bool isSynced = syncManager->isSynced(deckIndex);
+
+	// Toggle states (without firing handlers).
+	masterToggleBtn.setToggleState(isMaster, juce::dontSendNotification);
+	syncEngageBtn.setToggleState(isSynced, juce::dontSendNotification);
+	fastSyncBtn.setToggleState(isSynced, juce::dontSendNotification);
+
+	// Target BPM display.
+	double tgt = syncManager->getTargetBpm(deckIndex);
+	if (isSynced && tgt > 0.0)
+		targetBpmLabel.setText(juce::String(juce::CharPointer_UTF8("\xe2\x86\x92 ")) + juce::String(tgt, 1), juce::dontSendNotification);
+	else
+		targetBpmLabel.setText(juce::String(juce::CharPointer_UTF8("\xe2\x86\x92 ---")), juce::dontSendNotification);
+
+	// Status label.
+	syncStatusLabel.setText(syncManager->getStatus(deckIndex), juce::dontSendNotification);
+
+	// Lock slave's speed slider while synced; master and disengaged decks
+	// retain manual control.
+	bool sliderEnabled = !isSynced;
+	if (speedSlider.isEnabled() != sliderEnabled)
+		speedSlider.setEnabled(sliderEnabled);
+
+	// Reflect new speed on slider for visibility (won't fire listener).
+	if (isSynced) {
+		double sr = player->getSpeedRatio();
+		if (std::abs(speedSlider.getValue() - sr) > 1e-4)
+			speedSlider.setValue(sr, juce::dontSendNotification);
+	}
+
+	// Master can't simultaneously be a slave: disable the SYNC engage button.
+	syncEngageBtn.setEnabled(!isMaster);
+
+	repaint();
+}
+
+//==============================================================================
+
+/**
+ * Implementation of propagateSpeedToDisplays method for DeckGUI
+ *
+ * Pushes the current speed ratio to all waveform displays so they visually
+ * stretch/squish to reflect the post-sync tempo.
+ */
+void DeckGUI::propagateSpeedToDisplays() {
+	const BeatGrid& grid = player->getBeatGrid();
+	double sr = player->getSpeedRatio();
+	for (auto* display : displays)
+		display->setBeatGrid(grid.bpm, grid.gridOffsetSecs, sr);
 }
 
 //==============================================================================

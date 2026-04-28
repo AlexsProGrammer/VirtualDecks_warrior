@@ -10,6 +10,7 @@
 #include "CustomLookAndFeel.h"
 #include "Library.h"
 #include "TrackDataCache.h"
+#include "BeatSyncManager.h"
 //==============================================================================
 
 /**
@@ -39,8 +40,16 @@ public:
 		* @param ZoomedWaveform pointer
 		* @param Library reference to load track selections
 		* @param juce::Colour that defines the theme colour of the component
+		* @param BeatSyncManager pointer for cross-deck sync coordination (may be null)
+		* @param deckIndex 0 for Deck 1, 1 for Deck 2
 	*/
-	DeckGUI(DJAudioPlayer* player, juce::AudioFormatManager& formatManagerToUse, juce::AudioThumbnailCache& cacheToUse, ZoomedWaveform* _zoomedDisplay, Library& _library, juce::Colour _colour);
+	DeckGUI(DJAudioPlayer* player, juce::AudioFormatManager& formatManagerToUse, juce::AudioThumbnailCache& cacheToUse, ZoomedWaveform* _zoomedDisplay, Library& _library, juce::Colour _colour, BeatSyncManager* _syncManager = nullptr, int _deckIndex = 0);
+
+	/**
+	 * Called by BeatSyncManager when sync-related state changes. Refreshes
+	 * the SYNC tab controls, slave-slider lockout state, etc.
+	 */
+	void syncStateChanged();
 
 	/**
 		* Class Destructor for DeckGUI, clears dynamically allocated variables.
@@ -254,8 +263,8 @@ private:
 	//==============================================================================
 	// Tab mode: Hot Cues vs Beat Grid
 
-	/// Enum for the cue/grid/jump/loop/quantize tab mode
-	enum class CueGridMode { HotCues, BeatGrid, BeatJump, Loop, Quantize };
+	/// Enum for the cue/grid/jump/loop/quantize/sync tab mode
+	enum class CueGridMode { HotCues, BeatGrid, BeatJump, Loop, Quantize, Sync };
 
 	/// Current tab mode
 	CueGridMode cueGridMode = CueGridMode::HotCues;
@@ -271,6 +280,9 @@ private:
 
 	/// Tab button for loop controls
 	juce::TextButton loopTabButton{ "LOOP" };
+
+	/// Tab button for sync controls
+	juce::TextButton syncTabButton{ "SYNC" };
 
 	//==============================================================================
 	// Beat Grid Controls
@@ -393,6 +405,41 @@ private:
 
 	/// Sets visibility of quantize controls
 	void setQuantizeControlsVisible(bool visible);
+
+	//==============================================================================
+	// Sync Controls
+
+	/// Pointer to shared BeatSyncManager (owned by MainComponent). Nullable.
+	BeatSyncManager* syncManager = nullptr;
+
+	/// Index of this deck within the BeatSyncManager (0 = Deck 1, 1 = Deck 2).
+	int deckIndex = 0;
+
+	/// Toggles this deck as sync master (only one master at a time).
+	juce::TextButton masterToggleBtn{ "MASTER" };
+
+	/// Engages/disengages sync on this deck (slave only).
+	juce::TextButton syncEngageBtn{ "SYNC" };
+
+	/// Slave half/double multiplier override buttons.
+	juce::TextButton multHalfBtn{ juce::CharPointer_UTF8("\xc3\x97\xc2\xbd") };
+	juce::TextButton multOneBtn{ juce::CharPointer_UTF8("\xc3\x97\x31") };
+	juce::TextButton multTwoBtn{ juce::CharPointer_UTF8("\xc3\x97\x32") };
+
+	/// Displays the resolved target BPM the slave is locked to.
+	juce::Label targetBpmLabel{ "TGT_BPM", juce::CharPointer_UTF8("\xe2\x86\x92 ---") };
+
+	/// Displays human-readable sync status ("SYNCED", "OUT OF RANGE", etc.).
+	juce::Label syncStatusLabel{ "SYNC_ST", "" };
+
+	/// Compact fast-sync button placed near play/load buttons.
+	juce::TextButton fastSyncBtn{ "SYNC" };
+
+	/// Sets visibility of sync tab controls.
+	void setSyncControlsVisible(bool visible);
+
+	/// Pushes current speed ratio to all waveform displays for live stretch/squish.
+	void propagateSpeedToDisplays();
 
 	//==============================================================================
 

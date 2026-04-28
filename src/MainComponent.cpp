@@ -36,6 +36,11 @@ MainComponent::MainComponent()
 	addAndMakeVisible(zoomedDisplay2);
 	addAndMakeVisible(crossFader);
 
+	// Wire decks into the beat-sync manager (decks already know about it via
+	// constructor injection in MainComponent.h).
+	beatSyncManager.setDeck(0, &player1, &deckGUI1);
+	beatSyncManager.setDeck(1, &player2, &deckGUI2);
+
 	crossFader.setRange(-1, 1);
 	crossFader.setValue(0);
 	crossFader.addListener(this);
