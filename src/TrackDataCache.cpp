@@ -2,6 +2,21 @@
 
 //==============================================================================
 
+namespace {
+	/**
+	 * Single-worker background ThreadPool used by loadAsync / updateAsync.
+	 * One worker guarantees that consecutive updates for the same hash are
+	 * serialized (avoiding torn JSON files during rapid BPM editing).
+	 */
+	juce::ThreadPool& trackDataPool()
+	{
+		static juce::ThreadPool pool { 1 };
+		return pool;
+	}
+}
+
+//==============================================================================
+
 /**
  * Implementation of load method for TrackDataCache
  *
@@ -98,4 +113,45 @@ juce::File TrackDataCache::getCacheDirectory()
 juce::File TrackDataCache::getCacheFile(const juce::String& fileHash)
 {
 	return getCacheDirectory().getChildFile(fileHash + ".json");
+}
+
+//==============================================================================
+
+/**
+ * Implementation of loadAsync method for TrackDataCache.
+ *
+ * Schedules the synchronous load on the dedicated worker pool and posts the
+ * result back to the message thread once parsing is complete.
+ */
+void TrackDataCache::loadAsync(const juce::String& fileHash,
+                               std::function<void(TrackData)> onLoaded)
+{
+	if (! onLoaded || fileHash.isEmpty())
+		return;
+
+	trackDataPool().addJob([hash = fileHash, cb = std::move(onLoaded)]() mutable {
+		TrackData data = TrackDataCache::load(hash);
+		juce::MessageManager::callAsync([cb = std::move(cb), data = std::move(data)]() mutable {
+			cb(std::move(data));
+		});
+	});
+}
+
+/**
+ * Implementation of updateAsync method for TrackDataCache.
+ *
+ * Read-modify-write on the worker thread. Sequential calls are serialized
+ * by the single-worker pool, preventing torn JSON files during rapid edits.
+ */
+void TrackDataCache::updateAsync(const juce::String& fileHash,
+                                 std::function<void(TrackData&)> mutator)
+{
+	if (! mutator || fileHash.isEmpty())
+		return;
+
+	trackDataPool().addJob([hash = fileHash, mut = std::move(mutator)]() mutable {
+		TrackData data = TrackDataCache::load(hash);
+		mut(data);
+		TrackDataCache::save(hash, data);
+	});
 }

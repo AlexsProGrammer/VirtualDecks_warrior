@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <functional>
 
 /**
  * Utility for computing a content-based hash of an audio file.
@@ -12,59 +13,23 @@
 class FileHasher {
 public:
 	/**
-	 * Compute a partial-content hash of the given file.
+	 * Compute a partial-content hash of the given file (synchronous).
 	 *
 	 * Uses FNV-1a (64-bit) over the first+last 64 KB and file size.
+	 * Performs blocking disk I/O — only call from a background thread.
 	 *
 	 * @param file The audio file to hash
 	 * @return Hex string of the hash, or empty string on failure
 	 */
-	static juce::String computeHash(const juce::File& file)
-	{
-		if (!file.existsAsFile())
-			return {};
+	static juce::String computeHash(const juce::File& file);
 
-		auto fileSize = file.getSize();
-		if (fileSize <= 0)
-			return {};
-
-		juce::MemoryBlock data;
-		constexpr juce::int64 chunkSize = 65536; // 64 KB
-
-		juce::FileInputStream stream(file);
-		if (!stream.openedOk())
-			return {};
-
-		if (fileSize <= chunkSize * 2)
-		{
-			data.setSize(static_cast<size_t>(fileSize));
-			stream.read(data.getData(), static_cast<int>(fileSize));
-		}
-		else
-		{
-			juce::MemoryBlock head(static_cast<size_t>(chunkSize));
-			stream.read(head.getData(), static_cast<int>(chunkSize));
-
-			juce::MemoryBlock tail(static_cast<size_t>(chunkSize));
-			stream.setPosition(fileSize - chunkSize);
-			stream.read(tail.getData(), static_cast<int>(chunkSize));
-
-			data.append(head.getData(), head.getSize());
-			data.append(tail.getData(), tail.getSize());
-		}
-
-		// Append file size for extra uniqueness
-		data.append(&fileSize, sizeof(fileSize));
-
-		// FNV-1a 64-bit hash
-		const auto* bytes = static_cast<const uint8_t*>(data.getData());
-		uint64_t h = 14695981039346656037ULL;
-		for (size_t i = 0; i < data.getSize(); ++i)
-		{
-			h ^= static_cast<uint64_t>(bytes[i]);
-			h *= 1099511628211ULL;
-		}
-
-		return juce::String::toHexString(static_cast<juce::int64>(h));
-	}
+	/**
+	 * Asynchronously compute a partial-content hash on a background worker.
+	 * The callback is invoked on the message thread once the hash is ready.
+	 *
+	 * @param file   The audio file to hash
+	 * @param onDone Callback invoked on the message thread with the hash string
+	 */
+	static void computeHashAsync(juce::File file,
+	                             std::function<void(juce::String)> onDone);
 };

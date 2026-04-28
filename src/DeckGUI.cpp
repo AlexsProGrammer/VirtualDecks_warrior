@@ -979,9 +979,15 @@ void DeckGUI::filesDropped(const juce::StringArray& files, int x, int y) {
 	DBG("DeckGUI::filesDropped");
 	if (files.size() == 1 && x < getWidth() && y < getHeight()) {
 		juce::File file = juce::File{ files[0] };
-		track track{ file.getFileNameWithoutExtension(), 0, juce::URL{ file } };
-		track.fileHash = FileHasher::computeHash(file);
-		loadDeck(track);
+		// Hash on a worker thread to avoid blocking the message thread on disk I/O.
+		juce::Component::SafePointer<DeckGUI> safeSelf(this);
+		FileHasher::computeHashAsync(file, [safeSelf, file](juce::String hash) {
+			if (auto* self = safeSelf.getComponent()) {
+				track track{ file.getFileNameWithoutExtension(), 0, juce::URL{ file } };
+				track.fileHash = hash;
+				self->loadDeck(track);
+			}
+		});
 	}
 };
 
@@ -1151,18 +1157,27 @@ void DeckGUI::finishLoadDeck() {
 	player->setGain(volSlider.getValue(), true);
 	cueTargets.clear();
 
-	// Load beat grid config for this track
+	// Load beat grid config for this track on a worker thread to avoid
+	// blocking the message thread on JSON disk I/O.
 	currentTrackIdentity = t.identity;
 	currentFileHash = t.fileHash;
 	if (currentFileHash.isNotEmpty()) {
-		TrackData cached = TrackDataCache::load(currentFileHash);
-		if (cached.beatGrid.bpm > 0.0) {
-			player->setBeatGrid(cached.beatGrid);
-		} else if (cached.detectedBpm > 0.0) {
-			BeatGrid grid;
-			grid.bpm = cached.detectedBpm;
-			player->setBeatGrid(grid);
-		}
+		juce::Component::SafePointer<DeckGUI> safeSelf(this);
+		const juce::String requestedHash = currentFileHash;
+		TrackDataCache::loadAsync(currentFileHash, [safeSelf, requestedHash](TrackData cached) {
+			auto* self = safeSelf.getComponent();
+			if (self == nullptr) return;
+			// Stale-result guard: another track may have been loaded in the meantime.
+			if (self->currentFileHash != requestedHash) return;
+			if (cached.beatGrid.bpm > 0.0) {
+				self->player->setBeatGrid(cached.beatGrid);
+			} else if (cached.detectedBpm > 0.0) {
+				BeatGrid grid;
+				grid.bpm = cached.detectedBpm;
+				self->player->setBeatGrid(grid);
+			}
+			self->updateGridBpmDisplay();
+		});
 	}
 	updateGridBpmDisplay();
 
@@ -1215,10 +1230,14 @@ void DeckGUI::deckLoadingStateChanged(int deckIdx, DJAudioPlayer::LoadingState n
 void DeckGUI::saveTrackData(const BeatGrid& grid) {
 	if (currentFileHash.isEmpty())
 		return;
-	TrackData data = TrackDataCache::load(currentFileHash);
-	data.beatGrid = grid;
-	data.detectedBpm = player->getDetectedBpm();
-	TrackDataCache::save(currentFileHash, data);
+	// Snapshot the detected BPM on the message thread (player getter is
+	// thread-safe but we want a value bound to *this* save), then dispatch
+	// the read-modify-write to a single-worker pool that serializes updates.
+	const double detectedBpm = player->getDetectedBpm();
+	TrackDataCache::updateAsync(currentFileHash, [grid, detectedBpm](TrackData& data) {
+		data.beatGrid = grid;
+		data.detectedBpm = detectedBpm;
+	});
 }
 
 //==============================================================================

@@ -17,6 +17,7 @@ set(SOURCE_FILES
     BpmDetector.cpp
     BpmAnalysisManager.cpp
     BeatSyncManager.cpp
+    FileHasher.cpp
 )
 
 if(TARGET juceDjApp)

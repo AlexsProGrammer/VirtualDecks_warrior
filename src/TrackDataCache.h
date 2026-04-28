@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <functional>
 #include "BeatGrid.h"
 
 /**
@@ -52,6 +53,34 @@ public:
 	 * @return true if a cache file exists on disk
 	 */
 	static bool exists(const juce::String& fileHash);
+
+	//==============================================================================
+	// Async API — use these from the message thread to avoid blocking on disk I/O.
+
+	/**
+	 * Asynchronously load track data on a background worker. The callback is
+	 * invoked on the message thread once the JSON has been read and parsed.
+	 *
+	 * @param fileHash The content hash of the audio file
+	 * @param onLoaded Callback invoked on the message thread with the loaded data
+	 */
+	static void loadAsync(const juce::String& fileHash,
+	                      std::function<void(TrackData)> onLoaded);
+
+	/**
+	 * Asynchronously read-modify-write track data on a background worker.
+	 * The mutator runs on the worker thread (after the existing data has been
+	 * loaded) and may freely mutate the TrackData; the worker writes the
+	 * result back to disk. Fire-and-forget — no completion callback.
+	 *
+	 * Sequential calls for the same hash are serialized by the single-worker
+	 * pool, so concurrent updates from rapid slider movement are safe.
+	 *
+	 * @param fileHash The content hash of the audio file
+	 * @param mutator  Function applied to the TrackData on the worker thread
+	 */
+	static void updateAsync(const juce::String& fileHash,
+	                        std::function<void(TrackData&)> mutator);
 
 private:
 	static juce::File getCacheDirectory();
