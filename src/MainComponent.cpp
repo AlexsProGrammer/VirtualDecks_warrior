@@ -65,6 +65,7 @@ MainComponent::MainComponent()
 	crossFader.setRange(-1, 1);
 	crossFader.setValue(0);
 	crossFader.addListener(this);
+	crossFader.addMouseListener(this, false);
 
 	formatManager.registerBasicFormats();
 
@@ -250,6 +251,21 @@ void MainComponent::closeSidebar(int deckIndex)
  * of the knob from the deck.
  *
  */
+void MainComponent::mouseDown(const juce::MouseEvent& event)
+{
+	if (!event.mods.isPopupMenu()) return;
+
+	if (event.eventComponent == &crossFader) {
+		juce::PopupMenu menu;
+		menu.addItem(1, "Reset to centre");
+		menu.showMenuAsync(juce::PopupMenu::Options(),
+			[this](int result) {
+				if (result == 1)
+					crossFader.setValue(0.0, juce::sendNotification);
+			});
+	}
+}
+
 void MainComponent::sliderValueChanged(juce::Slider* slider) {
 	if (slider == &crossFader) {
 		double val;

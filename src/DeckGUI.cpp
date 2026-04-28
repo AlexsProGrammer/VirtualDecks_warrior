@@ -68,6 +68,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	addAndMakeVisible(*queueWidget);
 
 	volSlider.setRange(0, 1);
+	volSlider.setSkewFactorFromMidPoint(0.25); // logarithmic feel for the human ear
 	speedSlider.setRange(0.8, 1.2);
 	filter.setRange(-20000, 20000);
 	lowBandFilter.setRange(0.01, 2);
@@ -87,13 +88,18 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	playButton.addListener(this);
 	loadButton.addListener(this);
 	volSlider.addListener(this);
+	volSlider.addMouseListener(this, false);
 	speedSlider.addListener(this);
 	speedSlider.addMouseListener(this, false);
 
 	filter.addListener(this);
+	filter.addMouseListener(this, false);
 	lowBandFilter.addListener(this);
+	lowBandFilter.addMouseListener(this, false);
 	midBandFilter.addListener(this);
+	midBandFilter.addMouseListener(this, false);
 	highBandFilter.addListener(this);
+	highBandFilter.addMouseListener(this, false);
 
 	startTimer(20);
 
@@ -1053,9 +1059,63 @@ void DeckGUI::mouseDown(const juce::MouseEvent& event) {
 		menu.addItem(1, "Reset to 0%");
 		menu.showMenuAsync(juce::PopupMenu::Options(),
 			[this](int result) {
-				if (result == 1) {
+				if (result == 1)
 					speedSlider.setValue(1.0, juce::sendNotification);
-				}
+			});
+		return;
+	}
+
+	if (source == &volSlider) {
+		juce::PopupMenu menu;
+		menu.addItem(1, "Reset to default (50%)");
+		menu.showMenuAsync(juce::PopupMenu::Options(),
+			[this](int result) {
+				if (result == 1)
+					volSlider.setValue(0.5, juce::sendNotification);
+			});
+		return;
+	}
+
+	if (source == &lowBandFilter) {
+		juce::PopupMenu menu;
+		menu.addItem(1, "Reset to unity gain");
+		menu.showMenuAsync(juce::PopupMenu::Options(),
+			[this](int result) {
+				if (result == 1)
+					lowBandFilter.setValue(1.0, juce::sendNotification);
+			});
+		return;
+	}
+
+	if (source == &midBandFilter) {
+		juce::PopupMenu menu;
+		menu.addItem(1, "Reset to unity gain");
+		menu.showMenuAsync(juce::PopupMenu::Options(),
+			[this](int result) {
+				if (result == 1)
+					midBandFilter.setValue(1.0, juce::sendNotification);
+			});
+		return;
+	}
+
+	if (source == &highBandFilter) {
+		juce::PopupMenu menu;
+		menu.addItem(1, "Reset to unity gain");
+		menu.showMenuAsync(juce::PopupMenu::Options(),
+			[this](int result) {
+				if (result == 1)
+					highBandFilter.setValue(1.0, juce::sendNotification);
+			});
+		return;
+	}
+
+	if (source == &filter) {
+		juce::PopupMenu menu;
+		menu.addItem(1, "Reset to centre");
+		menu.showMenuAsync(juce::PopupMenu::Options(),
+			[this](int result) {
+				if (result == 1)
+					filter.setValue(0.0, juce::sendNotification);
 			});
 		return;
 	}

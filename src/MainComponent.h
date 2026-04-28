@@ -83,6 +83,13 @@ public:
 
 	//==============================================================================
 
+	/**
+		* Right-click context menu for resettable sliders (crossfader).
+	*/
+	void mouseDown(const juce::MouseEvent& event) override;
+
+	//==============================================================================
+
 private:
 	//==============================================================================
 
@@ -118,8 +125,16 @@ private:
 	/// Instance of DeckGUI class for the right DJ Deck.
 	DeckGUI deckGUI2{ &audioEngine.getPlayer(1), formatManager, thumbCache,&zoomedDisplay2 , library,juce::Colours::hotpink, &beatSyncManager, 1, &audioEngine };
 
+	/// Horizontal fader subclass that passes right-click to the parent so the
+	/// context-menu handler in MainComponent::mouseDown can show a reset popup.
+	struct ResetableFader : public juce::Slider {
+		ResetableFader() : juce::Slider(juce::Slider::SliderStyle::LinearHorizontal, juce::Slider::TextEntryBoxPosition::NoTextBox) {}
+		void mouseDown(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDown(e); }
+		void mouseDrag(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDrag(e); }
+	};
+
 	/// Instance of juce::Slider for cross fading functionality.
-	juce::Slider crossFader{ juce::Slider::SliderStyle::LinearHorizontal , juce::Slider::TextEntryBoxPosition::NoTextBox };
+	ResetableFader crossFader;
 
 	/// Per-deck library sidebars. Slide in from the opposite side of the deck.
 	std::unique_ptr<DeckLibrarySidebar> sidebar1;

@@ -216,8 +216,24 @@ private:
 	/// juce::Label to label the volume slider
 	juce::Label volLabel{ "VOLUME", "VOLUME" };
 
-	/// juce::Slider to adjust the gain of the audio source.
-	juce::Slider volSlider{ juce::Slider::SliderStyle::LinearVertical , juce::Slider::TextEntryBoxPosition::NoTextBox };
+	/// Linear slider subclass that passes right-click events to the parent so the
+	/// context-menu handler in DeckGUI::mouseDown can show a reset popup.
+	struct ResetableLinear : public juce::Slider {
+		ResetableLinear() : juce::Slider(juce::Slider::SliderStyle::LinearVertical, juce::Slider::TextEntryBoxPosition::NoTextBox) {}
+		void mouseDown(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDown(e); }
+		void mouseDrag(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDrag(e); }
+	};
+
+	/// Rotary slider subclass that passes right-click events to the parent so the
+	/// context-menu handler in DeckGUI::mouseDown can show a reset popup.
+	struct ResetableKnob : public juce::Slider {
+		ResetableKnob() : juce::Slider(juce::Slider::SliderStyle::RotaryVerticalDrag, juce::Slider::TextEntryBoxPosition::NoTextBox) {}
+		void mouseDown(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDown(e); }
+		void mouseDrag(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDrag(e); }
+	};
+
+	/// Slider to adjust the gain of the audio source (logarithmic skew).
+	ResetableLinear volSlider;
 
 	/// juce::Label to label the BPM slider
 	juce::Label speedLabel{ "SPEED", "SPEED" };
@@ -239,25 +255,25 @@ private:
 	juce::Label bpmPercentLabel{ "BPM_PCT", "" };
 
 	/// juce::Slider to adjust the low pass/high pass filter on the audio source.
-	juce::Slider filter{ juce::Slider::SliderStyle::RotaryVerticalDrag , juce::Slider::TextEntryBoxPosition::NoTextBox };
+	ResetableKnob filter;
 
 	/// juce::Label to label the filter slider
 	juce::Label filterLabel{ "FILTER", "FILTER" };
 
 	/// juce::Slider to adjust the low band filter on the audio source.
-	juce::Slider lowBandFilter{ juce::Slider::SliderStyle::RotaryVerticalDrag , juce::Slider::TextEntryBoxPosition::NoTextBox };
+	ResetableKnob lowBandFilter;
 
 	/// juce::Label to label the low band slider
 	juce::Label lbLabel{ "LOW", "LOW" };
 
 	/// juce::Slider to adjust the mid band filter on the audio source.
-	juce::Slider midBandFilter{ juce::Slider::SliderStyle::RotaryVerticalDrag , juce::Slider::TextEntryBoxPosition::NoTextBox };
+	ResetableKnob midBandFilter;
 
 	/// juce::Label to label the mid band slider
 	juce::Label mbLabel{ "MID", "MID" };
 
 	/// juce::Slider to adjust the high band filter on the audio source.
-	juce::Slider highBandFilter{ juce::Slider::SliderStyle::RotaryVerticalDrag , juce::Slider::TextEntryBoxPosition::NoTextBox };
+	ResetableKnob highBandFilter;
 
 	/// juce::Label to label the high band slider
 	juce::Label hbLabel{ "HIGH", "HIGH" };
