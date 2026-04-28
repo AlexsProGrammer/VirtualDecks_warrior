@@ -3,6 +3,7 @@
 
 #include <JuceHeader.h>
 #include "DJAudioPlayer.h"
+#include "AudioEngine.h"
 #include "WaveformDisplay.h"
 #include "ZoomedWaveform.h"
 #include "JogWheel.h"
@@ -27,7 +28,8 @@ class DeckGUI : public juce::Component,
 	public juce::Button::Listener,
 	public juce::Slider::Listener,
 	public juce::FileDragAndDropTarget,
-	public juce::Timer
+	public juce::Timer,
+	public AudioEngine::Listener
 {
 public:
 	//==============================================================================
@@ -43,7 +45,7 @@ public:
 		* @param BeatSyncManager pointer for cross-deck sync coordination (may be null)
 		* @param deckIndex 0 for Deck 1, 1 for Deck 2
 	*/
-	DeckGUI(DJAudioPlayer* player, juce::AudioFormatManager& formatManagerToUse, juce::AudioThumbnailCache& cacheToUse, ZoomedWaveform* _zoomedDisplay, Library& _library, juce::Colour _colour, BeatSyncManager* _syncManager = nullptr, int _deckIndex = 0);
+	DeckGUI(DJAudioPlayer* player, juce::AudioFormatManager& formatManagerToUse, juce::AudioThumbnailCache& cacheToUse, ZoomedWaveform* _zoomedDisplay, Library& _library, juce::Colour _colour, BeatSyncManager* _syncManager = nullptr, int _deckIndex = 0, AudioEngine* _audioEngine = nullptr);
 
 	/**
 	 * Called by BeatSyncManager when sync-related state changes. Refreshes
@@ -130,9 +132,22 @@ private:
 	/**
 		* Loads the track object into the DeckGUI.
 		*
+		* If an AudioEngine is wired, the actual file I/O happens off-thread
+		* and the post-load setup runs in onLoadCompleted(). Otherwise the
+		* legacy synchronous path runs immediately.
+		*
 		* @param track object to be loaded into the component
 	*/
 	void loadDeck(track track);
+
+	/**
+		* Final post-load setup: thumbnails, gain, BPM cache, autoplay.
+		* Runs on the message thread once the audio source is ready.
+	*/
+	void finishLoadDeck();
+
+	/// AudioEngine listener: react to deck load-state transitions.
+	void deckLoadingStateChanged(int deckIdx, DJAudioPlayer::LoadingState newState) override;
 
 	//==============================================================================
 
@@ -141,6 +156,15 @@ private:
 
 	/// Pointer to DJAudioPlayer instance.
 	DJAudioPlayer* player;
+
+	/// Optional pointer to the shared AudioEngine for asynchronous track loading.
+	AudioEngine* audioEngine = nullptr;
+
+	/// Track currently being loaded asynchronously — deferred post-load step.
+	track pendingTrack;
+
+	/// "Loading…" overlay label shown while a track loads off-thread.
+	juce::Label loadingLabel { "LOADING", "Loading…" };
 
 	/// Instance of CustomLookAndFeel class.
 	CustomLookAndFeel customLookAndFeel;

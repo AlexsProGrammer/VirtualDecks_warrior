@@ -38,8 +38,8 @@ MainComponent::MainComponent()
 
 	// Wire decks into the beat-sync manager (decks already know about it via
 	// constructor injection in MainComponent.h).
-	beatSyncManager.setDeck(0, &player1, &deckGUI1);
-	beatSyncManager.setDeck(1, &player2, &deckGUI2);
+	beatSyncManager.setDeck(0, &audioEngine.getPlayer(0), &deckGUI1);
+	beatSyncManager.setDeck(1, &audioEngine.getPlayer(1), &deckGUI2);
 
 	crossFader.setRange(-1, 1);
 	crossFader.setValue(0);
@@ -75,36 +75,29 @@ MainComponent::~MainComponent()
  */
 void MainComponent::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
 {
-	mixerSource.addInputSource(&player1, false);
-	mixerSource.addInputSource(&player2, false);
-
-	player1.prepareToPlay(samplesPerBlockExpected, sampleRate);
-	player2.prepareToPlay(samplesPerBlockExpected, sampleRate);
+	audioEngine.prepareToPlay(samplesPerBlockExpected, sampleRate);
 }
 
 /**
  * Implementation of getNextAudioBlock method for MainComponent
  *
- * Calls getNextAudioBlock methods on the MixerAudioSource data member.
+ * Delegates to AudioEngine which owns the mixer + both players.
  *
  */
 void MainComponent::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill)
 {
-	mixerSource.getNextAudioBlock(bufferToFill);
+	audioEngine.getNextAudioBlock(bufferToFill);
 }
 
 /**
  * Implementation of releaseResources method for MainComponent
  *
- * Calls releaseResources methods on all AudioSource data members.
+ * Delegates to AudioEngine.
  *
  */
 void MainComponent::releaseResources()
 {
-	mixerSource.removeAllInputs();
-	mixerSource.releaseResources();
-	player1.releaseResources();
-	player2.releaseResources();
+	audioEngine.releaseResources();
 }
 
 //==============================================================================
@@ -158,13 +151,13 @@ void MainComponent::sliderValueChanged(juce::Slider* slider) {
 		double val;
 		if (slider->getValue() > 0) {
 			val = 1 - slider->getValue();
-			player1.setGain(val, false);
-			player2.setGain(1, false);
+			audioEngine.getPlayer(0).setGain(val, false);
+			audioEngine.getPlayer(1).setGain(1, false);
 		}
 		else if (slider->getValue() < 0) {
 			val = 1 + slider->getValue();
-			player2.setGain(val, false);
-			player1.setGain(1, false);
+			audioEngine.getPlayer(1).setGain(val, false);
+			audioEngine.getPlayer(0).setGain(1, false);
 		}
 	}
 }

@@ -1,7 +1,9 @@
 
 #pragma once
 #include <JuceHeader.h>
+#include <atomic>
 #include "BeatGrid.h"
+#include "AudioCommandFifo.h"
 
 /**
  * Definition of a DJAudioplayer
@@ -78,11 +80,45 @@ public:
 	juce::URL returnURL();
 
 	/**
-		* Loads URL into the transport source
+		* Loads URL into the transport source.
+		*
+		* WARNING: this performs synchronous file I/O and format probing on the
+		* calling thread. Prefer AudioEngine::requestLoad() which moves that work
+		* onto a background ThreadPool. Retained for legacy callers.
 		*
 		* @param juce::URL of audio file to be loaded
 	*/
 	void loadURL(juce::URL audioURL);
+
+	/**
+		* Install a pre-built AudioFormatReaderSource. Must be invoked on the
+		* message thread (the AudioEngine load pool calls this via
+		* MessageManager::callAsync once the reader has been created off-thread).
+		* Hands ownership of the source to this player and atomically marks the
+		* deck as Loaded.
+		*
+		* @param newSource Heap-allocated reader source (ownership transferred).
+		* @param sampleRate Source sample rate captured during reader creation.
+		* @param audioURL  Original URL for state tracking.
+	*/
+	void installLoadedSource(std::unique_ptr<juce::AudioFormatReaderSource> newSource,
+							double sampleRate,
+							juce::URL audioURL);
+
+	/**
+		* Loading-state of the deck. Used by DeckGUI to disable controls and
+		* show a "Loading…" overlay while a track is being prepared off-thread.
+	*/
+	enum class LoadingState { Idle, Loading, Loaded, Failed };
+
+	/// Returns the current loading state (atomic, safe from any thread).
+	LoadingState getLoadingState() const noexcept { return loadingState.load(std::memory_order_acquire); }
+
+	/// Marks the deck as loading. Called by AudioEngine before queueing the load job.
+	void markLoading() noexcept { loadingState.store(LoadingState::Loading, std::memory_order_release); }
+
+	/// Marks the deck as failed (e.g. unreadable file). Called from the message thread.
+	void markLoadFailed() noexcept { loadingState.store(LoadingState::Failed, std::memory_order_release); }
 
 	//==============================================================================
 
@@ -251,7 +287,23 @@ public:
 
 	//==============================================================================
 
+	/**
+	 * Producer-side handle to push an AudioCommand onto this player's FIFO.
+	 * Safe to call from the UI message thread. The command is consumed at the
+	 * top of the next getNextAudioBlock callback.
+	 */
+	bool postCommand(const AudioCommand& cmd) noexcept { return commandFifo.push(cmd); }
+
+	//==============================================================================
+
 private:
+
+	/// Drain pending commands from the audio thread. Allocation- and lock-free.
+	void drainCommands() noexcept;
+
+	/// Apply a single command on the audio thread. Called only by drainCommands.
+	void applyCommand(const AudioCommand& cmd) noexcept;
+
 
 	/// Reference assigned to the AudioFormatManager passed into the constructor
 	juce::AudioFormatManager& formatManager;
@@ -286,36 +338,43 @@ private:
 	/// double to store the sample rate
 	double thisSampleRate;
 
-	/// boolean to determine if the player is loaded
-	bool loaded = false;
+	/// Atomic flag: true once a track is fully loaded and addressable.
+	std::atomic<bool> loaded { false };
 
-	/// double to store the DeckGUI player volume
+	/// Atomic loading-state for UI feedback (Idle/Loading/Loaded/Failed).
+	std::atomic<LoadingState> loadingState { LoadingState::Idle };
+
+	/// double to store the DeckGUI player volume (UI thread only).
 	double playerVol = 1;
 
-	/// double to store the cross fader volume
+	/// double to store the cross fader volume (UI thread only).
 	double crossFadeVol = 1;
 
-	/// juce::URL to store the current loaded audio file's URL
+	/// juce::URL to store the current loaded audio file's URL (UI thread only).
 	juce::URL currentAudioURL;
 
-	/// float to store the audio source RMS level
-	float level;
+	/// SPSC command FIFO: UI → audio thread.
+	AudioCommandFifo<256> commandFifo;
 
-	/// Detected BPM from metadata or onset analysis
+	/// Atomic RMS level: written by audio thread, read by UI timer.
+	std::atomic<float> level { -100.0f };
+
+	/// Detected BPM from metadata or onset analysis (UI thread only).
 	double detectedBpm = 0.0;
 
-	/// Current speed/resampling ratio
-	double currentSpeedRatio = 1.0;
+	/// Current speed/resampling ratio. Atomic because the audio-thread
+	/// command drain writes it (via SetSpeed) while UI getters read it.
+	std::atomic<double> currentSpeedRatio { 1.0 };
 
-	/// Beat grid for the loaded track
+	/// Beat grid for the loaded track (UI thread only — not read by audio thread).
 	BeatGrid beatGrid;
 
-	/// Loop-in position in seconds (-1.0 = not set)
-	double loopInSecs = -1.0;
+	/// Loop-in position in seconds (-1.0 = not set). Atomic for audio-thread reads.
+	std::atomic<double> loopInSecs { -1.0 };
 
-	/// Loop-out position in seconds (-1.0 = not set)
-	double loopOutSecs = -1.0;
+	/// Loop-out position in seconds (-1.0 = not set). Atomic for audio-thread reads.
+	std::atomic<double> loopOutSecs { -1.0 };
 
-	/// Whether the loop is currently active
-	bool loopActive = false;
+	/// Whether the loop is currently active. Atomic for audio-thread reads.
+	std::atomic<bool> loopActive { false };
 };

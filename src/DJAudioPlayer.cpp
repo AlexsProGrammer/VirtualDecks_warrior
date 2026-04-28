@@ -49,18 +49,158 @@ void DJAudioPlayer::prepareToPlay(int samplesPerBlockExpected, double sampleRate
  *
  */
 void DJAudioPlayer::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill) {
+	// 1) Drain UI → audio commands first. Allocation- and lock-free.
+	drainCommands();
+
+	// 2) Pull audio through the filter chain.
 	audioLPFilter.getNextAudioBlock(bufferToFill);
 
-	// Loop: if active and playhead has passed the out point, jump back to in point
-	if (loopActive && loopInSecs >= 0.0 && loopOutSecs > loopInSecs) {
-		if (transportSource.getCurrentPosition() >= loopOutSecs)
-			transportSource.setPosition(loopInSecs);
+	// 3) Loop: if active and playhead has passed the out point, jump back to in point.
+	const bool   activeNow = loopActive.load(std::memory_order_acquire);
+	const double inSecs    = loopInSecs.load(std::memory_order_acquire);
+	const double outSecs   = loopOutSecs.load(std::memory_order_acquire);
+	if (activeNow && inSecs >= 0.0 && outSecs > inSecs) {
+		if (transportSource.getCurrentPosition() >= outSecs)
+			transportSource.setPosition(inSecs);
 	}
 
+	// 4) Update RMS for UI meters.
 	float rmsLevelLeft = juce::Decibels::gainToDecibels(bufferToFill.buffer->getRMSLevel(0, 0, bufferToFill.buffer->getNumSamples()));
 	float rmsLevelRight = juce::Decibels::gainToDecibels(bufferToFill.buffer->getRMSLevel(1, 0, bufferToFill.buffer->getNumSamples()));
-	level = (rmsLevelLeft + rmsLevelRight) / 2;
+	level.store((rmsLevelLeft + rmsLevelRight) / 2.0f, std::memory_order_release);
 };
+
+//==============================================================================
+
+/**
+ * Drain queued AudioCommand entries on the audio thread. Called once per
+ * getNextAudioBlock prior to any audio processing.
+ */
+void DJAudioPlayer::drainCommands() noexcept {
+	commandFifo.drain([this](const AudioCommand& cmd) noexcept {
+		applyCommand(cmd);
+	});
+}
+
+/**
+ * Apply a single AudioCommand on the audio thread. No allocation, no
+ * UI-thread calls. JUCE-internal SpinLocks (filters / transport) are the
+ * only synchronisation taken here.
+ */
+void DJAudioPlayer::applyCommand(const AudioCommand& cmd) noexcept {
+	switch (cmd.tag)
+	{
+		case AudioCommand::Tag::Start:                transportSource.start(); break;
+		case AudioCommand::Tag::Stop:                 transportSource.stop();  break;
+		case AudioCommand::Tag::SetSpeed:
+			if (cmd.doublePayload >= 0 && cmd.doublePayload <= 100.0) {
+				resampleSource.setResamplingRatio(cmd.doublePayload);
+				currentSpeedRatio.store(cmd.doublePayload, std::memory_order_release);
+			}
+			break;
+		case AudioCommand::Tag::SetGainPlayer:
+			playerVol = cmd.doublePayload;
+			transportSource.setGain(playerVol * crossFadeVol);
+			break;
+		case AudioCommand::Tag::SetGainCrossfade:
+			crossFadeVol = cmd.doublePayload;
+			transportSource.setGain(playerVol * crossFadeVol);
+			break;
+		case AudioCommand::Tag::SetPosition:           transportSource.setPosition(cmd.doublePayload); break;
+		case AudioCommand::Tag::SetPositionRelative:
+			if (cmd.doublePayload >= 0 && cmd.doublePayload <= 1.0)
+				transportSource.setPosition(transportSource.getLengthInSeconds() * cmd.doublePayload);
+			break;
+		case AudioCommand::Tag::SetLoopIn: {
+			const double pos = transportSource.getCurrentPosition();
+			loopInSecs.store(pos, std::memory_order_release);
+			const double out = loopOutSecs.load(std::memory_order_acquire);
+			if (out >= 0.0 && pos >= out) {
+				loopOutSecs.store(-1.0, std::memory_order_release);
+				loopActive.store(false, std::memory_order_release);
+			}
+			break;
+		}
+		case AudioCommand::Tag::SetLoopOut: {
+			const double pos = transportSource.getCurrentPosition();
+			const double in  = loopInSecs.load(std::memory_order_acquire);
+			if (in >= 0.0 && pos > in) {
+				loopOutSecs.store(pos, std::memory_order_release);
+				loopActive.store(true, std::memory_order_release);
+			}
+			break;
+		}
+		case AudioCommand::Tag::ToggleReloop: {
+			const double in  = loopInSecs.load(std::memory_order_acquire);
+			const double out = loopOutSecs.load(std::memory_order_acquire);
+			if (in < 0.0 || out < 0.0) break;
+			const bool nowActive = ! loopActive.load(std::memory_order_acquire);
+			loopActive.store(nowActive, std::memory_order_release);
+			if (nowActive) transportSource.setPosition(in);
+			break;
+		}
+		case AudioCommand::Tag::HalveLoop: {
+			const double in  = loopInSecs.load(std::memory_order_acquire);
+			const double out = loopOutSecs.load(std::memory_order_acquire);
+			if (in < 0.0 || out <= in) break;
+			const double newOut = in + (out - in) / 2.0;
+			loopOutSecs.store(newOut, std::memory_order_release);
+			if (loopActive.load(std::memory_order_acquire) && transportSource.getCurrentPosition() >= newOut)
+				transportSource.setPosition(in);
+			break;
+		}
+		case AudioCommand::Tag::DoubleLoop: {
+			const double in  = loopInSecs.load(std::memory_order_acquire);
+			const double out = loopOutSecs.load(std::memory_order_acquire);
+			if (in < 0.0 || out <= in) break;
+			double newOut = in + (out - in) * 2.0;
+			const double trackLen = transportSource.getLengthInSeconds();
+			if (newOut > trackLen) newOut = trackLen;
+			loopOutSecs.store(newOut, std::memory_order_release);
+			break;
+		}
+		case AudioCommand::Tag::ClearLoop:
+			loopInSecs.store(-1.0,  std::memory_order_release);
+			loopOutSecs.store(-1.0, std::memory_order_release);
+			loopActive.store(false, std::memory_order_release);
+			break;
+		case AudioCommand::Tag::SetFilter: {
+			const double freq = cmd.doublePayload;
+			if (freq > 0 && freq < 20000) {
+				audioLPFilter.makeInactive();
+				audioHPFilter.setCoefficients(juce::IIRCoefficients::makeHighPass(thisSampleRate, freq));
+			}
+			else if (freq < 0 && freq > -20000) {
+				audioHPFilter.makeInactive();
+				audioLPFilter.setCoefficients(juce::IIRCoefficients::makeLowPass(thisSampleRate, 20000 + freq));
+			}
+			else {
+				audioHPFilter.makeInactive();
+				audioLPFilter.makeInactive();
+			}
+			break;
+		}
+		case AudioCommand::Tag::SetLBFilter:
+			audioLBFilter.setCoefficients(juce::IIRCoefficients::makeLowShelf(thisSampleRate, 500, 1.0 / juce::MathConstants<double>::sqrt2, cmd.doublePayload));
+			break;
+		case AudioCommand::Tag::SetMBFilter:
+			audioMBFilter.setCoefficients(juce::IIRCoefficients::makePeakFilter(thisSampleRate, 3250, 1.0 / juce::MathConstants<double>::sqrt2, cmd.doublePayload));
+			break;
+		case AudioCommand::Tag::SetHBFilter:
+			audioHBFilter.setCoefficients(juce::IIRCoefficients::makeHighShelf(thisSampleRate, 5000, 1.0 / juce::MathConstants<double>::sqrt2, cmd.doublePayload));
+			break;
+		case AudioCommand::Tag::BeatJump: {
+			if (! loaded.load(std::memory_order_acquire)) break;
+			// beatGrid.bpm is UI-thread only; reading here is racy in principle.
+			// BeatJump is reserved for Phase 3 when the grid is shared atomically.
+			// For now this branch is unused (BeatJump never enqueued yet).
+			break;
+		}
+		case AudioCommand::Tag::None:
+		default:
+			break;
+	}
+}
 
 /**
  * Implementation of releaseResources method for DJAudioPlayer
@@ -111,7 +251,7 @@ bool DJAudioPlayer::isPlaying() {
  *
  */
 bool DJAudioPlayer::isLoaded() {
-	return loaded;
+	return loaded.load(std::memory_order_acquire);
 }
 
 /**
@@ -132,31 +272,48 @@ juce::URL DJAudioPlayer::returnURL() {
  *
  */
 void DJAudioPlayer::loadURL(juce::URL audioURL) {
+	loadingState.store(LoadingState::Loading, std::memory_order_release);
 	auto* reader = formatManager.createReaderFor(audioURL.createInputStream(false));
 	if (reader != nullptr) {
 		std::unique_ptr<juce::AudioFormatReaderSource> newSource(new juce::AudioFormatReaderSource(reader, true));
-		transportSource.setSource(newSource.get(), 0, nullptr, reader->sampleRate);
-		readerSource.reset(newSource.release());
-		DBG("real metadata size: " << reader->metadataValues.size());
-		loadedFileName = audioURL.getFileName();
-		loaded = true;
-		currentAudioURL = audioURL;
-
-		// Reset BPM state — BPM is now set externally from cache/analysis
-		detectedBpm = 0.0;
-		beatGrid = BeatGrid();
-
-		// Clear loop state on new track load
-		loopInSecs = -1.0;
-		loopOutSecs = -1.0;
-		loopActive = false;
+		installLoadedSource(std::move(newSource), reader->sampleRate, audioURL);
 	}
 	else
 	{
 		DBG("Something went wrong loading the file ");
-		loaded = false;
+		loaded.store(false, std::memory_order_release);
+		loadingState.store(LoadingState::Failed, std::memory_order_release);
 	}
 };
+
+/**
+ * Implementation of installLoadedSource method for DJAudioPlayer
+ *
+ * Hands ownership of a pre-built reader source to this player. Called on the
+ * message thread by AudioEngine after off-thread reader creation.
+ */
+void DJAudioPlayer::installLoadedSource(std::unique_ptr<juce::AudioFormatReaderSource> newSource,
+										double sampleRate,
+										juce::URL audioURL)
+{
+	// Replace transport source. AudioTransportSource::setSource takes its
+	// internal CriticalSection; the audio callback also takes that lock,
+	// but the contention window is microseconds.
+	transportSource.setSource(newSource.get(), 0, nullptr, sampleRate);
+	readerSource = std::move(newSource);
+	loadedFileName = audioURL.getFileName();
+	currentAudioURL = audioURL;
+
+	// Reset BPM + loop state on every track change.
+	detectedBpm = 0.0;
+	beatGrid = BeatGrid();
+	loopInSecs.store(-1.0, std::memory_order_release);
+	loopOutSecs.store(-1.0, std::memory_order_release);
+	loopActive.store(false, std::memory_order_release);
+
+	loaded.store(true, std::memory_order_release);
+	loadingState.store(LoadingState::Loaded, std::memory_order_release);
+}
 
 //==============================================================================
 
@@ -167,7 +324,7 @@ void DJAudioPlayer::loadURL(juce::URL audioURL) {
  *
  */
 float DJAudioPlayer::getRMSLevel() {
-	return level;
+	return level.load(std::memory_order_acquire);
 };
 
 /**
@@ -234,7 +391,7 @@ void DJAudioPlayer::setSpeed(double ratio) {
 	}
 	else {
 		resampleSource.setResamplingRatio(ratio);
-		currentSpeedRatio = ratio;
+		currentSpeedRatio.store(ratio, std::memory_order_release);
 	}
 };
 
@@ -339,7 +496,7 @@ double DJAudioPlayer::getDetectedBpm() const {
  * Returns the effective BPM adjusted by the current speed ratio.
  */
 double DJAudioPlayer::getCurrentBpm() const {
-	return beatGrid.bpm * currentSpeedRatio;
+	return beatGrid.bpm * currentSpeedRatio.load(std::memory_order_acquire);
 }
 
 /**
@@ -348,7 +505,7 @@ double DJAudioPlayer::getCurrentBpm() const {
  * Returns the current resampling speed ratio.
  */
 double DJAudioPlayer::getSpeedRatio() const {
-	return currentSpeedRatio;
+	return currentSpeedRatio.load(std::memory_order_acquire);
 }
 
 /**
@@ -367,7 +524,7 @@ const BeatGrid& DJAudioPlayer::getBeatGrid() const {
  * Requires a valid BPM in the beat grid to calculate beat duration.
  */
 void DJAudioPlayer::beatJump(int beats) {
-	if (!loaded || beatGrid.bpm <= 0.0)
+	if (! loaded.load(std::memory_order_acquire) || beatGrid.bpm <= 0.0)
 		return;
 
 	double secondsPerBeat = 60.0 / beatGrid.bpm;
@@ -392,13 +549,14 @@ void DJAudioPlayer::beatJump(int beats) {
  * Stores the current playback position as the loop-in point.
  */
 void DJAudioPlayer::setLoopIn() {
-	if (!loaded)
+	if (! loaded.load(std::memory_order_acquire))
 		return;
-	loopInSecs = transportSource.getCurrentPosition();
-	// If out point is already set and in >= out, clear out point
-	if (loopOutSecs >= 0.0 && loopInSecs >= loopOutSecs) {
-		loopOutSecs = -1.0;
-		loopActive = false;
+	const double pos = transportSource.getCurrentPosition();
+	loopInSecs.store(pos, std::memory_order_release);
+	const double out = loopOutSecs.load(std::memory_order_acquire);
+	if (out >= 0.0 && pos >= out) {
+		loopOutSecs.store(-1.0, std::memory_order_release);
+		loopActive.store(false, std::memory_order_release);
 	}
 }
 
@@ -409,12 +567,13 @@ void DJAudioPlayer::setLoopIn() {
  * and activates looping if the in point is already set.
  */
 void DJAudioPlayer::setLoopOut() {
-	if (!loaded)
+	if (! loaded.load(std::memory_order_acquire))
 		return;
-	double pos = transportSource.getCurrentPosition();
-	if (loopInSecs >= 0.0 && pos > loopInSecs) {
-		loopOutSecs = pos;
-		loopActive = true;
+	const double pos = transportSource.getCurrentPosition();
+	const double in  = loopInSecs.load(std::memory_order_acquire);
+	if (in >= 0.0 && pos > in) {
+		loopOutSecs.store(pos, std::memory_order_release);
+		loopActive.store(true, std::memory_order_release);
 	}
 }
 
@@ -424,11 +583,14 @@ void DJAudioPlayer::setLoopOut() {
  * Toggles loop on/off. When re-enabling, jumps back to the loop-in point.
  */
 void DJAudioPlayer::toggleReloop() {
-	if (loopInSecs < 0.0 || loopOutSecs < 0.0)
+	const double in  = loopInSecs.load(std::memory_order_acquire);
+	const double out = loopOutSecs.load(std::memory_order_acquire);
+	if (in < 0.0 || out < 0.0)
 		return;
-	loopActive = !loopActive;
-	if (loopActive)
-		transportSource.setPosition(loopInSecs);
+	const bool nowActive = ! loopActive.load(std::memory_order_acquire);
+	loopActive.store(nowActive, std::memory_order_release);
+	if (nowActive)
+		transportSource.setPosition(in);
 }
 
 /**
@@ -437,13 +599,15 @@ void DJAudioPlayer::toggleReloop() {
  * Halves the loop length by moving the out point halfway between in and current out.
  */
 void DJAudioPlayer::halveLoop() {
-	if (loopInSecs < 0.0 || loopOutSecs <= loopInSecs)
+	const double in  = loopInSecs.load(std::memory_order_acquire);
+	const double out = loopOutSecs.load(std::memory_order_acquire);
+	if (in < 0.0 || out <= in)
 		return;
-	double halfLength = (loopOutSecs - loopInSecs) / 2.0;
-	loopOutSecs = loopInSecs + halfLength;
-	// If playhead is now past the out point, jump back to in
-	if (loopActive && transportSource.getCurrentPosition() >= loopOutSecs)
-		transportSource.setPosition(loopInSecs);
+	const double halfLength = (out - in) / 2.0;
+	const double newOut = in + halfLength;
+	loopOutSecs.store(newOut, std::memory_order_release);
+	if (loopActive.load(std::memory_order_acquire) && transportSource.getCurrentPosition() >= newOut)
+		transportSource.setPosition(in);
 }
 
 /**
@@ -452,14 +616,16 @@ void DJAudioPlayer::halveLoop() {
  * Doubles the loop length by extending the out point, clamped to track length.
  */
 void DJAudioPlayer::doubleLoop() {
-	if (loopInSecs < 0.0 || loopOutSecs <= loopInSecs)
+	const double in  = loopInSecs.load(std::memory_order_acquire);
+	const double out = loopOutSecs.load(std::memory_order_acquire);
+	if (in < 0.0 || out <= in)
 		return;
-	double currentLength = loopOutSecs - loopInSecs;
-	double newOut = loopInSecs + currentLength * 2.0;
-	double trackLen = transportSource.getLengthInSeconds();
+	const double currentLength = out - in;
+	double newOut = in + currentLength * 2.0;
+	const double trackLen = transportSource.getLengthInSeconds();
 	if (newOut > trackLen)
 		newOut = trackLen;
-	loopOutSecs = newOut;
+	loopOutSecs.store(newOut, std::memory_order_release);
 }
 
 /**
@@ -468,34 +634,36 @@ void DJAudioPlayer::doubleLoop() {
  * Clears all loop points and deactivates looping.
  */
 void DJAudioPlayer::clearLoop() {
-	loopInSecs = -1.0;
-	loopOutSecs = -1.0;
-	loopActive = false;
+	loopInSecs.store(-1.0,  std::memory_order_release);
+	loopOutSecs.store(-1.0, std::memory_order_release);
+	loopActive.store(false, std::memory_order_release);
 }
 
 /**
  * Implementation of isLooping method for DJAudioPlayer
  */
 bool DJAudioPlayer::isLooping() const {
-	return loopActive;
+	return loopActive.load(std::memory_order_acquire);
 }
 
 /**
  * Implementation of getLoopInRelative method for DJAudioPlayer
  */
 double DJAudioPlayer::getLoopInRelative() const {
-	if (loopInSecs < 0.0 || transportSource.getLengthInSeconds() <= 0.0)
+	const double in = loopInSecs.load(std::memory_order_acquire);
+	if (in < 0.0 || transportSource.getLengthInSeconds() <= 0.0)
 		return -1.0;
-	return loopInSecs / transportSource.getLengthInSeconds();
+	return in / transportSource.getLengthInSeconds();
 }
 
 /**
  * Implementation of getLoopOutRelative method for DJAudioPlayer
  */
 double DJAudioPlayer::getLoopOutRelative() const {
-	if (loopOutSecs < 0.0 || transportSource.getLengthInSeconds() <= 0.0)
+	const double out = loopOutSecs.load(std::memory_order_acquire);
+	if (out < 0.0 || transportSource.getLengthInSeconds() <= 0.0)
 		return -1.0;
-	return loopOutSecs / transportSource.getLengthInSeconds();
+	return out / transportSource.getLengthInSeconds();
 }
 
 //==============================================================================

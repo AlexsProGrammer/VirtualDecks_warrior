@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "DJAudioPlayer.h"
+#include "AudioEngine.h"
 #include "DeckGUI.h"
 #include "Library.h"
 #include "CustomLookAndFeel.h"
@@ -87,23 +88,19 @@ private:
 	/// Instance of CustomLookAndFeel class.
 	CustomLookAndFeel customLookAndFeel;
 
+	/// Instance of AudioFormatManager class. Declared BEFORE library so Library's
+	/// constructor reference is bound to a fully-constructed object.
+	juce::AudioFormatManager formatManager;
+
 	/// Instance of Library class.
 	Library library{ formatManager };
-
-	/// Instance of AudioFormatManager class.
-	juce::AudioFormatManager formatManager;
 
 	/// Instance of AudioThumbnailCache class.
 	juce::AudioThumbnailCache thumbCache{ 100 };
 
-	/// Instance of DJAudioPlayer class for the left DJ Deck.
-	DJAudioPlayer player1{ formatManager };
-
-	/// Instance of DJAudioPlayer class for the right DJ Deck.
-	DJAudioPlayer player2{ formatManager };
-
-	/// Instance of MixerAudioSource class for managing both DJAudioPlayer instances.
-	juce::MixerAudioSource mixerSource;
+	/// AudioEngine: owns both DJAudioPlayers, the MixerAudioSource, and the
+	/// off-thread track-loading pool.
+	AudioEngine audioEngine{ formatManager };
 
 	/// Instance of ZoomedWaveform class for the left DJ Deck's audio track.
 	ZoomedWaveform zoomedDisplay1{ formatManager, thumbCache, juce::Colours::aqua };
@@ -115,10 +112,10 @@ private:
 	BeatSyncManager beatSyncManager;
 
 	/// Instance of DeckGUI class for the left DJ Deck.
-	DeckGUI deckGUI1{ &player1, formatManager, thumbCache,&zoomedDisplay1 , library,juce::Colours::aqua, &beatSyncManager, 0 };
+	DeckGUI deckGUI1{ &audioEngine.getPlayer(0), formatManager, thumbCache,&zoomedDisplay1 , library,juce::Colours::aqua, &beatSyncManager, 0, &audioEngine };
 
 	/// Instance of DeckGUI class for the right DJ Deck.
-	DeckGUI deckGUI2{ &player2, formatManager, thumbCache,&zoomedDisplay2 , library,juce::Colours::hotpink, &beatSyncManager, 1 };
+	DeckGUI deckGUI2{ &audioEngine.getPlayer(1), formatManager, thumbCache,&zoomedDisplay2 , library,juce::Colours::hotpink, &beatSyncManager, 1, &audioEngine };
 
 	/// Instance of juce::Slider for cross fading functionality.
 	juce::Slider crossFader{ juce::Slider::SliderStyle::LinearHorizontal , juce::Slider::TextEntryBoxPosition::NoTextBox };

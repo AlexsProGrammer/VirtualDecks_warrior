@@ -14,8 +14,18 @@
  * well
  *
  */
-DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManagerToUse, juce::AudioThumbnailCache& cacheToUse, ZoomedWaveform* _zoomedDisplay, Library& _library, juce::Colour _colour, BeatSyncManager* _syncManager, int _deckIndex) : player(_player), waveformDisplay(formatManagerToUse, cacheToUse, _colour), zoomedDisplay(_zoomedDisplay), jogWheel(formatManagerToUse, cacheToUse, _colour), library(&_library), theme(_colour), syncManager(_syncManager), deckIndex(_deckIndex)
+DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManagerToUse, juce::AudioThumbnailCache& cacheToUse, ZoomedWaveform* _zoomedDisplay, Library& _library, juce::Colour _colour, BeatSyncManager* _syncManager, int _deckIndex, AudioEngine* _audioEngine) : player(_player), audioEngine(_audioEngine), waveformDisplay(formatManagerToUse, cacheToUse, _colour), zoomedDisplay(_zoomedDisplay), jogWheel(formatManagerToUse, cacheToUse, _colour), library(&_library), theme(_colour), syncManager(_syncManager), deckIndex(_deckIndex)
 {
+	if (audioEngine != nullptr)
+		audioEngine->addListener(this);
+
+	// "Loading…" overlay (centred over the waveform area, hidden by default).
+	loadingLabel.setJustificationType(juce::Justification::centred);
+	loadingLabel.setFont(juce::Font(juce::FontOptions(18.0f)).boldened());
+	loadingLabel.setColour(juce::Label::textColourId, theme);
+	loadingLabel.setColour(juce::Label::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 220));
+	loadingLabel.setVisible(false);
+	addAndMakeVisible(loadingLabel);
 	std::vector<juce::Label*> labels{ &volLabel, &speedLabel, &filterLabel, &lbLabel, &mbLabel, &hbLabel };
 	for (auto& label : labels) {
 		label->setEditable(false);
@@ -315,6 +325,8 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
  */
 DeckGUI::~DeckGUI()
 {
+	if (audioEngine != nullptr)
+		audioEngine->removeListener(this);
 	stopTimer();
 	for (auto& cue : cues) {
 		delete cue;
@@ -416,6 +428,7 @@ void DeckGUI::resized()
 	fastSyncBtn.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 5 - 10 + rowH * 0.7 + 4, rowH * 0.7, rowH * 0.5);
 
 	waveformDisplay.setBounds(0, 0, getWidth(), rowH * 2);
+	loadingLabel.setBounds(waveformDisplay.getBounds());
 
 	double xOffset = mainXOffset + getWidth() * 4 / 32;
 	double yOffset = 5 + rowH * 2;
@@ -1095,20 +1108,52 @@ void DeckGUI::loadDeck(track track) {
 	if (syncManager != nullptr)
 		syncManager->onTrackLoaded(deckIndex);
 
-	player->loadURL(track.url);
-	if (player->isLoaded()) {
-		for (auto& display : displays) {
-			display->loadTrack(track);
-			display->addListener(this);
-		}
+	// Stash the track — finishLoadDeck() needs it once loading completes.
+	pendingTrack = track;
+
+	if (audioEngine != nullptr) {
+		// Asynchronous path: requestLoad returns immediately; the listener
+		// callback (deckLoadingStateChanged) drives the loading overlay, and
+		// the completion lambda invokes finishLoadDeck() on the message thread.
+		audioEngine->requestLoad(deckIndex, track.url, [this](bool success) {
+			if (success)
+				finishLoadDeck();
+		});
+	}
+	else {
+		// Legacy synchronous path (shouldn't be hit when MainComponent wires
+		// the engine, but kept for safety / future test harnesses).
+		player->loadURL(track.url);
+		if (player->isLoaded())
+			finishLoadDeck();
+	}
+};
+
+//==============================================================================
+
+/**
+ * Implementation of finishLoadDeck method for DeckGUI
+ *
+ * Final post-load setup that depends on the audio source being ready:
+ * thumbnails, default gain, hot-cue clear, BPM cache lookup, autoplay.
+ * Always runs on the message thread.
+ */
+void DeckGUI::finishLoadDeck() {
+	if (! player->isLoaded())
+		return;
+
+	track& t = pendingTrack;
+	for (auto& display : displays) {
+		display->loadTrack(t);
+		display->addListener(this);
 	}
 
 	player->setGain(volSlider.getValue(), true);
 	cueTargets.clear();
 
 	// Load beat grid config for this track
-	currentTrackIdentity = track.identity;
-	currentFileHash = track.fileHash;
+	currentTrackIdentity = t.identity;
+	currentFileHash = t.fileHash;
 	if (currentFileHash.isNotEmpty()) {
 		TrackData cached = TrackDataCache::load(currentFileHash);
 		if (cached.beatGrid.bpm > 0.0) {
@@ -1128,7 +1173,36 @@ void DeckGUI::loadDeck(track track) {
 	else {
 		playButton.setToggleState(false, juce::NotificationType::dontSendNotification);
 	}
-};
+}
+
+//==============================================================================
+
+/**
+ * Implementation of deckLoadingStateChanged method for DeckGUI
+ *
+ * AudioEngine listener callback. Drives the "Loading…" overlay and disables
+ * the play / load buttons while the deck is busy loading a track.
+ */
+void DeckGUI::deckLoadingStateChanged(int deckIdx, DJAudioPlayer::LoadingState newState) {
+	if (deckIdx != deckIndex)
+		return;
+
+	const bool busy = (newState == DJAudioPlayer::LoadingState::Loading);
+	playButton.setEnabled(! busy);
+	loadButton.setEnabled(! busy);
+	for (auto* cue : cues)
+		cue->setEnabled(! busy);
+
+	loadingLabel.setVisible(busy);
+	loadingLabel.toFront(false);
+
+	if (newState == DJAudioPlayer::LoadingState::Failed)
+		loadingLabel.setText("Load failed", juce::dontSendNotification);
+	else if (busy)
+		loadingLabel.setText("Loading…", juce::dontSendNotification);
+
+	repaint();
+}
 
 //==============================================================================
 
