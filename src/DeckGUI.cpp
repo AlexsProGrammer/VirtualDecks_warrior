@@ -739,6 +739,10 @@ void DeckGUI::sliderValueChanged(juce::Slider* slider) {
 	if (slider == &speedSlider) {
 		DBG("MainComponent::sliderValueChanged: They change the speed slider " << slider->getValue());
 		player->setSpeed(slider->getValue());
+		// Immediately propagate new speed to waveform displays for live visual feedback
+		const BeatGrid& grid = player->getBeatGrid();
+		for (auto* display : displays)
+			display->setBeatGrid(grid.bpm, grid.gridOffsetSecs, slider->getValue());
 	}
 
 	if (slider == &filter) {

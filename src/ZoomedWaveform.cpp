@@ -39,7 +39,7 @@ void ZoomedWaveform::paint(juce::Graphics& g)
 
 	if (isLoaded) {
 		double thisPos = position * audioThumb.getTotalLength();
-		double half = audioThumb.getTotalLength() / 80;
+		double half = (audioThumb.getTotalLength() / 80) * speedRatio;
 		double left = thisPos - half;
 		double right = thisPos + half;
 		g.setColour(theme);
