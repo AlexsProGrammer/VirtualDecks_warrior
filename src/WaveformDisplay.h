@@ -234,4 +234,26 @@ protected:
 
 	/// Optional 3-band colour data for the waveform (nullptr → fall back to theme colour).
 	BandDataPtr bandData;
+
+	/// Pre-built filled paths (one per band) in normalised coords:
+	///   x ∈ [0, numFrames], y ∈ [-1, +1]. Built once in setBandData() and
+	///   reused via AffineTransform on every paint — keeps draw cost O(3 fillPaths).
+	juce::Path bandPathLow, bandPathMid, bandPathHigh;
+
+	/**
+	 * Draw the cached band paths onto `bounds`, mapping the time window
+	 * [t0Sec, t1Sec] of the loaded track to that rectangle. Called by both
+	 * WaveformDisplay (full track) and ZoomedWaveform (sub-window).
+	 */
+	void drawBandWaveform(juce::Graphics& g,
+	                      juce::Rectangle<int> bounds,
+	                      double t0Sec,
+	                      double t1Sec) const;
+
+private:
+	/**
+	 * Rebuild bandPathLow/Mid/High from the current bandData. No-op when
+	 * bandData is empty. Called from setBandData() only.
+	 */
+	void rebuildBandPaths();
 };

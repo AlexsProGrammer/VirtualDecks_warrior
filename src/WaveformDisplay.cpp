@@ -135,10 +135,110 @@ void WaveformDisplay::setLoopRegion(double inRelative, double outRelative, bool 
  *
  * Replaces the per-column 3-band colour table used by paint(). Pass nullptr
  * (or an empty data pointer) to revert to the theme-colour render path.
+ * Rebuilds the cached fill paths so paint() can stay at 3 fillPath calls.
  */
 void WaveformDisplay::setBandData(BandDataPtr data) {
 	bandData = std::move(data);
+	rebuildBandPaths();
 	repaint();
+}
+
+/**
+ * Implementation of rebuildBandPaths for WaveformDisplay.
+ *
+ * Builds three filled-area paths in normalised coordinates: x ∈ [0, numFrames],
+ * y ∈ [-1, +1]. Each path traces the top edge left→right then mirrors back
+ * along the bottom edge so a single fillPath() in paint produces a symmetric
+ * band-stack shape.
+ */
+void WaveformDisplay::rebuildBandPaths() {
+	bandPathLow.clear();
+	bandPathMid.clear();
+	bandPathHigh.clear();
+
+	if (bandData == nullptr || bandData->empty())
+		return;
+
+	const auto& frames = *bandData;
+	const int n = (int)frames.size();
+	constexpr float invByte = 1.0f / 255.0f;
+
+	// 3-tap [0.25, 0.5, 0.25] smoothing kernel applied at path-build time —
+	// removes the visible 50 ms steps and produces fluent rounded shapes
+	// without costing anything at paint time.
+	auto smoothed = [&](int i, auto raw) {
+		const int iL = (i > 0) ? i - 1 : i;
+		const int iR = (i + 1 < n) ? i + 1 : i;
+		return 0.25f * raw(iL) + 0.5f * raw(i) + 0.25f * raw(iR);
+	};
+
+	auto buildPath = [&](juce::Path& p, auto raw) {
+		p.preallocateSpace((n + 1) * 6);
+		p.startNewSubPath(0.0f, -smoothed(0, raw));
+		for (int i = 1; i < n; ++i)
+			p.lineTo((float)i, -smoothed(i, raw));
+		for (int i = n - 1; i >= 0; --i)
+			p.lineTo((float)i, +smoothed(i, raw));
+		p.closeSubPath();
+	};
+
+	buildPath(bandPathLow,  [&](int i) { return frames[(size_t)i].low  * invByte; });
+	buildPath(bandPathMid,  [&](int i) { return frames[(size_t)i].mid  * invByte; });
+	buildPath(bandPathHigh, [&](int i) { return frames[(size_t)i].high * invByte; });
+}
+
+/**
+ * Implementation of drawBandWaveform for WaveformDisplay.
+ *
+ * Renders the cached band paths into `bounds`, mapping the time window
+ * [t0Sec, t1Sec] of the loaded track to the rectangle's full width via a
+ * single AffineTransform per band — three fillPath calls total regardless
+ * of frame count or zoom level.
+ *
+ * Colour palette mirrors Pioneer rekordbox:
+ *   low  = blue  (behind, fully opaque),
+ *   mid  = orange (overlaid, slight alpha),
+ *   high = white (top, slight alpha).
+ */
+void WaveformDisplay::drawBandWaveform(juce::Graphics& g,
+                                       juce::Rectangle<int> bounds,
+                                       double t0Sec,
+                                       double t1Sec) const
+{
+	if (bandData == nullptr || bandData->empty() || bandPathLow.isEmpty())
+		return;
+
+	const double total = audioThumb.getTotalLength();
+	if (total <= 0.0 || t1Sec <= t0Sec)
+		return;
+
+	const int n = (int)bandData->size();
+	const float frameStart = (float)juce::jlimit(0.0, (double)n, t0Sec / total * n);
+	const float frameEnd   = (float)juce::jlimit(0.0, (double)n, t1Sec / total * n);
+	if (frameEnd <= frameStart + 1e-3f)
+		return;
+
+	const float w = (float)bounds.getWidth();
+	const float h = (float)bounds.getHeight();
+	const float cy = (float)bounds.getCentreY();
+	const float sx = w / (frameEnd - frameStart);
+	const float sy = h * 0.45f; // 90% of half-height; leaves a little headroom
+
+	const auto trans = juce::AffineTransform::translation(-frameStart, 0.0f)
+	                       .scaled(sx, sy)
+	                       .translated((float)bounds.getX(), cy);
+
+	// Pioneer-style 3-colour palette.
+	const juce::Colour kLow  = juce::Colour::fromRGB( 50, 130, 230); // blue
+	const juce::Colour kMid  = juce::Colour::fromRGB(255, 145,  35); // orange
+	const juce::Colour kHigh = juce::Colour::fromRGB(245, 245, 245); // white
+
+	g.setColour(kLow);
+	g.fillPath(bandPathLow, trans);
+	g.setColour(kMid.withAlpha(0.85f));
+	g.fillPath(bandPathMid, trans);
+	g.setColour(kHigh.withAlpha(0.85f));
+	g.fillPath(bandPathHigh, trans);
 }
 
 //==============================================================================
@@ -163,19 +263,7 @@ void WaveformDisplay::paint(juce::Graphics& g)
 		g.drawText(songNameLoaded, 5, 5, getWidth() * 3 / 4, 6, juce::Justification::left);
 
 		if (bandData != nullptr && ! bandData->empty()) {
-			// 3-band RGB column rendering (Serato-style).
-			const auto& frames = *bandData;
-			const int numFrames = (int)frames.size();
-			const int w = getWidth();
-			const int h = getHeight();
-			const float centerY = (float)h * 0.5f;
-			for (int x = 0; x < w; ++x) {
-				const int idx = juce::jlimit(0, numFrames - 1, (int)((double)x * numFrames / juce::jmax(1, w)));
-				const auto& f = frames[(size_t)idx];
-				const float halfH = (f.amp / 255.0f) * centerY;
-				g.setColour(juce::Colour::fromRGB(f.low, f.mid, f.high));
-				g.drawLine((float)x, centerY - halfH, (float)x, centerY + halfH, 1.0f);
-			}
+			drawBandWaveform(g, getLocalBounds(), 0.0, audioThumb.getTotalLength());
 		}
 		else {
 			audioThumb.drawChannel(g, getLocalBounds(), 0, audioThumb.getTotalLength(), 0, 0.55);
