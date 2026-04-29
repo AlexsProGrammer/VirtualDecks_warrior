@@ -32,7 +32,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	loadingLabel.setJustificationType(juce::Justification::centred);
 	loadingLabel.setFont(juce::Font(juce::FontOptions(18.0f)).boldened());
 	loadingLabel.setColour(juce::Label::textColourId, theme);
-	loadingLabel.setColour(juce::Label::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 220));
+	loadingLabel.setColour(juce::Label::backgroundColourId, UI::bgRoot.withAlpha(0.86f));
 	loadingLabel.setVisible(false);
 	addAndMakeVisible(loadingLabel);
 	std::vector<juce::Label*> labels{ &volLabel, &speedLabel, &filterLabel, &lbLabel, &mbLabel, &hbLabel };
@@ -67,7 +67,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	addAndMakeVisible(highBandFilter);
 
 	cueButton.setColour(juce::TextButton::buttonColourId,
-	                    juce::Colour::fromRGBA(50, 50, 50, 255));
+	                    UI::bgCard);
 	cueButton.setColour(juce::TextButton::buttonOnColourId,  theme.withAlpha(0.85f));
 	cueButton.setColour(juce::TextButton::textColourOffId,   juce::Colours::white);
 	cueButton.setColour(juce::TextButton::textColourOnId,    juce::Colours::black);
@@ -138,10 +138,10 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	loopTabButton.addListener(this);
 	syncTabButton.addListener(this);
 	cueTabButton.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
-	gridTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	gridTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	jumpTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	loopTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	syncTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 
 	// FX tab buttons (P.FX / B.FX / R.FX) — registered here so the row is built
 	// in tab-order. Their colour follows the same pattern as the other tabs.
@@ -151,30 +151,30 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	padFxTabButton.addListener(this);
 	beatFxTabButton.addListener(this);
 	releaseFxTabButton.addListener(this);
-	padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	padFxTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	beatFxTabButton   .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	releaseFxTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 
 	// Sync tab controls (initially hidden until SYNC tab selected).
 	masterToggleBtn.setClickingTogglesState(true);
 	masterToggleBtn.addListener(this);
-	masterToggleBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	masterToggleBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::orange.withAlpha(0.8f));
+	masterToggleBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	masterToggleBtn.setColour(juce::TextButton::buttonOnColourId, UI::accentWarning.withAlpha(0.8f));
 	masterToggleBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 	masterToggleBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
 	addChildComponent(masterToggleBtn);
 
 	syncEngageBtn.setClickingTogglesState(true);
 	syncEngageBtn.addListener(this);
-	syncEngageBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	syncEngageBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::dodgerblue.withAlpha(0.85f));
+	syncEngageBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	syncEngageBtn.setColour(juce::TextButton::buttonOnColourId, UI::accentPositive.withAlpha(0.85f));
 	syncEngageBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 	syncEngageBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
 	addChildComponent(syncEngageBtn);
 
 	for (auto* btn : { &multHalfBtn, &multOneBtn, &multTwoBtn }) {
 		btn->addListener(this);
-		btn->setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		btn->setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 		addChildComponent(*btn);
 	}
@@ -194,8 +194,8 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	// Fast-sync compact button (always visible near play/load).
 	fastSyncBtn.setClickingTogglesState(true);
 	fastSyncBtn.addListener(this);
-	fastSyncBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	fastSyncBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::dodgerblue.withAlpha(0.85f));
+	fastSyncBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	fastSyncBtn.setColour(juce::TextButton::buttonOnColourId, UI::accentPositive.withAlpha(0.85f));
 	fastSyncBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 	fastSyncBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
 	addAndMakeVisible(fastSyncBtn);
@@ -205,7 +205,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	snapBox.addItem("1/2 BAR", 2);
 	snapBox.addItem("1/4 BAR", 3);
 	snapBox.setSelectedId(1, juce::dontSendNotification);
-	snapBox.setColour(juce::ComboBox::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	snapBox.setColour(juce::ComboBox::backgroundColourId, UI::bgRoot);
 	snapBox.setColour(juce::ComboBox::textColourId, juce::Colours::white);
 	snapBox.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
 	snapBox.onChange = [this]() {
@@ -220,14 +220,14 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 
 	// Reset button: clears master, disengages sync, restores speed to 1.0.
 	syncResetBtn.addListener(this);
-	syncResetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	syncResetBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 	syncResetBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 	addChildComponent(syncResetBtn);
 
 	// Quantize tab button and controls
 	addAndMakeVisible(quantizeTabButton);
 	quantizeTabButton.addListener(this);
-	quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	quantizeTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 
 	quantizeLabel.setEditable(false);
 	quantizeLabel.setJustificationType(juce::Justification::centredLeft);
@@ -246,7 +246,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	quantizeComboBox.addItem("1/9 Bar", 10);
 	quantizeComboBox.addItem("1/32 Bar", 11);
 	quantizeComboBox.setSelectedId(1, juce::dontSendNotification);
-	quantizeComboBox.setColour(juce::ComboBox::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	quantizeComboBox.setColour(juce::ComboBox::backgroundColourId, UI::bgRoot);
 	quantizeComboBox.setColour(juce::ComboBox::textColourId, juce::Colours::white);
 	quantizeComboBox.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
 	addChildComponent(quantizeComboBox);
@@ -259,7 +259,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 
 	gridBpmEditor.setJustification(juce::Justification::centred);
 	gridBpmEditor.setInputRestrictions(7, "0123456789.");
-	gridBpmEditor.setColour(juce::TextEditor::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	gridBpmEditor.setColour(juce::TextEditor::backgroundColourId, UI::bgRoot);
 	gridBpmEditor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
 	gridBpmEditor.setColour(juce::TextEditor::outlineColourId, theme.withAlpha(0.5f));
 	auto applyBpmFromEditor = [this]() {
@@ -280,10 +280,10 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	gridNudgeRightBtn.addListener(this);
 	tapTempoBtn.addListener(this);
 	gridResetBtn.addListener(this);
-	gridNudgeLeftBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	gridNudgeRightBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	tapTempoBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-	gridResetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	gridNudgeLeftBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	gridNudgeRightBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	tapTempoBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	gridResetBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 	addChildComponent(gridNudgeLeftBtn);
 	addChildComponent(gridNudgeRightBtn);
 	addChildComponent(gridOffsetLabel);
@@ -302,7 +302,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	};
 	for (auto* btn : jumpBtns) {
 		btn->addListener(this);
-		btn->setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		btn->setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 		addChildComponent(*btn);
 	}
@@ -319,7 +319,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	};
 	for (auto* btn : loopBtns) {
 		btn->addListener(this);
-		btn->setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		btn->setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 		addChildComponent(*btn);
 	}
@@ -389,7 +389,16 @@ DeckGUI::~DeckGUI()
  */
 void DeckGUI::paint(juce::Graphics& g)
 {
-	g.fillAll(juce::Colour::fromRGBA(50, 50, 50, 255));
+	// Modern rounded panel background with subtle vertical gradient.
+	auto r = getLocalBounds().toFloat().reduced(2.0f);
+	CustomLookAndFeel::paintPanelBackground(g, r, true, UI::kPanelRadius);
+	// Theme accent strip on the deck's INNER edge (toward crossfader)
+	{
+		const float stripW = 3.0f;
+		float stripX = (deckIndex == 0) ? r.getRight() - stripW : r.getX();
+		g.setColour(theme.withAlpha(0.85f));
+		g.fillRect(juce::Rectangle<float>(stripX, r.getY() + 6.0f, stripW, r.getHeight() - 12.0f));
+	}
 
 	double rowH = getHeight() / 9;
 	float offset = rowH * 2.23;
@@ -407,10 +416,10 @@ void DeckGUI::paint(juce::Graphics& g)
 			g.setColour(colorRGB);
 		}
 		else {
-			g.setColour(juce::Colour::fromRGBA(25, 25, 25, 255));
+			g.setColour(UI::bgRoot);
 		}
 
-		double volXOffset = theme == juce::Colours::hotpink ? 62.5 : getWidth() - (double)75;
+		double volXOffset = deckIndex == 1 ? 62.5 : getWidth() - (double)75;
 
 		juce::Rectangle<float> rect(volXOffset, pos, 12.5, (volMeterHeight / 10) - 2);
 		g.fillRect(rect);
@@ -428,7 +437,7 @@ void DeckGUI::paint(juce::Graphics& g)
 			thisButton->setColour(juce::TextButton::ColourIds::buttonColourId, juce::Colour::fromHSL(cueTargets[thisButton].second, (float)1, (float)0.5, (float)1));
 		}
 		else {
-			thisButton->setColour(juce::TextButton::ColourIds::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+			thisButton->setColour(juce::TextButton::ColourIds::buttonColourId, UI::bgRoot);
 		}
 
 		if (hasCue) {
@@ -441,8 +450,8 @@ void DeckGUI::paint(juce::Graphics& g)
 		}
 	}
 
-	double mainXOffset = theme == juce::Colours::hotpink ? getWidth() * 7 / 32 : getWidth() * 25 / 32;
-	g.setColour(juce::Colour::fromRGBA(25, 25, 25, 255));
+	double mainXOffset = deckIndex == 1 ? getWidth() * 7 / 32 : getWidth() * 25 / 32;
+	g.setColour(UI::bgRoot);
 	g.drawLine(mainXOffset, 0, mainXOffset, getHeight());
 }
 
@@ -458,21 +467,30 @@ void DeckGUI::resized()
 	// deck panel is taller than the original 300 px (e.g. on large windows).
 	double rowH = std::min(getHeight() / 9.0, 40.0);
 
-	// ----- Volume column (deck-outer side, NOT on the rail edge) -----
-	// Phase 5: extend volSlider + speedSlider from rowH*3 to rowH*5 vertical
-	// so they read like proper DJ pitch faders. Filter knob moves to the
-	// bottom of the same column so it doesn't compete for vertical space.
-	double volXOffset = theme == juce::Colours::hotpink ? 5.5 : getWidth() - (double)55;
-	const double sliderTopRow    = 1.3;
-	const double sliderHeightRow = 5.0;
-	const double sliderBottomRow = sliderTopRow + sliderHeightRow; // 6.3
+	// ----- Phase 6 layout cleanup -----
+	// Tab rail lives on the deck's OUTER edge. Reserve `railClear` px on
+	// that edge so the rail never overlaps controls.  Also push slider
+	// columns BELOW the waveform header so the waveform never paints over
+	// them.
+	const int    railW       = UI::kRailWidth;       // 44
+	const int    railClear   = railW + 4;            // 48 px reservation
+	const bool   isDeck2     = (deckIndex == 1);
+	const int    leftClear   = isDeck2 ? 4         : railClear;
+	const int    rightClear  = isDeck2 ? railClear : 4;
+
+	// Volume column sits on the deck's INNER edge (toward the crossfader).
+	double volXOffset = isDeck2 ? 5.5 : getWidth() - (double)55;
+	const double sliderTopRow    = 2.15;             // was 1.3 (clipped behind waveform)
+	const double sliderHeightRow = 4.2;              // tightened so filter row still fits
+	const double sliderBottomRow = sliderTopRow + sliderHeightRow;
 
 	volSlider.setBounds(volXOffset, rowH * sliderTopRow, 50, rowH * sliderHeightRow);
 	volLabel.setBounds(volXOffset, rowH * sliderBottomRow + 2, 50, rowH * 0.5);
 	filter.setBounds(volXOffset, rowH * (sliderBottomRow + 0.6), 50, 50);
 	filterLabel.setBounds(volXOffset, rowH * (sliderBottomRow + 1.7), 50, rowH * 0.5);
 
-	double mainXOffset = theme == juce::Colours::hotpink ? getWidth() * 7 / 32 : 0;
+	// Speed slider on the OUTER side of the deck — but shifted past the rail.
+	double mainXOffset = isDeck2 ? (double)(getWidth() * 7 / 32) : (double) leftClear;
 
 	// BPM value label above speed slider
 	bpmValueLabel.setBounds(mainXOffset, rowH * 0.3, getWidth() / 8, 20);
@@ -480,15 +498,30 @@ void DeckGUI::resized()
 
 	speedSlider.setBounds(mainXOffset, rowH * sliderTopRow, getWidth() / 8, rowH * sliderHeightRow);
 	speedLabel.setBounds(mainXOffset, rowH * sliderBottomRow + 2, getWidth() / 8, rowH * 0.5);
-	jogWheel.setBounds(mainXOffset + getWidth() * 22.5 / 32 - 98.9, 5 + rowH * 3, (rowH * 3.3) - 10, (rowH * 3.3) - 10);
-	loadButton.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 2 + 5, rowH * 0.7, rowH * 0.7);
-	playButton.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 5 - 10, rowH * 0.7, rowH * 0.7);
-	fastSyncBtn.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 5 - 10 + rowH * 0.7 + 4, rowH * 0.7, rowH * 0.5);
+
+	// Jog wheel + transport: clear the outer rail.
+	const double jogSize = (rowH * 3.3) - 10;
+	const double btnSize = rowH * 0.7;
+	double jogRight = (double) getWidth() - (isDeck2 ? rightClear + 4 : 4);
+	// Original deck-1 placement kept jog ~midway; preserve that visual when
+	// no rail is in the way (deck 1 has rail on the LEFT, not RIGHT).
+	if (!isDeck2)
+		jogRight = mainXOffset + getWidth() * 22.5 / 32 - 98.9 + jogSize;
+	double jogX = jogRight - jogSize;
+	jogWheel.setBounds((int)jogX, (int)(5 + rowH * 3), (int)jogSize, (int)jogSize);
+
+	// Transport buttons: deck 1 keeps them RIGHT of the jog, deck 2 mirrors
+	// them to the LEFT of the jog (otherwise they would collide with the rail).
+	double btnX = isDeck2 ? (jogX - btnSize - 6)
+	                      : (mainXOffset + getWidth() * 22.5 / 32);
+	loadButton.setBounds((int)btnX, (int)(rowH * 2 + 5), (int)btnSize, (int)btnSize);
+	playButton.setBounds((int)btnX, (int)(rowH * 5 - 10), (int)btnSize, (int)btnSize);
+	fastSyncBtn.setBounds((int)btnX, (int)(rowH * 5 - 10 + btnSize + 4), (int)btnSize, (int)(rowH * 0.5));
 
 	// CUE button — below playButton, same column
-	cueButton.setBounds(mainXOffset + (int)(getWidth() * 22.5 / 32),
-	                    (int)(rowH * 5 - 10 + rowH * 0.7 + 4 + rowH * 0.5 + 4),
-	                    (int)(rowH * 0.7), 20);
+	cueButton.setBounds((int)btnX,
+	                    (int)(rowH * 5 - 10 + btnSize + 4 + rowH * 0.5 + 4),
+	                    (int)btnSize, 20);
 
 	waveformDisplay.setBounds(0, 0, getWidth(), rowH * 2);
 	loadingLabel.setBounds(waveformDisplay.getBounds());
@@ -504,12 +537,10 @@ void DeckGUI::resized()
 	// screen edge, mirroring the symmetric "two decks meeting in the middle"
 	// layout. Each tab is square (≈ railW) and stacked top→bottom under the
 	// waveform header.
-	const bool deck2 = (theme == juce::Colours::hotpink);
-	const int railW = 44;
 	const int railTop = (int)(rowH * 2 + 4);
 	const int railBottom = (int)(getHeight() - 6);
 	const int railH = juce::jmax(180, railBottom - railTop);
-	const int railX = deck2 ? (getWidth() - railW - 2) : 2;
+	const int railX = isDeck2 ? (getWidth() - railW - 2) : 2;
 
 	const int tabCount = 9;
 	const int tabSpacing = 2;
@@ -718,7 +749,7 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 			pendingAction.fireAtRealTime = fireAt;
 			pendingAction.srcButton = &playButton;
 			playButton.setColour(juce::DrawableButton::backgroundColourId,
-				juce::Colours::orange.withAlpha(0.7f));
+				UI::accentWarning.withAlpha(0.7f));
 			// Undo the auto-toggle — keep current state until fire
 			playButton.setToggleState(modeIsPlaying, juce::NotificationType::dontSendNotification);
 			return;
@@ -753,14 +784,14 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 	if (button == &cueTabButton) {
 		cueGridMode = CueGridMode::HotCues;
 		cueTabButton.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
-		gridTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		gridTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		jumpTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		loopTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		quantizeTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		syncTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		setCueButtonsVisible(true);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(false);
@@ -775,14 +806,14 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 	if (button == &gridTabButton) {
 		cueGridMode = CueGridMode::BeatGrid;
 		gridTabButton.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
-		cueTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		cueTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		jumpTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		loopTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		quantizeTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		syncTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		setCueButtonsVisible(false);
 		setGridControlsVisible(true);
 		setBeatJumpControlsVisible(false);
@@ -798,14 +829,14 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 	if (button == &jumpTabButton) {
 		cueGridMode = CueGridMode::BeatJump;
 		jumpTabButton.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
-		cueTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		gridTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		cueTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		gridTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		loopTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		quantizeTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		syncTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		setCueButtonsVisible(false);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(true);
@@ -820,14 +851,14 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 	if (button == &loopTabButton) {
 		cueGridMode = CueGridMode::Loop;
 		loopTabButton.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
-		cueTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		gridTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		cueTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		gridTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		jumpTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		quantizeTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		syncTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		setCueButtonsVisible(false);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(false);
@@ -842,14 +873,14 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 	if (button == &quantizeTabButton) {
 		cueGridMode = CueGridMode::Quantize;
 		quantizeTabButton.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
-		cueTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		gridTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		syncTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		cueTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		gridTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		jumpTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		loopTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		syncTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		setCueButtonsVisible(false);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(false);
@@ -864,14 +895,14 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 	if (button == &syncTabButton) {
 		cueGridMode = CueGridMode::Sync;
 		syncTabButton.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
-		cueTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		gridTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		jumpTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		loopTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		cueTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		gridTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		jumpTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		loopTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		quantizeTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		setCueButtonsVisible(false);
 		setGridControlsVisible(false);
 		setBeatJumpControlsVisible(false);
@@ -886,12 +917,12 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 
 	// FX tab handlers ----------------------------------------------------------
 	auto dimAllNonFxTabs = [this]() {
-		cueTabButton     .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		gridTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		jumpTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		loopTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		quantizeTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		syncTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		cueTabButton     .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		gridTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		jumpTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		loopTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		quantizeTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		syncTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 	};
 	auto hideAllPanels = [this]() {
 		setCueButtonsVisible(false);
@@ -909,8 +940,8 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 		cueGridMode = CueGridMode::PadFx;
 		dimAllNonFxTabs();
 		padFxTabButton    .setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
-		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		hideAllPanels();
 		setPadFxControlsVisible(true);
 		refreshFxUi();
@@ -919,9 +950,9 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 	if (button == &beatFxTabButton) {
 		cueGridMode = CueGridMode::BeatFx;
 		dimAllNonFxTabs();
-		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
-		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		hideAllPanels();
 		setBeatFxControlsVisible(true);
 		refreshFxUi();
@@ -930,8 +961,8 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 	if (button == &releaseFxTabButton) {
 		cueGridMode = CueGridMode::ReleaseFx;
 		dimAllNonFxTabs();
-		padFxTabButton    .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
-		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		padFxTabButton    .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+		beatFxTabButton   .setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		releaseFxTabButton.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.8f));
 		hideAllPanels();
 		setReleaseFxControlsVisible(true);
@@ -1403,9 +1434,9 @@ void DeckGUI::timerCallback() {
 	bool loopOn = player->isLooping();
 	if (!pendingAction.isValid() || pendingAction.srcButton != &loopInBtn)
 		loopInBtn.setColour(juce::TextButton::buttonColourId,
-			inSet ? juce::Colours::blue.withAlpha(0.7f) : juce::Colour::fromRGBA(25, 25, 25, 255));
+			inSet ? juce::Colours::blue.withAlpha(0.7f) : UI::bgRoot);
 	reloopBtn.setColour(juce::TextButton::buttonColourId,
-		loopOn ? juce::Colours::limegreen.withAlpha(0.6f) : juce::Colour::fromRGBA(25, 25, 25, 255));
+		loopOn ? juce::Colours::limegreen.withAlpha(0.6f) : UI::bgRoot);
 
 	// Fire pending quantize action if its time has arrived
 	if (pendingAction.isValid()) {
@@ -1724,9 +1755,9 @@ void DeckGUI::syncStateChanged() {
 	fastSyncBtn.setToggleState(isSynced && !outOfRange, juce::dontSendNotification);
 
 	// Status-driven tint on the engage + fast-sync buttons.
-	juce::Colour offColour = juce::Colour::fromRGBA(25, 25, 25, 255);
+	juce::Colour offColour = UI::bgRoot;
 	if (isSynced && outOfRange)
-		offColour = juce::Colours::orange.withAlpha(0.6f);
+		offColour = UI::accentWarning.withAlpha(0.6f);
 	syncEngageBtn.setColour(juce::TextButton::buttonColourId, offColour);
 	fastSyncBtn.setColour  (juce::TextButton::buttonColourId, offColour);
 
@@ -1850,7 +1881,7 @@ void DeckGUI::clearPendingAction() {
 		}
 		else {
 			pendingAction.srcButton->setColour(juce::TextButton::buttonColourId,
-				juce::Colour::fromRGBA(25, 25, 25, 255));
+				UI::bgRoot);
 		}
 	}
 	pendingAction.clear();
@@ -1977,11 +2008,11 @@ void DeckGUI::queueOrExecute(PendingQuantizeAction::Type type, juce::Button* btn
 	// Highlight button orange
 	if (btn == &playButton) {
 		playButton.setColour(juce::DrawableButton::backgroundColourId,
-			juce::Colours::orange.withAlpha(0.7f));
+			UI::accentWarning.withAlpha(0.7f));
 	}
 	else {
 		btn->setColour(juce::TextButton::buttonColourId,
-			juce::Colours::orange.withAlpha(0.8f));
+			UI::accentWarning.withAlpha(0.8f));
 	}
 }
 
@@ -2056,7 +2087,7 @@ void DeckGUI::buildFxPanels()
 			beatFxSelector.addItem(procs[i]->getName(), i + 1); // ComboBox ids are 1-based
 		}
 		beatFxSelector.setSelectedId(1, juce::dontSendNotification); // None
-		beatFxSelector.setColour(juce::ComboBox::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxSelector.setColour(juce::ComboBox::backgroundColourId, UI::bgRoot);
 		beatFxSelector.setColour(juce::ComboBox::textColourId, juce::Colours::white);
 		beatFxSelector.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
 		beatFxSelector.onChange = [this]() {
@@ -2071,7 +2102,7 @@ void DeckGUI::buildFxPanels()
 		for (int i = 0; i < 7; ++i)
 			beatFxDivisionBox.addItem(divNames[i], i + 1);
 		beatFxDivisionBox.setSelectedId(3, juce::dontSendNotification); // 1/4 default
-		beatFxDivisionBox.setColour(juce::ComboBox::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxDivisionBox.setColour(juce::ComboBox::backgroundColourId, UI::bgRoot);
 		beatFxDivisionBox.setColour(juce::ComboBox::textColourId, juce::Colours::white);
 		beatFxDivisionBox.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
 		beatFxDivisionBox.onChange = [this]() {
@@ -2091,7 +2122,7 @@ void DeckGUI::buildFxPanels()
 
 		beatFxOnButton.setClickingTogglesState(true);
 		beatFxOnButton.addListener(this);
-		beatFxOnButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxOnButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		beatFxOnButton.setColour(juce::TextButton::buttonOnColourId, theme.withAlpha(0.85f));
 		beatFxOnButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 		beatFxOnButton.setColour(juce::TextButton::textColourOnId,  juce::Colours::black);
@@ -2120,7 +2151,7 @@ void DeckGUI::buildFxPanels()
 		addChildComponent(beatFxWetLabel);
 
 		beatFxEditButton.addListener(this);
-		beatFxEditButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+		beatFxEditButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		beatFxEditButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 		addChildComponent(beatFxEditButton);
 	}
@@ -2291,7 +2322,7 @@ void DeckGUI::setCueActive(bool active) noexcept
 {
 	cueButton.setColour(juce::TextButton::buttonColourId,
 	                    active ? theme.withAlpha(0.85f)
-	                           : juce::Colour::fromRGBA(50, 50, 50, 255));
+	                           : UI::bgCard);
 	cueButton.repaint();
 }
 

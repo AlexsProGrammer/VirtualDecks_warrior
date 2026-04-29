@@ -114,19 +114,19 @@ private:
 	AudioEngine audioEngine{ formatManager };
 
 	/// Instance of ZoomedWaveform class for the left DJ Deck's audio track.
-	ZoomedWaveform zoomedDisplay1{ formatManager, thumbCache, juce::Colours::aqua };
+	ZoomedWaveform zoomedDisplay1{ formatManager, thumbCache, UI::deck1Accent };
 
 	/// Instance of ZoomedWaveform class for the right DJ Deck's audio track.
-	ZoomedWaveform zoomedDisplay2{ formatManager, thumbCache,juce::Colours::hotpink };
+	ZoomedWaveform zoomedDisplay2{ formatManager, thumbCache, UI::deck2Accent };
 
 	/// Cross-deck beat-sync manager (master/slave coordinator).
 	BeatSyncManager beatSyncManager;
 
 	/// Instance of DeckGUI class for the left DJ Deck.
-	DeckGUI deckGUI1{ &audioEngine.getPlayer(0), formatManager, thumbCache,&zoomedDisplay1 , library,juce::Colours::aqua, &beatSyncManager, 0, &audioEngine };
+	DeckGUI deckGUI1{ &audioEngine.getPlayer(0), formatManager, thumbCache,&zoomedDisplay1 , library, UI::deck1Accent, &beatSyncManager, 0, &audioEngine };
 
 	/// Instance of DeckGUI class for the right DJ Deck.
-	DeckGUI deckGUI2{ &audioEngine.getPlayer(1), formatManager, thumbCache,&zoomedDisplay2 , library,juce::Colours::hotpink, &beatSyncManager, 1, &audioEngine };
+	DeckGUI deckGUI2{ &audioEngine.getPlayer(1), formatManager, thumbCache,&zoomedDisplay2 , library, UI::deck2Accent, &beatSyncManager, 1, &audioEngine };
 
 	/// Horizontal fader subclass that passes right-click to the parent so the
 	/// context-menu handler in MainComponent::mouseDown can show a reset popup.

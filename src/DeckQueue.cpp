@@ -1,3 +1,4 @@
+#include "UIConstants.h"
 #include "DeckQueue.h"
 
 //==============================================================================
@@ -12,8 +13,8 @@ DeckQueue::DeckQueue(juce::Colour themeColour, TrackCallback onJumpIn)
 
 	list.setModel(this);
 	list.setRowHeight(16);
-	list.setColour(juce::ListBox::backgroundColourId, juce::Colour::fromRGBA(20, 20, 20, 255));
-	list.setColour(juce::ListBox::outlineColourId,    juce::Colour::fromRGBA(50, 50, 50, 255));
+	list.setColour(juce::ListBox::backgroundColourId, UI::bgRoot.darker(0.2f));
+	list.setColour(juce::ListBox::outlineColourId,    UI::bgCard);
 	list.setOutlineThickness(1);
 	addAndMakeVisible(list);
 }
@@ -42,7 +43,7 @@ track DeckQueue::popFront()
 
 void DeckQueue::paint(juce::Graphics& g)
 {
-	g.setColour(juce::Colour::fromRGBA(25, 25, 25, 255));
+	g.setColour(UI::bgRoot);
 	g.fillRoundedRectangle(getLocalBounds().toFloat(), 3.0f);
 	g.setColour(theme.withAlpha(0.4f));
 	g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 3.0f, 1.0f);
@@ -71,7 +72,7 @@ void DeckQueue::paintListBoxItem(int rowNumber, juce::Graphics& g, int width, in
 	if (rowIsSelected)
 		g.fillAll(theme.withAlpha(0.35f));
 	else if ((rowNumber & 1) == 0)
-		g.fillAll(juce::Colour::fromRGBA(30, 30, 30, 255));
+		g.fillAll(UI::bgElevated);
 
 	const auto& t = queue[(size_t) rowNumber];
 	g.setColour(juce::Colours::white);

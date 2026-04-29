@@ -1,4 +1,5 @@
 
+#include "UIConstants.h"
 #include "Library.h"
 
 //==============================================================================
@@ -70,7 +71,7 @@ Library::Library(juce::AudioFormatManager &_formatManager)
   directoryComponent.setModel(this);
   addAndMakeVisible(directoryComponent);
   directoryComponent.setColour(juce::ListBox::ColourIds::backgroundColourId,
-                               juce::Colour::fromRGBA(25, 25, 25, 255));
+                               UI::bgRoot);
   directoryComponent.selectRow(selectedFolderIndex);
 
   // Setup folder management buttons
@@ -80,7 +81,7 @@ Library::Library(juce::AudioFormatManager &_formatManager)
   addAndMakeVisible(addFilesBtn);
   addAndMakeVisible(removeTrackBtn);
 
-  auto buttonColour = juce::Colour::fromRGBA(50, 50, 50, 255);
+  auto buttonColour = UI::bgCard;
   addFolderBtn.setColour(juce::TextButton::buttonColourId, buttonColour);
   removeFolderBtn.setColour(juce::TextButton::buttonColourId, buttonColour);
   renameFolderBtn.setColour(juce::TextButton::buttonColourId, buttonColour);

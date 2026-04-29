@@ -1,4 +1,5 @@
 
+#include "UIConstants.h"
 #include "PlaylistComponent.h"
 
 //==============================================================================
@@ -15,11 +16,11 @@ PlaylistComponent::PlaylistComponent(juce::AudioFormatManager& _formatManager) :
 	tableComponent.getHeader().addColumn("Length", 2, 100);
 	tableComponent.getHeader().addColumn("BPM", 3, 80);
 	tableComponent.setModel(this);
-	tableComponent.setColour(juce::TableListBox::ColourIds::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	tableComponent.setColour(juce::TableListBox::ColourIds::backgroundColourId, UI::bgRoot);
 	addAndMakeVisible(tableComponent);
 
 	search.addListener(this);
-	search.setColour(juce::TextEditor::ColourIds::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	search.setColour(juce::TextEditor::ColourIds::backgroundColourId, UI::bgRoot);
 	addAndMakeVisible(search);
 
 	setInterceptsMouseClicks(false, true);
@@ -133,7 +134,7 @@ void PlaylistComponent::paintRowBackground(juce::Graphics& g, int rowNumber, int
 			DBG(tableComponent.getSelectedRow());
 		}
 		else {
-			rowNumber % 2 == 0 ? g.fillAll(juce::Colour::fromRGBA(50, 50, 50, 255)) : g.fillAll(juce::Colour::fromRGBA(12.5, 12.5, 12.5, 255));
+			rowNumber % 2 == 0 ? g.fillAll(UI::bgCard) : g.fillAll(UI::bgRoot);
 		}
 	}
 

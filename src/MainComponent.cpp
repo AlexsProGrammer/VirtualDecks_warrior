@@ -46,9 +46,9 @@ MainComponent::MainComponent()
 	auto queueCb2 = [this](const track& t) { deckGUI2.enqueueTrack(t); };
 	auto closeCb2 = [this]() { closeSidebar(1); };
 
-	sidebar1 = std::make_unique<DeckLibrarySidebar>(library, juce::Colours::aqua,    0,
+	sidebar1 = std::make_unique<DeckLibrarySidebar>(library, UI::deck1Accent, 0,
 	                                                std::move(loadCb1), std::move(queueCb1), std::move(closeCb1));
-	sidebar2 = std::make_unique<DeckLibrarySidebar>(library, juce::Colours::hotpink, 1,
+	sidebar2 = std::make_unique<DeckLibrarySidebar>(library, UI::deck2Accent, 1,
 	                                                std::move(loadCb2), std::move(queueCb2), std::move(closeCb2));
 
 	addChildComponent(*sidebar1);
@@ -123,7 +123,7 @@ MainComponent::MainComponent()
 
 	formatManager.registerBasicFormats();
 
-	getLookAndFeel().setColour(juce::ResizableWindow::backgroundColourId, juce::Colour::fromRGBA(25, 25, 25, 255));
+	getLookAndFeel().setColour(juce::ResizableWindow::backgroundColourId, UI::bgRoot);
 
 	crossFader.setLookAndFeel(&customLookAndFeel);
 	library.setLookAndFeel(&customLookAndFeel);
@@ -200,7 +200,7 @@ void MainComponent::paint(juce::Graphics& g)
 {
 	g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 	g.setFont(20.0f);
-	g.setColour(juce::Colour::fromRGBA(25, 25, 25, 255));
+	g.setColour(UI::bgRoot);
 	g.fillRect(crossFader.getLocalBounds());
 }
 
@@ -223,7 +223,7 @@ void MainComponent::resized()
 	constexpr int kCrossFaderH     = 37;
 	constexpr int kSettingsBtnSize = 26;
 	constexpr double kRowCapPx     = 40.0; // mirror DeckGUI's rowH cap
-	constexpr double kCrossFaderRow = 7.0; // bottom row inside deck panel (below speed slider)
+	constexpr double kCrossFaderRow = 8.55; // bottom row inside deck panel (below filter knob/label)
 
 	const int zoomH  = kZoomBaseH + getHeight() / kZoomGrowDivisor;
 	const int deckY  = kDeckBaseY + getHeight() / kDeckGrowDivisor;

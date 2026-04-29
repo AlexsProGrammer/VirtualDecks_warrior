@@ -1,6 +1,8 @@
 #include <JuceHeader.h>
 #include "SettingsPanel.h"
 #include "AppSettings.h"
+#include "UIConstants.h"
+#include "CustomLookAndFeel.h"
 
 SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
                              juce::AudioDeviceManager& headphoneManager,
@@ -17,7 +19,7 @@ SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
 
 	headphoneLabel.setText("Headphone / CUE Output  (use JACK type for per-sink routing)", juce::dontSendNotification);
 	headphoneLabel.setFont(juce::Font(juce::FontOptions{ 13.0f }).boldened());
-	headphoneLabel.setColour(juce::Label::textColourId, juce::Colours::aqua);
+	headphoneLabel.setColour(juce::Label::textColourId, UI::deck2Accent);
 	addAndMakeVisible(headphoneLabel);
 
 	addAndMakeVisible(masterSelector);
@@ -42,9 +44,9 @@ SettingsPanel::~SettingsPanel() = default;
 
 void SettingsPanel::paint(juce::Graphics& g)
 {
-	g.fillAll(juce::Colour::fromRGBA(30, 30, 30, 240));
-	g.setColour(juce::Colour::fromRGBA(60, 60, 60, 255));
-	g.drawRect(getLocalBounds(), 1);
+	CustomLookAndFeel::paintPanelBackground(g, getLocalBounds().toFloat(), true, UI::kPanelRadius);
+	g.setColour(UI::borderSubtle);
+	g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), UI::kPanelRadius, 1.0f);
 }
 
 void SettingsPanel::resized()

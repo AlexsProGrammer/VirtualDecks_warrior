@@ -1,4 +1,5 @@
 
+#include "UIConstants.h"
 #include "ZoomedWaveform.h"
 //==============================================================================
 
@@ -34,7 +35,7 @@ ZoomedWaveform::~ZoomedWaveform()
  */
 void ZoomedWaveform::paint(juce::Graphics& g)
 {
-	g.fillAll(juce::Colour::fromRGBA(0, 0, 0, 255));
+	g.fillAll(UI::bgSurface);
 	g.setColour(juce::Colours::grey);
 
 	if (isLoaded) {

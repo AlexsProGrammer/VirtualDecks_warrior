@@ -1,5 +1,6 @@
 
 #define _USE_MATH_DEFINES
+#include "UIConstants.h"
 #include "JogWheel.h" 
 //==============================================================================
 
@@ -37,30 +38,60 @@ JogWheel::~JogWheel()
  */
 void JogWheel::paint(juce::Graphics& g)
 {
-	g.setColour(juce::Colours::darkslategrey);
-	g.fillEllipse(2, 2, getWidth() - 4, getHeight() - 4);
+	const float w = (float) getWidth();
+	const float h = (float) getHeight();
+	const float cx = w * 0.5f;
+	const float cy = h * 0.5f;
+	const float outerR = juce::jmin(w, h) * 0.5f - 1.0f;
 
-	g.setColour(theme);
+	// Drop shadow under wheel
+	juce::DropShadow(juce::Colours::black.withAlpha(0.55f), 14, { 0, 4 })
+		.drawForRectangle(g, juce::Rectangle<int>((int)(cx - outerR), (int)(cy - outerR),
+		                                          (int)(outerR * 2), (int)(outerR * 2)));
+
+	// Outer rim — vertical gradient from elevated to root
+	juce::ColourGradient rimGrad(UI::bgElevated, cx, cy - outerR,
+	                              UI::bgRoot,    cx, cy + outerR, false);
+	g.setGradientFill(rimGrad);
+	g.fillEllipse(cx - outerR, cy - outerR, outerR * 2, outerR * 2);
+
+	// Subtle theme-tinted rim stroke
+	g.setColour(theme.withAlpha(0.35f));
+	g.drawEllipse(cx - outerR, cy - outerR, outerR * 2, outerR * 2, 1.5f);
+
+	// Playhead arm — theme color, tapered line
 	noRotations = audioThumb.getTotalLength() / 2;
 	float angle = getPosition() * 360 * noRotations;
-	float piAngle = angle * M_PI / 180;
+	float piAngle = angle * (float) M_PI / 180.0f;
 
-	startPoint.x = getWidth() / 2;
-	startPoint.y = getHeight() / 2;
+	startPoint.x = cx;
+	startPoint.y = cy;
 	line.setStart(startPoint);
-	endPoint.x = (getWidth() / 2) + (getWidth() / 2 - 4) * std::cos(piAngle);
-	endPoint.y = (getHeight() / 2) + (getHeight() / 2 - 4) * std::sin(piAngle);
+	endPoint.x = cx + (outerR - 4) * std::cos(piAngle);
+	endPoint.y = cy + (outerR - 4) * std::sin(piAngle);
 	line.setEnd(endPoint);
-	g.drawLine(line, 8);
+	g.setColour(theme);
+	g.drawLine(line, 6.0f);
 
-	g.setColour(juce::Colours::black);
-	g.fillEllipse(10, 10, getWidth() - 20, getHeight() - 20);
-	g.setColour(juce::Colours::white);
-	g.drawEllipse(10, 10, getWidth() - 20, getHeight() - 20, 1.5);
+	// Inner disc — flat dark with slight gradient
+	const float innerR = outerR - 10.0f;
+	juce::ColourGradient innerGrad(UI::bgRoot.darker(0.4f), cx, cy - innerR,
+	                                UI::bgRoot,             cx, cy + innerR, false);
+	g.setGradientFill(innerGrad);
+	g.fillEllipse(cx - innerR, cy - innerR, innerR * 2, innerR * 2);
+
+	g.setColour(UI::borderSubtle);
+	g.drawEllipse(cx - innerR, cy - innerR, innerR * 2, innerR * 2, 1.0f);
+
+	// Centre dot
+	g.setColour(theme.withAlpha(0.9f));
+	g.fillEllipse(cx - 3, cy - 3, 6, 6);
 
 	if (isLoaded) {
 		std::string time = track::getLengthString(position * audioThumb.getTotalLength(), true);
-		juce::Rectangle<float> rect(0, getHeight() / 2 - 10, getWidth(), 10);
+		juce::Rectangle<float> rect(0, cy - 10, w, 14);
+		g.setColour(UI::textPrimary);
+		g.setFont(juce::Font(11.0f, juce::Font::bold));
 		g.drawText(time, rect, juce::Justification::centred);
 	}
 }

@@ -3,111 +3,90 @@
 
 #pragma once
 
+#include "UIConstants.h"
+
 /**
- * Definition of a custom LookAndFeel class template
+ * Custom LookAndFeel for the DJDecks app.
  *
- * Every graphics component has a LookAndFeel configured, usually configured
- * to the standard juce::LookAndFeel_V4 instance, which determines the
- * appearance of the component. The component calls on it's LookAndFeel
- * methods to draw the component, and overriding inherited methods of
- * juce::LookAndFeel_V4 allows this LookAndFeel class to provide custom
- * appearance to certain components. The purpose of this CustomLookAndFeel
- * class is to customize the appearance of default sliders and table headers.
- * Using an instance of this class, components can set this instance as it's LookAndFeel configuration.
- *
+ * Provides a flat, modern look across the entire application: rounded buttons
+ * with glow on toggle, pill-shaped sliders with circular thumbs, code-drawn
+ * rotary knobs with a filled-arc indicator, and rounded popup menus / combo
+ * boxes / scrollbars. Theme colours and corner radii come from `UIConstants.h`.
  */
 class CustomLookAndFeel : public juce::LookAndFeel_V4 {
 public:
 
-	//============================================================================== 
-
-	/**
-		* Class constructor for CustomLookAndFeel. Uses the constructor to parse svg images in the Assets folders into a unique pointer of xml element, and then creating a juce::Drawable from it.
-		* Inherits LookAndFeel methods from juce::LookAndFeel_V4
-	*/
+	/** Configures default colour IDs across all standard JUCE components. */
 	CustomLookAndFeel();
 
 	//==============================================================================
+	// Sliders
+	void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
+		float sliderPos, float minSliderPos, float maxSliderPos,
+		const juce::Slider::SliderStyle, juce::Slider&) override;
 
-	/**
-		* Overrides LookAndFeelV4::drawLinearSlider to draw a standard linear slider on the graphics object
-		*
-		* @param The graphics object
-		* @param x position of the component
-		* @param y position of the component
-		* @param Width of the component
-		* @param Height of the component
-		* @param Knob position of the slider
-		* @param Minimum knob position of the slider
-		* @param Maximum knob position of the slider
-		* @param SliderStyle enum value
-		* @param Slider object to be drawn
-	*/
-	void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height, float sliderPos, float minSliderPos, float maxSliderPos, const juce::Slider::SliderStyle, juce::Slider&) override;
+	void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
+		float sliderPos, const float rotaryStartAngle,
+		const float rotaryEndAngle, juce::Slider& slider) override;
 
-	/**
-		* Overrides LookAndFeelV4::drawRotarySlider to draw a standard rotary slider on the graphics object
-		*
-		* @param The graphics object
-		* @param x position of the component
-		* @param y position of the component
-		* @param Width of the component
-		* @param Height of the component
-		* @param Knob position of the slider
-		* @param Starting angle of the knob rotation
-		* @param Ending angle of the knob rotation
-		* @param Slider object to be drawn
-	*/
-	void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height, float sliderPos, const float rotaryStartAngle, const float rotaryEndAngle, juce::Slider& slider) override;
+	int getSliderThumbRadius(juce::Slider&) override;
 
-	/**
-		* Overrides LookAndFeelV4::drawTableHeaderBackground to draw a Table Header background on the graphics object
-		*
-		* @param The graphics object
-		* @param TableHeaderComponent to be drawn
-	*/
+	//==============================================================================
+	// Tables
 	void drawTableHeaderBackground(juce::Graphics& g, juce::TableHeaderComponent& header) override;
+	void drawTableHeaderColumn(juce::Graphics& g, juce::TableHeaderComponent& header,
+		const juce::String& columnName, int columnId, int width, int height,
+		bool isMouseOver, bool isMouseDown, int columnFlags) override;
 
-	/**
-		* Overrides LookAndFeelV4::drawButtonText. Modern UI uses 11px font with bold weight
-		* when the button is toggled-on so toolbar/tab labels remain readable on dark surfaces.
-		*
-		* @param The graphics object
-		* @param TextButton to be drawn
-		* @param If the button is highlighted
-		* @param If the button is down
-	*/
-	void drawButtonText(juce::Graphics& g, juce::TextButton& button, bool isMouseOverButton, bool isButtonDown) override;
+	//==============================================================================
+	// Buttons
+	void drawButtonText(juce::Graphics& g, juce::TextButton& button,
+		bool isMouseOverButton, bool isButtonDown) override;
 
-	/**
-		* Overrides LookAndFeelV4::drawButtonBackground for a flat, rounded modern button.
-		* Toggled-on buttons get a theme-coloured fill; hovered buttons get a brighter outline.
-	*/
-	void drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour& backgroundColour, bool isMouseOverButton, bool isButtonDown) override;
+	void drawButtonBackground(juce::Graphics& g, juce::Button& button,
+		const juce::Colour& backgroundColour,
+		bool isMouseOverButton, bool isButtonDown) override;
+
+	juce::Font getTextButtonFont(juce::TextButton& button, int buttonHeight) override;
+	juce::Font getLabelFont(juce::Label&) override;
+	juce::Font getComboBoxFont(juce::ComboBox&) override;
+	juce::Font getPopupMenuFont() override;
+
+	//==============================================================================
+	// Combo / Popup
+	void drawComboBox(juce::Graphics& g, int width, int height, bool isButtonDown,
+		int buttonX, int buttonY, int buttonW, int buttonH, juce::ComboBox& box) override;
+
+	void drawPopupMenuBackground(juce::Graphics& g, int width, int height) override;
+
+	//==============================================================================
+	// Scrollbar
+	void drawScrollbar(juce::Graphics& g, juce::ScrollBar& bar, int x, int y,
+		int width, int height, bool isScrollbarVertical, int thumbStartPosition,
+		int thumbSize, bool isMouseOver, bool isMouseDown) override;
+
+	//==============================================================================
+	// TextEditor
+	void fillTextEditorBackground(juce::Graphics& g, int width, int height, juce::TextEditor& te) override;
+	void drawTextEditorOutline(juce::Graphics& g, int width, int height, juce::TextEditor& te) override;
 
 	//==============================================================================
 
 	/**
-		* Parses an SVG byte buffer (typically a `BinaryData::*_svg` symbol) into a
-		* `juce::Drawable`, optionally tinting every solid colour to `tint`.
-		*
-		* Use this everywhere icons are constructed for `juce::DrawableButton` so the
-		* `XmlDocument::parse` + `Drawable::createFromSVG` boilerplate is centralised.
-		*
-		* @param svgData null-terminated SVG markup (BinaryData symbol)
-		* @param tint   optional fill/stroke override; when transparent, original colours are kept
-		* @return owned drawable, or nullptr if the SVG failed to parse
-	*/
-	static std::unique_ptr<juce::Drawable> loadIcon(const char* svgData, juce::Colour tint = juce::Colours::transparentBlack);
+	 * Paint a generic panel background: vertical gradient, rounded rect, optional
+	 * drop shadow. Used by deck panels, sidebars, mixer card and the settings panel.
+	 */
+	static void paintPanelBackground(juce::Graphics& g, juce::Rectangle<float> bounds,
+		bool elevated = false, float radius = UI::kPanelRadius);
 
-	//==============================================================================
+	/** Paint an inner card background (no gradient, lighter than panel). */
+	static void paintCardBackground(juce::Graphics& g, juce::Rectangle<float> bounds,
+		float radius = UI::kCardRadius);
 
-private:
+	/** Centralised SVG → Drawable parser with optional colour replacement. */
+	static std::unique_ptr<juce::Drawable> loadIcon(const char* svgData,
+		juce::Colour tint = juce::Colours::transparentBlack);
 
-	/** Unique Pointer to a juce::Drawable, to store svg image of a vertical slider knob */
-	std::unique_ptr<juce::Drawable> verticalSliderKnobImage;
-
-	/** Unique Pointer to a juce::Drawable, to store svg image of a horizontal slider knob */
-	std::unique_ptr<juce::Drawable> horizontalSliderKnobImage;
-
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CustomLookAndFeel)
 };
+

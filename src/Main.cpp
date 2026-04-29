@@ -8,6 +8,7 @@
 
 #include <JuceHeader.h>
 #include "MainComponent.h"
+#include "UIConstants.h"
 
 //==============================================================================
 class OtoDecksApplication : public juce::JUCEApplication
@@ -71,7 +72,7 @@ public:
 			setFullScreen(true);
 #else
 			setResizable(true, true);
-			setResizeLimits(1000, 700, getParentMonitorArea().getWidth(), getParentMonitorArea().getHeight());
+			setResizeLimits(UI::kMinWindowW, UI::kMinWindowH, getParentMonitorArea().getWidth(), getParentMonitorArea().getHeight());
 			centreWithSize(getWidth(), getHeight());
 #endif
 

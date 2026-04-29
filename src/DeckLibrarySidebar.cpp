@@ -1,3 +1,5 @@
+#include "UIConstants.h"
+#include "CustomLookAndFeel.h"
 #include "DeckLibrarySidebar.h"
 
 //==============================================================================
@@ -24,7 +26,7 @@ DeckLibrarySidebar::DeckLibrarySidebar(Library& libraryRef,
 	titleLabel.setFont(juce::Font(16.0f, juce::Font::bold));
 	addAndMakeVisible(titleLabel);
 
-	closeBtn.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(50, 50, 50, 255));
+	closeBtn.setColour(juce::TextButton::buttonColourId, UI::bgCard);
 	closeBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 	closeBtn.addListener(this);
 	addAndMakeVisible(closeBtn);
@@ -32,8 +34,8 @@ DeckLibrarySidebar::DeckLibrarySidebar(Library& libraryRef,
 	// Folder list (top half of left pane on a vertical layout)
 	folderList.setModel(&folderListModel);
 	folderList.setRowHeight(22);
-	folderList.setColour(juce::ListBox::backgroundColourId, juce::Colour::fromRGBA(20, 20, 20, 255));
-	folderList.setColour(juce::ListBox::outlineColourId,    juce::Colour::fromRGBA(50, 50, 50, 255));
+	folderList.setColour(juce::ListBox::backgroundColourId, UI::bgRoot.darker(0.2f));
+	folderList.setColour(juce::ListBox::outlineColourId,    UI::bgCard);
 	folderList.setOutlineThickness(1);
 	addAndMakeVisible(folderList);
 
@@ -41,7 +43,7 @@ DeckLibrarySidebar::DeckLibrarySidebar(Library& libraryRef,
 	                 &addFilesBtn, &removeTrackBtn, &loadBtn, &queueBtn })
 	{
 		b->addListener(this);
-		b->setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGBA(50, 50, 50, 255));
+		b->setColour(juce::TextButton::buttonColourId, UI::bgCard);
 		b->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 		addAndMakeVisible(*b);
 	}
@@ -52,16 +54,16 @@ DeckLibrarySidebar::DeckLibrarySidebar(Library& libraryRef,
 
 	// Search editor
 	searchEditor.setTextToShowWhenEmpty("Search...", juce::Colours::grey);
-	searchEditor.setColour(juce::TextEditor::backgroundColourId, juce::Colour::fromRGBA(20, 20, 20, 255));
-	searchEditor.setColour(juce::TextEditor::outlineColourId, juce::Colour::fromRGBA(50, 50, 50, 255));
+	searchEditor.setColour(juce::TextEditor::backgroundColourId, UI::bgRoot.darker(0.2f));
+	searchEditor.setColour(juce::TextEditor::outlineColourId, UI::bgCard);
 	searchEditor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
 	searchEditor.addListener(this);
 	addAndMakeVisible(searchEditor);
 
 	// Track list
 	trackList.setModel(this);
-	trackList.setColour(juce::ListBox::backgroundColourId, juce::Colour::fromRGBA(20, 20, 20, 255));
-	trackList.setColour(juce::ListBox::outlineColourId,    juce::Colour::fromRGBA(50, 50, 50, 255));
+	trackList.setColour(juce::ListBox::backgroundColourId, UI::bgRoot.darker(0.2f));
+	trackList.setColour(juce::ListBox::outlineColourId,    UI::bgCard);
 	trackList.setOutlineThickness(1);
 	trackList.setRowHeight(22);
 	trackList.getHeader().addColumn("Title",  1, 220, 60, -1, juce::TableHeaderComponent::defaultFlags);
@@ -88,10 +90,12 @@ DeckLibrarySidebar::~DeckLibrarySidebar()
 void DeckLibrarySidebar::paint(juce::Graphics& g)
 {
 	auto r = getLocalBounds().toFloat();
-	g.setColour(juce::Colour::fromRGBA(28, 28, 28, 240));
-	g.fillRect(r);
-	g.setColour(theme.withAlpha(0.7f));
-	g.drawRect(r, 1.5f);
+	CustomLookAndFeel::paintPanelBackground(g, r, true, UI::kPanelRadius);
+	// Deck-coloured accent strip down the inner edge
+	g.setColour(theme);
+	g.fillRoundedRectangle(r.getX(), r.getY(), 3.0f, r.getHeight(), 1.5f);
+	g.setColour(UI::borderSubtle);
+	g.drawRoundedRectangle(r.reduced(0.5f), UI::kPanelRadius, 1.0f);
 }
 
 void DeckLibrarySidebar::resized()
@@ -193,9 +197,9 @@ void DeckLibrarySidebar::paintRowBackground(juce::Graphics& g, int rowNumber,
 	if (rowIsSelected)
 		g.fillAll(theme.withAlpha(0.35f));
 	else if ((rowNumber & 1) == 0)
-		g.fillAll(juce::Colour::fromRGBA(30, 30, 30, 255));
+		g.fillAll(UI::bgElevated);
 	else
-		g.fillAll(juce::Colour::fromRGBA(25, 25, 25, 255));
+		g.fillAll(UI::bgRoot);
 }
 
 void DeckLibrarySidebar::paintCell(juce::Graphics& g, int rowNumber, int columnId,

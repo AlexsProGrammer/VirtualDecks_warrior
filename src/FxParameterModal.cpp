@@ -1,4 +1,5 @@
 
+#include "UIConstants.h"
 #include "FxParameterModal.h"
 
 namespace
@@ -69,7 +70,7 @@ void FxParameterModal::buildControls()
 		                                           juce::Slider::NoTextBox);
 		r.slider->setRange(p.minValue, p.maxValue);
 		r.slider->setValue(p.get(), juce::dontSendNotification);
-		r.slider->setColour(juce::Slider::backgroundColourId, juce::Colour::fromRGBA(50, 50, 50, 255));
+		r.slider->setColour(juce::Slider::backgroundColourId, UI::bgCard);
 		r.slider->setColour(juce::Slider::trackColourId, themeColour.withAlpha(0.7f));
 		r.slider->setColour(juce::Slider::thumbColourId, themeColour);
 
@@ -111,7 +112,7 @@ int FxParameterModal::getPreferredHeight() const noexcept
 
 void FxParameterModal::paint(juce::Graphics& g)
 {
-	g.fillAll(juce::Colour::fromRGBA(28, 28, 28, 240));
+	g.fillAll(UI::bgElevated.withAlpha(0.94f));
 	g.setColour(themeColour.withAlpha(0.6f));
 	g.drawRect(getLocalBounds(), 1);
 }
