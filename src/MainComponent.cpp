@@ -213,23 +213,37 @@ void MainComponent::paint(juce::Graphics& g)
 void MainComponent::resized()
 {
 	DBG("MainComponent::resized");
-	double rowH = getHeight() / 8;
 
-	const int zoomH  = 75 + getHeight() / 32;
-	const int deckY  = 150 + getHeight() / 16;
+	// Layout constants (Phase 5: replace ad-hoc magic numbers)
+	constexpr int kZoomBaseH       = 75;   // zoomed waveform base height
+	constexpr int kZoomGrowDivisor = 32;   // grow zoom strip slowly with window height
+	constexpr int kDeckBaseY       = 150;  // top of the deck panel below 2 zoom strips
+	constexpr int kDeckGrowDivisor = 16;
+	constexpr int kCrossFaderW     = 160;
+	constexpr int kCrossFaderH     = 37;
+	constexpr int kSettingsBtnSize = 26;
+	constexpr double kRowCapPx     = 40.0; // mirror DeckGUI's rowH cap
+	constexpr double kCrossFaderRow = 7.0; // bottom row inside deck panel (below speed slider)
+
+	const int zoomH  = kZoomBaseH + getHeight() / kZoomGrowDivisor;
+	const int deckY  = kDeckBaseY + getHeight() / kDeckGrowDivisor;
 	const int deckH  = getHeight() - deckY;
 
 	zoomedDisplay1.setBounds(0, 0,        getWidth(),       zoomH);
 	zoomedDisplay2.setBounds(0, zoomH,    getWidth(),       zoomH);
 	deckGUI1.setBounds(0,              deckY, getWidth() / 2, deckH);
 	deckGUI2.setBounds(getWidth() / 2, deckY, getWidth() / 2, deckH);
+
 	// Crossfader: vertically track the capped rowH used by DeckGUI so it
-	// always sits between the filter knobs and filter labels.
-	const double deckRowH = std::min(deckH / 9.0, 40.0);
-	crossFader.setBounds(getWidth() / 2 - 80, (int)(deckY + deckRowH * 6.5), 160, 37);
+	// always sits below the (now-longer) speed/volume sliders.
+	const double deckRowH = std::min(deckH / 9.0, kRowCapPx);
+	const int crossFaderY = (int)(deckY + deckRowH * kCrossFaderRow);
+	crossFader.setBounds(getWidth() / 2 - kCrossFaderW / 2, crossFaderY, kCrossFaderW, kCrossFaderH);
 
 	// Gear / settings button — centred, just above the crossfader.
-	settingsButton.setBounds(getWidth() / 2 - 13, (int)(deckY + deckRowH * 6.5) - 30, 26, 26);
+	settingsButton.setBounds(getWidth() / 2 - kSettingsBtnSize / 2,
+	                         crossFaderY - kSettingsBtnSize - 4,
+	                         kSettingsBtnSize, kSettingsBtnSize);
 
 	// Settings panel: full-width strip at the top when open, parked off-screen when closed.
 	if (settingsPanel != nullptr)

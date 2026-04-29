@@ -71,7 +71,7 @@ public:
 			setFullScreen(true);
 #else
 			setResizable(true, true);
-			setResizeLimits(800, 600, getParentMonitorArea().getWidth(), getParentMonitorArea().getHeight());
+			setResizeLimits(1000, 700, getParentMonitorArea().getWidth(), getParentMonitorArea().getHeight());
 			centreWithSize(getWidth(), getHeight());
 #endif
 

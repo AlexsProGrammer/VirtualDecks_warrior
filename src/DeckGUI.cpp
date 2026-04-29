@@ -81,7 +81,8 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 
 	volSlider.setRange(0, 1);
 	volSlider.setSkewFactorFromMidPoint(0.25); // logarithmic feel for the human ear
-	speedSlider.setRange(0.8, 1.2);
+	speedSlider.setRange(0.5, 2.0);
+	speedSlider.setSkewFactorFromMidPoint(1.0); // 1.0 sits at the visual centre of a 50%–200% range
 	filter.setRange(-20000, 20000);
 	lowBandFilter.setRange(0.01, 2);
 	midBandFilter.setRange(0.01, 2);
@@ -456,19 +457,29 @@ void DeckGUI::resized()
 	// Cap rowH so the controls don't grow beyond their design size when the
 	// deck panel is taller than the original 300 px (e.g. on large windows).
 	double rowH = std::min(getHeight() / 9.0, 40.0);
+
+	// ----- Volume column (deck-outer side, NOT on the rail edge) -----
+	// Phase 5: extend volSlider + speedSlider from rowH*3 to rowH*5 vertical
+	// so they read like proper DJ pitch faders. Filter knob moves to the
+	// bottom of the same column so it doesn't compete for vertical space.
 	double volXOffset = theme == juce::Colours::hotpink ? 5.5 : getWidth() - (double)55;
-	volSlider.setBounds(volXOffset, rowH * 2, 50, rowH * 3);
-	volLabel.setBounds(volXOffset, rowH * 5 + 5, 50, rowH * 0.5);
-	filter.setBounds(volXOffset, rowH * 5.8, 50, 50);
-	filterLabel.setBounds(volXOffset, rowH * 6.9, 50, 50);
+	const double sliderTopRow    = 1.3;
+	const double sliderHeightRow = 5.0;
+	const double sliderBottomRow = sliderTopRow + sliderHeightRow; // 6.3
+
+	volSlider.setBounds(volXOffset, rowH * sliderTopRow, 50, rowH * sliderHeightRow);
+	volLabel.setBounds(volXOffset, rowH * sliderBottomRow + 2, 50, rowH * 0.5);
+	filter.setBounds(volXOffset, rowH * (sliderBottomRow + 0.6), 50, 50);
+	filterLabel.setBounds(volXOffset, rowH * (sliderBottomRow + 1.7), 50, rowH * 0.5);
+
 	double mainXOffset = theme == juce::Colours::hotpink ? getWidth() * 7 / 32 : 0;
 
 	// BPM value label above speed slider
-	bpmValueLabel.setBounds(mainXOffset, rowH * 1.3, getWidth() / 8, 20);
-	bpmPercentLabel.setBounds(mainXOffset, rowH * 1.3 + 18, getWidth() / 8, 14);
+	bpmValueLabel.setBounds(mainXOffset, rowH * 0.3, getWidth() / 8, 20);
+	bpmPercentLabel.setBounds(mainXOffset, rowH * 0.3 + 18, getWidth() / 8, 14);
 
-	speedSlider.setBounds(mainXOffset, rowH * 2, getWidth() / 8, rowH * 3);
-	speedLabel.setBounds(mainXOffset, rowH * 5 + 5, getWidth() / 8, rowH * 0.5);
+	speedSlider.setBounds(mainXOffset, rowH * sliderTopRow, getWidth() / 8, rowH * sliderHeightRow);
+	speedLabel.setBounds(mainXOffset, rowH * sliderBottomRow + 2, getWidth() / 8, rowH * 0.5);
 	jogWheel.setBounds(mainXOffset + getWidth() * 22.5 / 32 - 98.9, 5 + rowH * 3, (rowH * 3.3) - 10, (rowH * 3.3) - 10);
 	loadButton.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 2 + 5, rowH * 0.7, rowH * 0.7);
 	playButton.setBounds(mainXOffset + getWidth() * 22.5 / 32, rowH * 5 - 10, rowH * 0.7, rowH * 0.7);

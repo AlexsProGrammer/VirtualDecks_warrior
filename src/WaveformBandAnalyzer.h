@@ -60,4 +60,7 @@ public:
 	                         juce::String fileHash,
 	                         juce::AudioFormatManager& formatManager,
 	                         std::function<void(BandDataPtr)> onReady);
+
+private:
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WaveformBandAnalyzer)
 };
