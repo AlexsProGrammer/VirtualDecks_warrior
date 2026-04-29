@@ -74,5 +74,11 @@ private:
 	/// Number of rotations of the JogWheel playhead
 	float noRotations = 0;
 
+	/// Cached static background image (rim, inner disc). Regenerated only on resize.
+	juce::Image bgCache;
+
+	/// Bounds when bgCache was last rendered; used to detect resize.
+	juce::Rectangle<int> bgCachedBounds;
+
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(JogWheel)
 };

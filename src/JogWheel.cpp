@@ -44,25 +44,51 @@ void JogWheel::paint(juce::Graphics& g)
 	const float cy = h * 0.5f;
 	const float outerR = juce::jmin(w, h) * 0.5f - 1.0f;
 
-	// Drop shadow under wheel
-	juce::DropShadow(juce::Colours::black.withAlpha(0.55f), 14, { 0, 4 })
-		.drawForRectangle(g, juce::Rectangle<int>((int)(cx - outerR), (int)(cy - outerR),
-		                                          (int)(outerR * 2), (int)(outerR * 2)));
+	// --- Static background cache (rim + inner disc) ---
+	// Only re-rendered when the component is resized.
+	if (getLocalBounds() != bgCachedBounds || bgCache.isNull())
+	{
+		bgCachedBounds = getLocalBounds();
+		bgCache = juce::Image(juce::Image::ARGB, getWidth(), getHeight(), true);
+		juce::Graphics cg(bgCache);
 
-	// Outer rim — vertical gradient from elevated to root
-	juce::ColourGradient rimGrad(UI::bgElevated, cx, cy - outerR,
-	                              UI::bgRoot,    cx, cy + outerR, false);
-	g.setGradientFill(rimGrad);
-	g.fillEllipse(cx - outerR, cy - outerR, outerR * 2, outerR * 2);
+		// Outer rim — vertical gradient from elevated to root
+		const float bw = (float) getWidth();
+		const float bh = (float) getHeight();
+		const float bcx = bw * 0.5f;
+		const float bcy = bh * 0.5f;
+		juce::ColourGradient rimGrad(UI::bgElevated, bcx, bcy - outerR,
+		                              UI::bgRoot,    bcx, bcy + outerR, false);
+		cg.setGradientFill(rimGrad);
+		cg.fillEllipse(bcx - outerR, bcy - outerR, outerR * 2, outerR * 2);
 
-	// Subtle theme-tinted rim stroke
+		// Theme-tinted rim stroke drawn by caller using live `theme` — skip here
+		// (colour not available in static cache). Use subtle border instead.
+		cg.setColour(UI::borderSubtle);
+		cg.drawEllipse(bcx - outerR, bcy - outerR, outerR * 2, outerR * 2, 1.5f);
+
+		// Inner disc
+		const float innerR = outerR - 10.0f;
+		juce::ColourGradient innerGrad(UI::bgRoot.darker(0.4f), bcx, bcy - innerR,
+		                                UI::bgRoot,             bcx, bcy + innerR, false);
+		cg.setGradientFill(innerGrad);
+		cg.fillEllipse(bcx - innerR, bcy - innerR, innerR * 2, innerR * 2);
+
+		cg.setColour(UI::borderSubtle);
+		cg.drawEllipse(bcx - innerR, bcy - innerR, innerR * 2, innerR * 2, 1.0f);
+	}
+
+	// Blit cached background (zero cost)
+	g.drawImageAt(bgCache, 0, 0);
+
+	// Theme-tinted rim stroke (live colour, cheap)
 	g.setColour(theme.withAlpha(0.35f));
 	g.drawEllipse(cx - outerR, cy - outerR, outerR * 2, outerR * 2, 1.5f);
 
-	// Playhead arm — theme color, tapered line
+	// --- Rotating arm (redrawn every frame, cheap path stroke) ---
 	noRotations = audioThumb.getTotalLength() / 2;
-	float angle = getPosition() * 360 * noRotations;
-	float piAngle = angle * (float) M_PI / 180.0f;
+	const float angle = getPosition() * 360.0f * noRotations;
+	const float piAngle = angle * (float) M_PI / 180.0f;
 
 	startPoint.x = cx;
 	startPoint.y = cy;
@@ -73,17 +99,7 @@ void JogWheel::paint(juce::Graphics& g)
 	g.setColour(theme);
 	g.drawLine(line, 6.0f);
 
-	// Inner disc — flat dark with slight gradient
-	const float innerR = outerR - 10.0f;
-	juce::ColourGradient innerGrad(UI::bgRoot.darker(0.4f), cx, cy - innerR,
-	                                UI::bgRoot,             cx, cy + innerR, false);
-	g.setGradientFill(innerGrad);
-	g.fillEllipse(cx - innerR, cy - innerR, innerR * 2, innerR * 2);
-
-	g.setColour(UI::borderSubtle);
-	g.drawEllipse(cx - innerR, cy - innerR, innerR * 2, innerR * 2, 1.0f);
-
-	// Centre dot
+	// Centre dot (cheap ellipse fill)
 	g.setColour(theme.withAlpha(0.9f));
 	g.fillEllipse(cx - 3, cy - 3, 6, 6);
 

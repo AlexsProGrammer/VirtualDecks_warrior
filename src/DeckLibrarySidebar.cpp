@@ -102,6 +102,16 @@ void DeckLibrarySidebar::resized()
 {
 	auto r = getLocalBounds().reduced(8);
 
+	// Reserve space for the tab rail on the deck panel that is visible beneath
+	// this sidebar: deck 0's rail is on its LEFT edge (sidebar opens on the
+	// right half of the screen, so the rail would bleed through on the LEFT
+	// side of the sidebar), deck 1's rail is on the RIGHT edge.
+	const int railClear = UI::kRailWidth + 4;
+	if (deckIndex == 0)
+		r.removeFromLeft(railClear);   // sidebar covers right half; clear the left where rail shows
+	else
+		r.removeFromRight(railClear);  // sidebar covers left half; clear the right where rail shows
+
 	auto header = r.removeFromTop(28);
 	closeBtn.setBounds(header.removeFromRight(28));
 	titleLabel.setBounds(header);

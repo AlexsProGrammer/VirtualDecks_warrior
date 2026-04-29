@@ -13,9 +13,12 @@ DeckQueue::DeckQueue(juce::Colour themeColour, TrackCallback onJumpIn)
 
 	list.setModel(this);
 	list.setRowHeight(16);
-	list.setColour(juce::ListBox::backgroundColourId, UI::bgRoot.darker(0.2f));
-	list.setColour(juce::ListBox::outlineColourId,    UI::bgCard);
-	list.setOutlineThickness(1);
+	// Transparent background + no outline: DeckQueue::paint() draws the
+	// rounded background, and the ListBox must not overdraw the rounded corners.
+	list.setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
+	list.setColour(juce::ListBox::outlineColourId,    juce::Colours::transparentBlack);
+	list.setOutlineThickness(0);
+	list.setOpaque(false);
 	addAndMakeVisible(list);
 }
 
@@ -43,10 +46,21 @@ track DeckQueue::popFront()
 
 void DeckQueue::paint(juce::Graphics& g)
 {
+	const float radius = UI::kCardRadius;
+	auto bounds = getLocalBounds().toFloat();
 	g.setColour(UI::bgRoot);
-	g.fillRoundedRectangle(getLocalBounds().toFloat(), 3.0f);
+	g.fillRoundedRectangle(bounds, radius);
+	// Clip child draws to rounded shape
+	juce::Path clip;
+	clip.addRoundedRectangle(bounds.reduced(1.0f), radius - 1.0f);
+	g.reduceClipRegion(clip);
+}
+
+void DeckQueue::paintOverChildren(juce::Graphics& g)
+{
+	// Draw rounded border on top of child components so it's never overdrawn.
 	g.setColour(theme.withAlpha(0.4f));
-	g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 3.0f, 1.0f);
+	g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), UI::kCardRadius, 1.0f);
 }
 
 void DeckQueue::resized()

@@ -199,7 +199,22 @@ void MainComponent::releaseResources()
 void MainComponent::paint(juce::Graphics& g)
 {
 	g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
-	g.setFont(20.0f);
+
+	// Dedicated mixer card: a rounded card strip centred between the two decks.
+	constexpr int kCardW   = 200;
+	constexpr int kZoomBaseH = 75;
+	constexpr int kDeckBaseY = 150;
+	const int     zoomH      = kZoomBaseH + getHeight() / 32;
+	const int     deckY      = kDeckBaseY + getHeight() / 16;
+
+	juce::Rectangle<float> mixCard(
+		(float)(getWidth() / 2 - kCardW / 2),
+		(float)deckY,
+		(float)kCardW,
+		(float)(getHeight() - deckY));
+	CustomLookAndFeel::paintCardBackground(g, mixCard, UI::kCardRadius);
+
+	// Cover the crossfader's background
 	g.setColour(UI::bgRoot);
 	g.fillRect(crossFader.getLocalBounds());
 }
@@ -240,9 +255,9 @@ void MainComponent::resized()
 	const int crossFaderY = (int)(deckY + deckRowH * kCrossFaderRow);
 	crossFader.setBounds(getWidth() / 2 - kCrossFaderW / 2, crossFaderY, kCrossFaderW, kCrossFaderH);
 
-	// Gear / settings button — centred, just above the crossfader.
+	// Gear / settings button — top of the mixer card, centred.
 	settingsButton.setBounds(getWidth() / 2 - kSettingsBtnSize / 2,
-	                         crossFaderY - kSettingsBtnSize - 4,
+	                         deckY + 8,
 	                         kSettingsBtnSize, kSettingsBtnSize);
 
 	// Settings panel: full-width strip at the top when open, parked off-screen when closed.

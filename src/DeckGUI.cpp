@@ -357,6 +357,13 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	midBandFilter.setLookAndFeel(&customLookAndFeel);
 	highBandFilter.setLookAndFeel(&customLookAndFeel);
 
+	// Per-deck rotary accent colour: deck 2 uses pink-red, deck 1 uses blue.
+	{
+		const juce::Colour knobAccent = (deckIndex == 1) ? UI::deck2Accent : UI::deck1Accent;
+		for (auto* s : { &filter, &lowBandFilter, &midBandFilter, &highBandFilter })
+			s->setColour(juce::Slider::rotarySliderFillColourId, knobAccent);
+	}
+
 	// Build Pad / Beat / Release FX panels (initially hidden — HotCues is the
 	// default tab). Must run after `player` is bound because tile callbacks
 	// post FxSelect / FxSetEngaged commands through `player->postCommand()`.
@@ -502,18 +509,32 @@ void DeckGUI::resized()
 	// Jog wheel + transport: clear the outer rail.
 	const double jogSize = (rowH * 3.3) - 10;
 	const double btnSize = rowH * 0.7;
-	double jogRight = (double) getWidth() - (isDeck2 ? rightClear + 4 : 4);
-	// Original deck-1 placement kept jog ~midway; preserve that visual when
-	// no rail is in the way (deck 1 has rail on the LEFT, not RIGHT).
-	if (!isDeck2)
-		jogRight = mainXOffset + getWidth() * 22.5 / 32 - 98.9 + jogSize;
-	double jogX = jogRight - jogSize;
+
+	// For deck 1: compute transport-button X first (right of jog anchor), then
+	// place jog immediately LEFT of the buttons so they can never overlap.
+	// For deck 2: buttons go LEFT of jog (clear right rail), so compute btnX
+	// from the rail-cleared right edge first.
+	double btnX, jogX;
+	if (isDeck2)
+	{
+		// Right-edge anchor: buttons flush against right-rail clearance
+		btnX = (double) getWidth() - rightClear - btnSize - 4;
+		jogX = btnX - jogSize - 6;
+	}
+	else
+	{
+		// Left-anchor: use the original midpoint formula for buttons, then jog goes left of them
+		btnX = mainXOffset + getWidth() * 22.5 / 32;
+		jogX = btnX - jogSize - 6;
+		// Clamp so jog doesn't go behind the speed slider column
+		const double speedSliderRight = mainXOffset + (double)(getWidth() / 8) + 6;
+		if (jogX < speedSliderRight)
+			jogX = speedSliderRight;
+	}
+
 	jogWheel.setBounds((int)jogX, (int)(5 + rowH * 3), (int)jogSize, (int)jogSize);
 
-	// Transport buttons: deck 1 keeps them RIGHT of the jog, deck 2 mirrors
-	// them to the LEFT of the jog (otherwise they would collide with the rail).
-	double btnX = isDeck2 ? (jogX - btnSize - 6)
-	                      : (mainXOffset + getWidth() * 22.5 / 32);
+	// Transport buttons
 	loadButton.setBounds((int)btnX, (int)(rowH * 2 + 5), (int)btnSize, (int)btnSize);
 	playButton.setBounds((int)btnX, (int)(rowH * 5 - 10), (int)btnSize, (int)btnSize);
 	fastSyncBtn.setBounds((int)btnX, (int)(rowH * 5 - 10 + btnSize + 4), (int)btnSize, (int)(rowH * 0.5));

@@ -83,12 +83,11 @@ CustomLookAndFeel::CustomLookAndFeel()
 void CustomLookAndFeel::paintPanelBackground(juce::Graphics& g, juce::Rectangle<float> bounds,
 	bool elevated, float radius)
 {
+	// Cheap depth cue: a slightly darker outer ring instead of a Gaussian shadow.
 	if (elevated)
 	{
-		// Soft drop shadow rendered as a translucent rounded rect drawn behind the panel.
-		juce::DropShadow shadow(juce::Colours::black.withAlpha(0.55f), 18, { 0, 4 });
-		juce::Path p; p.addRoundedRectangle(bounds, radius);
-		shadow.drawForPath(g, p);
+		g.setColour(juce::Colours::black.withAlpha(0.35f));
+		g.fillRoundedRectangle(bounds.expanded(2.0f), radius + 2.0f);
 	}
 
 	juce::ColourGradient grad(UI::bgSurface.brighter(0.04f), bounds.getX(), bounds.getY(),
@@ -280,10 +279,9 @@ void CustomLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int wi
 	juce::Rectangle<float> thumb(thumbRadius * 2.0f, thumbRadius * 2.0f);
 	thumb = thumb.withCentre(thumbCenter);
 
-	// Drop shadow under thumb.
-	juce::DropShadow shadow(juce::Colours::black.withAlpha(0.45f), 6, { 0, 2 });
-	juce::Path tp; tp.addEllipse(thumb);
-	shadow.drawForPath(g, tp);
+	// Cheap shadow: slightly expanded semi-transparent dark ellipse.
+	g.setColour(juce::Colours::black.withAlpha(0.30f));
+	g.fillEllipse(thumb.expanded(2.0f));
 
 	g.setColour(UI::textPrimary);
 	g.fillEllipse(thumb);
@@ -308,13 +306,9 @@ void CustomLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
 	const auto fillCol = slider.findColour(juce::Slider::rotarySliderFillColourId);
 	const auto baseCol = UI::bgCard;
 
-	// Drop shadow under knob disc.
-	{
-		juce::Path p;
-		p.addEllipse(juce::Rectangle<float>(radius * 1.55f, radius * 1.55f).withCentre(centre));
-		juce::DropShadow shadow(juce::Colours::black.withAlpha(0.55f), 10, { 0, 3 });
-		shadow.drawForPath(g, p);
-	}
+	// Cheap depth ring behind disc (no Gaussian blur).
+	g.setColour(juce::Colours::black.withAlpha(0.40f));
+	g.fillEllipse(juce::Rectangle<float>(radius * 1.55f + 4.0f, radius * 1.55f + 4.0f).withCentre(centre.translated(0, 2)));
 
 	// Knob disc with subtle radial gradient.
 	juce::Rectangle<float> disc(radius * 1.55f, radius * 1.55f);
