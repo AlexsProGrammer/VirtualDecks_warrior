@@ -166,29 +166,46 @@ void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
 	const float corner = UI::kButtonRadius;
 	auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
 
+	// DrawableButtons (Play, Load, Cue, FastSync, Library) pass their
+	// backgroundColourId or backgroundOnColourId as the backgroundColour
+	// parameter via JUCE's DrawableButton::paintButton. A near-transparent
+	// colour signals an icon-only button — render interaction overlays only
+	// and skip the solid card fill.
+	const bool hasVisibleBg = (backgroundColour.getAlpha() > 10);
+
+	if (!hasVisibleBg)
+	{
+		// Icon button in idle state: show only hover / press overlays.
+		if (isButtonDown)
+		{
+			g.setColour(juce::Colours::white.withAlpha(0.12f));
+			g.fillRoundedRectangle(bounds, corner);
+		}
+		else if (isMouseOverButton)
+		{
+			g.setColour(juce::Colours::white.withAlpha(0.07f));
+			g.fillRoundedRectangle(bounds, corner);
+			g.setColour(UI::borderSubtle);
+			g.drawRoundedRectangle(bounds, corner, 1.0f);
+		}
+		return;
+	}
+
+	// Solid or tinted fill: TextButtons and icon buttons in an active state
+	// (e.g. cueButton cue-active, fastSyncBtn out-of-range, playButton pending).
 	const bool toggled = button.getToggleState();
-	juce::Colour fill;
+	juce::Colour fill = backgroundColour;
 
-	if (toggled)
-	{
-		auto onCol = button.findColour(juce::TextButton::buttonOnColourId);
-		// Soft glow halo behind a toggled button.
-		g.setColour(onCol.withAlpha(0.20f));
-		g.fillRoundedRectangle(bounds.expanded(2.5f), corner + 2.5f);
-		fill = onCol;
-	}
-	else
-	{
-		fill = backgroundColour.isOpaque() ? backgroundColour : UI::bgCard;
-	}
+	// Soft glow halo behind any visible-background button.
+	g.setColour(fill.withAlpha(0.18f));
+	g.fillRoundedRectangle(bounds.expanded(2.5f), corner + 2.5f);
 
-	if (isButtonDown)        fill = fill.darker(0.15f);
+	if (isButtonDown)           fill = fill.darker(0.15f);
 	else if (isMouseOverButton) fill = fill.brighter(0.10f);
 
 	g.setColour(fill);
 	g.fillRoundedRectangle(bounds, corner);
 
-	// Subtle border.
 	g.setColour(toggled ? fill.brighter(0.20f).withAlpha(0.6f)
 	                    : UI::borderSubtle);
 	g.drawRoundedRectangle(bounds, corner, 1.0f);

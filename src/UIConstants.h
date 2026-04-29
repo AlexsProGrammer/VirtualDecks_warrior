@@ -78,6 +78,17 @@ namespace UI
 	inline constexpr int kKnobLabelHeight  = 14;  ///< Label below a knob.
 
 	inline constexpr int kButtonHeight     = 28;  ///< Standard rounded button height.
+
+	// =========================================================================
+	// Layout — responsive deck architecture metrics.
+	// =========================================================================
+
+	inline constexpr int kDeckMargin       =  8;  ///< Outer margin around the deck panel content area.
+	inline constexpr int kComponentPadding =  6;  ///< Standard padding between sibling child components.
+	inline constexpr int kHeaderHeight     = 40;  ///< Height of the top header strip (track title, BPM).
+	inline constexpr int kWaveformHeight   = 60;  ///< Height of the full waveform display band.
+	inline constexpr int kTransportHeight  = 50;  ///< Height of the transport row (play, cue, speed).
+	inline constexpr int kJogWheelMinSize  = 120; ///< Minimum width/height of the jog wheel area.
 	inline constexpr int kCueButtonSize    = 50;  ///< Performance pad square.
 
 	inline constexpr int kTopBarHeight     = 36;  ///< Top status / settings bar.

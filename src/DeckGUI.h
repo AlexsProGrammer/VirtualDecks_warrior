@@ -618,5 +618,35 @@ private:
 	/// Per-deck playback queue, shown as a compact widget on the deck strip.
 	std::unique_ptr<DeckQueue> queueWidget;
 
+	//==============================================================================
+	// Phase 1 — Structural layout containers (Phase 2 will re-parent children).
+
+	/// Top header area: track title, BPM display and utility controls.
+	juce::Component topHeaderContainer;
+
+	/// Hosts the full-waveform display band.
+	juce::Component waveformContainer;
+
+	/// Transport row: play button, cue button, load button and speed slider.
+	juce::Component transportContainer;
+
+	/// Mixer knob area: Low / Mid / High EQ knobs and their labels.
+	juce::Component mixerContainer;
+
+	/// Jog wheel and its surrounding utility buttons (sync, cue icon).
+	juce::Component jogWheelContainer;
+
+	//==============================================================================
+	// Phase 1 — New utility button declarations.
+
+	/// Unique pointer to juce::Drawable for the library button icon.
+	std::unique_ptr<juce::Drawable> libraryButtonImage;
+
+	/// Unique pointer to juce::Drawable for the hovered library button icon.
+	std::unique_ptr<juce::Drawable> libraryButtonHoverImage;
+
+	/// DrawableButton that opens the track library sidebar for this deck.
+	juce::DrawableButton libraryButton{ "Library", juce::DrawableButton::ButtonStyle::ImageFitted };
+
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DeckGUI);
 };

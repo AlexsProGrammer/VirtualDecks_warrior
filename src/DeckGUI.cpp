@@ -28,53 +28,62 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 
 	formatManager = &formatManagerToUse;
 
+	// Phase 2 — Register structural layout containers. Bounds are set in Phase 3 (resized()).
+	addAndMakeVisible(topHeaderContainer);
+	addAndMakeVisible(waveformContainer);
+	addAndMakeVisible(jogWheelContainer);
+	addAndMakeVisible(transportContainer);
+	addAndMakeVisible(mixerContainer);
+
 	// "Loading…" overlay (centred over the waveform area, hidden by default).
 	loadingLabel.setJustificationType(juce::Justification::centred);
 	loadingLabel.setFont(juce::Font(juce::FontOptions(18.0f)).boldened());
 	loadingLabel.setColour(juce::Label::textColourId, theme);
 	loadingLabel.setColour(juce::Label::backgroundColourId, UI::bgRoot.withAlpha(0.86f));
 	loadingLabel.setVisible(false);
-	addAndMakeVisible(loadingLabel);
-	std::vector<juce::Label*> labels{ &speedLabel, &lbLabel, &mbLabel, &hbLabel };
-	for (auto& label : labels) {
+	waveformContainer.addAndMakeVisible(loadingLabel);
+	for (auto* label : { &speedLabel, &lbLabel, &mbLabel, &hbLabel }) {
 		label->setEditable(false);
 		label->setJustificationType(juce::Justification::centred);
-		addAndMakeVisible(*label);
 	}
+	jogWheelContainer.addAndMakeVisible(speedLabel);
+	mixerContainer.addAndMakeVisible(lbLabel);
+	mixerContainer.addAndMakeVisible(mbLabel);
+	mixerContainer.addAndMakeVisible(hbLabel);
 
 	// BPM value and percent labels
 	bpmValueLabel.setEditable(false);
 	bpmValueLabel.setJustificationType(juce::Justification::centred);
 	bpmValueLabel.setFont(juce::Font(juce::FontOptions(16.0f)).boldened());
 	bpmValueLabel.setColour(juce::Label::textColourId, theme);
-	addAndMakeVisible(bpmValueLabel);
+	topHeaderContainer.addAndMakeVisible(bpmValueLabel);
 
 	bpmPercentLabel.setEditable(false);
 	bpmPercentLabel.setJustificationType(juce::Justification::centred);
 	bpmPercentLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
 	bpmPercentLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-	addAndMakeVisible(bpmPercentLabel);
+	topHeaderContainer.addAndMakeVisible(bpmPercentLabel);
 
-	addAndMakeVisible(playButton);
-	addAndMakeVisible(speedSlider);
-	addAndMakeVisible(loadButton);
-	addAndMakeVisible(waveformDisplay);
-	addAndMakeVisible(jogWheel);
-	addAndMakeVisible(lowBandFilter);
-	addAndMakeVisible(midBandFilter);
-	addAndMakeVisible(highBandFilter);
+	jogWheelContainer.addAndMakeVisible(playButton);
+	jogWheelContainer.addAndMakeVisible(speedSlider);
+	jogWheelContainer.addAndMakeVisible(loadButton);
+	waveformContainer.addAndMakeVisible(waveformDisplay);
+	jogWheelContainer.addAndMakeVisible(jogWheel);
+	mixerContainer.addAndMakeVisible(lowBandFilter);
+	mixerContainer.addAndMakeVisible(midBandFilter);
+	mixerContainer.addAndMakeVisible(highBandFilter);
 
 	cueButtonImage = juce::Drawable::createFromImageData(BinaryData::iconHeadphone_svg, (size_t)BinaryData::iconHeadphone_svgSize);
 	cueButton.setImages(cueButtonImage.get());
-	cueButton.setColour(juce::DrawableButton::backgroundColourId,   UI::bgCard);
+	cueButton.setColour(juce::DrawableButton::backgroundColourId,   juce::Colours::transparentBlack);
 	cueButton.setColour(juce::DrawableButton::backgroundOnColourId, theme.withAlpha(0.85f));
 	cueButton.setClickingTogglesState(false);
 	cueButton.addListener(this);
-	addAndMakeVisible(cueButton);
+	jogWheelContainer.addAndMakeVisible(cueButton);
 
 	// Per-deck queue widget. Click a row to jump to that track.
 	queueWidget = std::make_unique<DeckQueue>(theme, [this](const track& t) { loadDeck(t); });
-	addAndMakeVisible(*queueWidget);
+	mixerContainer.addAndMakeVisible(*queueWidget);
 
 	speedSlider.setRange(0.5, 2.0);
 	speedSlider.setSkewFactorFromMidPoint(1.0); // 1.0 sits at the visual centre of a 50%–200% range
@@ -108,18 +117,18 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 		cues.push_back(new juce::TextButton());
 	}
 	for (auto& cue : cues) {
-		addAndMakeVisible(cue);
+		transportContainer.addAndMakeVisible(cue);
 		cue->addListener(this);
 		cue->addMouseListener(this, false);
 		cue->setLookAndFeel(&customLookAndFeel);
 	}
 
 	// Tab buttons for cue/grid/jump/loop/sync switching
-	addAndMakeVisible(cueTabButton);
-	addAndMakeVisible(gridTabButton);
-	addAndMakeVisible(jumpTabButton);
-	addAndMakeVisible(loopTabButton);
-	addAndMakeVisible(syncTabButton);
+	transportContainer.addAndMakeVisible(cueTabButton);
+	transportContainer.addAndMakeVisible(gridTabButton);
+	transportContainer.addAndMakeVisible(jumpTabButton);
+	transportContainer.addAndMakeVisible(loopTabButton);
+	transportContainer.addAndMakeVisible(syncTabButton);
 	cueTabButton.addListener(this);
 	gridTabButton.addListener(this);
 	jumpTabButton.addListener(this);
@@ -133,9 +142,9 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 
 	// FX tab buttons (P.FX / B.FX / R.FX) — registered here so the row is built
 	// in tab-order. Their colour follows the same pattern as the other tabs.
-	addAndMakeVisible(padFxTabButton);
-	addAndMakeVisible(beatFxTabButton);
-	addAndMakeVisible(releaseFxTabButton);
+	transportContainer.addAndMakeVisible(padFxTabButton);
+	transportContainer.addAndMakeVisible(beatFxTabButton);
+	transportContainer.addAndMakeVisible(releaseFxTabButton);
 	padFxTabButton.addListener(this);
 	beatFxTabButton.addListener(this);
 	releaseFxTabButton.addListener(this);
@@ -150,7 +159,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	masterToggleBtn.setColour(juce::TextButton::buttonOnColourId, UI::accentWarning.withAlpha(0.8f));
 	masterToggleBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 	masterToggleBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
-	addChildComponent(masterToggleBtn);
+	transportContainer.addChildComponent(masterToggleBtn);
 
 	syncEngageBtn.setClickingTogglesState(true);
 	syncEngageBtn.addListener(this);
@@ -158,26 +167,26 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	syncEngageBtn.setColour(juce::TextButton::buttonOnColourId, UI::accentPositive.withAlpha(0.85f));
 	syncEngageBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 	syncEngageBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
-	addChildComponent(syncEngageBtn);
+	transportContainer.addChildComponent(syncEngageBtn);
 
 	for (auto* btn : { &multHalfBtn, &multOneBtn, &multTwoBtn }) {
 		btn->addListener(this);
 		btn->setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-		addChildComponent(*btn);
+		transportContainer.addChildComponent(*btn);
 	}
 
 	targetBpmLabel.setEditable(false);
 	targetBpmLabel.setJustificationType(juce::Justification::centred);
 	targetBpmLabel.setColour(juce::Label::textColourId, theme);
 	targetBpmLabel.setFont(juce::Font(juce::FontOptions(12.0f)).boldened());
-	addChildComponent(targetBpmLabel);
+	transportContainer.addChildComponent(targetBpmLabel);
 
 	syncStatusLabel.setEditable(false);
 	syncStatusLabel.setJustificationType(juce::Justification::centred);
 	syncStatusLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
 	syncStatusLabel.setFont(juce::Font(juce::FontOptions(10.0f)));
-	addChildComponent(syncStatusLabel);
+	transportContainer.addChildComponent(syncStatusLabel);
 
 	// Fast-sync compact button (always visible near play/load).
 	fastSyncBtnImage = juce::Drawable::createFromImageData(BinaryData::iconSyncBolt_svg, (size_t)BinaryData::iconSyncBolt_svgSize);
@@ -186,7 +195,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	fastSyncBtn.setColour(juce::DrawableButton::backgroundOnColourId, UI::accentPositive.withAlpha(0.85f));
 	fastSyncBtn.setClickingTogglesState(true);
 	fastSyncBtn.addListener(this);
-	addAndMakeVisible(fastSyncBtn);
+	jogWheelContainer.addAndMakeVisible(fastSyncBtn);
 
 	// Snap-quantisation combo for sync (1 BAR / 1/2 / 1/4).
 	snapBox.addItem("1 BAR",   1);
@@ -204,23 +213,23 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 			case 3: syncManager->setSnapBeats(1); break; // 1/4 bar
 		}
 	};
-	addChildComponent(snapBox);
+	transportContainer.addChildComponent(snapBox);
 
 	// Reset button: clears master, disengages sync, restores speed to 1.0.
 	syncResetBtn.addListener(this);
 	syncResetBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 	syncResetBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-	addChildComponent(syncResetBtn);
+	transportContainer.addChildComponent(syncResetBtn);
 
 	// Quantize tab button and controls
-	addAndMakeVisible(quantizeTabButton);
+	transportContainer.addAndMakeVisible(quantizeTabButton);
 	quantizeTabButton.addListener(this);
 	quantizeTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 
 	quantizeLabel.setEditable(false);
 	quantizeLabel.setJustificationType(juce::Justification::centredLeft);
 	quantizeLabel.setColour(juce::Label::textColourId, juce::Colours::white);
-	addChildComponent(quantizeLabel);
+	transportContainer.addChildComponent(quantizeLabel);
 
 	quantizeComboBox.addItem("None", 1);
 	quantizeComboBox.addItem("1 Bar", 2);
@@ -237,13 +246,13 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	quantizeComboBox.setColour(juce::ComboBox::backgroundColourId, UI::bgRoot);
 	quantizeComboBox.setColour(juce::ComboBox::textColourId, juce::Colours::white);
 	quantizeComboBox.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
-	addChildComponent(quantizeComboBox);
+	transportContainer.addChildComponent(quantizeComboBox);
 
 	// Beat grid controls
 	gridBpmLabel.setEditable(false);
 	gridBpmLabel.setJustificationType(juce::Justification::centredLeft);
 	gridBpmLabel.setColour(juce::Label::textColourId, juce::Colours::white);
-	addChildComponent(gridBpmLabel);
+	transportContainer.addChildComponent(gridBpmLabel);
 
 	gridBpmEditor.setJustification(juce::Justification::centred);
 	gridBpmEditor.setInputRestrictions(7, "0123456789.");
@@ -262,7 +271,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	};
 	gridBpmEditor.onReturnKey = applyBpmFromEditor;
 	gridBpmEditor.onFocusLost = applyBpmFromEditor;
-	addChildComponent(gridBpmEditor);
+	transportContainer.addChildComponent(gridBpmEditor);
 
 	gridNudgeLeftBtn.addListener(this);
 	gridNudgeRightBtn.addListener(this);
@@ -272,11 +281,11 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	gridNudgeRightBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 	tapTempoBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 	gridResetBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
-	addChildComponent(gridNudgeLeftBtn);
-	addChildComponent(gridNudgeRightBtn);
-	addChildComponent(gridOffsetLabel);
-	addChildComponent(tapTempoBtn);
-	addChildComponent(gridResetBtn);
+	transportContainer.addChildComponent(gridNudgeLeftBtn);
+	transportContainer.addChildComponent(gridNudgeRightBtn);
+	transportContainer.addChildComponent(gridOffsetLabel);
+	transportContainer.addChildComponent(tapTempoBtn);
+	transportContainer.addChildComponent(gridResetBtn);
 
 	gridOffsetLabel.setEditable(false);
 	gridOffsetLabel.setJustificationType(juce::Justification::centred);
@@ -292,14 +301,14 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 		btn->addListener(this);
 		btn->setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-		addChildComponent(*btn);
+		transportContainer.addChildComponent(*btn);
 	}
 
 	jumpLabel.setEditable(false);
 	jumpLabel.setJustificationType(juce::Justification::centred);
 	jumpLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
 	jumpLabel.setFont(juce::Font(juce::FontOptions(10.0f)));
-	addChildComponent(jumpLabel);
+	transportContainer.addChildComponent(jumpLabel);
 
 	// Loop controls
 	std::vector<juce::TextButton*> loopBtns{
@@ -309,7 +318,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 		btn->addListener(this);
 		btn->setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-		addChildComponent(*btn);
+		transportContainer.addChildComponent(*btn);
 	}
 
 	const std::unique_ptr<juce::XmlElement> playButton_xml(juce::XmlDocument::parse(BinaryData::playButton_svg));
@@ -342,6 +351,20 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	loadButton.setColour(juce::DrawableButton::backgroundColourId,   juce::Colours::transparentBlack);
 	loadButton.setColour(juce::DrawableButton::backgroundOnColourId, juce::Colours::transparentBlack);
 
+	// Library button — placeholder icon (iconSync) until a dedicated asset is added in Phase 4.
+	libraryButtonImage = juce::Drawable::createFromImageData(BinaryData::iconSync_svg, (size_t)BinaryData::iconSync_svgSize);
+	libraryButton.setImages(libraryButtonImage.get());
+	libraryButton.setColour(juce::DrawableButton::backgroundColourId,   juce::Colours::transparentBlack);
+	libraryButton.setColour(juce::DrawableButton::backgroundOnColourId, theme.withAlpha(0.85f));
+	libraryButton.setEdgeIndent(0);
+	libraryButton.addListener(this);
+	jogWheelContainer.addAndMakeVisible(libraryButton);
+
+	playButton.setLookAndFeel(&customLookAndFeel);
+	loadButton.setLookAndFeel(&customLookAndFeel);
+	cueButton.setLookAndFeel(&customLookAndFeel);
+	fastSyncBtn.setLookAndFeel(&customLookAndFeel);
+	libraryButton.setLookAndFeel(&customLookAndFeel);
 	speedSlider.setLookAndFeel(&customLookAndFeel);
 	lowBandFilter.setLookAndFeel(&customLookAndFeel);
 	midBandFilter.setLookAndFeel(&customLookAndFeel);
@@ -432,265 +455,261 @@ void DeckGUI::paint(juce::Graphics& g)
  */
 void DeckGUI::resized()
 {
-	// Cap rowH so the controls don't grow beyond their design size when the
-	// deck panel is taller than the original 300 px (e.g. on large windows).
-	double rowH = std::min(getHeight() / 9.0, 40.0);
+	const bool isDeck2 = (deckIndex == 1);
+	const int  gap     = UI::kComponentPadding; // 6 px
 
-	// ----- Phase 6 layout cleanup -----
-	// Tab rail lives on the deck's OUTER edge. Reserve `railClear` px on
-	// that edge so the rail never overlaps controls.  Also push slider
-	// columns BELOW the waveform header so the waveform never paints over
-	// them.
-	const int    railW       = UI::kRailWidth;       // 44
-	const int    railClear   = railW + 4;            // 48 px reservation
-	const bool   isDeck2     = (deckIndex == 1);
-	const int    leftClear   = isDeck2 ? 4         : railClear;
-	const int    rightClear  = isDeck2 ? railClear : 4;
+	// =========================================================================
+	// 1. Top-level slicing — all in DeckGUI's own coordinate space.
+	// =========================================================================
+	auto area = getLocalBounds().reduced(UI::kDeckMargin);
 
-	// (Vol slider and filter knob are now in the MainComponent mixer column.)
-	const double sliderTopRow    = 2.15;             // was 1.3 (clipped behind waveform)
-	const double sliderHeightRow = 4.2;
-	const double sliderBottomRow = sliderTopRow + sliderHeightRow;
+	// Header strip (BPM display).
+	topHeaderContainer.setBounds(area.removeFromTop(UI::kHeaderHeight));
+	area.removeFromTop(gap);
 
-	// Speed slider: Deck 2 on the LEFT (inner) side; Deck 1 mirrored to the RIGHT (inner) side.
-	const double speedXOffset = isDeck2
-		? (double)(getWidth() * 7 / 32)
-		: (double)(getWidth() - rightClear - getWidth() / 8.0 - 4);
+	// Full waveform band.
+	waveformContainer.setBounds(area.removeFromTop(UI::kWaveformHeight));
+	area.removeFromTop(gap);
 
-	// Content area (cue/grid/loop/EQ): Deck 2 starts right after speed slider;
-	// Deck 1 ends right before speed slider (mirrored anchor).
-	const double contentWidth = std::max(getWidth() * 18.5 / 32.0 - 105.0, 60.0);
-	double xOffset = isDeck2 ? (speedXOffset + getWidth() / 8.0)
-	                         : (speedXOffset - contentWidth - 4.0);
+	// Mixer strip (EQ knobs + queue) anchored to the bottom.
+	const int mixerH = UI::kKnobSize + UI::kKnobLabelHeight + gap * 2 + 50;
+	mixerContainer.setBounds(area.removeFromBottom(mixerH));
+	area.removeFromBottom(gap);
 
-	// BPM value label above speed slider
-	bpmValueLabel.setBounds((int)speedXOffset, (int)(rowH * 0.3), getWidth() / 8, 20);
-	bpmPercentLabel.setBounds((int)speedXOffset, (int)(rowH * 0.3 + 18), getWidth() / 8, 14);
-
-	speedSlider.setBounds((int)speedXOffset, (int)(rowH * sliderTopRow), getWidth() / 8, (int)(rowH * sliderHeightRow));
-	speedLabel.setBounds((int)speedXOffset, (int)(rowH * sliderBottomRow + 2), getWidth() / 8, (int)(rowH * 0.5));
-
-	// Jog wheel + transport: clear the outer rail.
-	const double jogSize = (rowH * 3.3) - 10;
-	const double btnSize = rowH * 0.7;
-
-	// Deck 2: buttons on RIGHT outer edge, jog to their left.
-	// Deck 1 (mirrored): buttons on LEFT outer edge, jog to their right.
-	double btnX, jogX;
+	// JogWheel column on the deck's outer edge.
+	const int jogColW = juce::jmax(UI::kJogWheelMinSize * 2, area.getWidth() * 2 / 5);
 	if (isDeck2)
-	{
-		// Right-edge anchor: buttons flush against right-rail clearance
-		btnX = (double) getWidth() - rightClear - btnSize - 4;
-		jogX = btnX - jogSize - 6;
-	}
+		jogWheelContainer.setBounds(area.removeFromRight(jogColW));
 	else
+		jogWheelContainer.setBounds(area.removeFromLeft(jogColW));
+
+	// Transport panel: tab rail + tab content panels.
+	transportContainer.setBounds(area);
+
+	// =========================================================================
+	// 2. Sub-layout: topHeaderContainer
+	//    Children: bpmValueLabel, bpmPercentLabel
+	// =========================================================================
 	{
-		// Left-anchor: buttons on outer-left side, jog immediately to their right.
-		btnX = (double)leftClear + 4;
-		jogX = btnX + btnSize + 6;
-		// Clamp so jog doesn't push into the content area
-		if (jogX + jogSize + 6 > xOffset)
-			jogX = xOffset - jogSize - 6;
+		auto h = topHeaderContainer.getLocalBounds().reduced(gap, 2);
+		const int bpmW = juce::jmin(h.getWidth() / 2, 80);
+		auto bpmBlock  = isDeck2 ? h.removeFromLeft(bpmW) : h.removeFromRight(bpmW);
+		bpmValueLabel.setBounds(bpmBlock.removeFromTop(20));
+		bpmPercentLabel.setBounds(bpmBlock.removeFromTop(14));
 	}
 
-	jogWheel.setBounds((int)jogX, (int)(5 + rowH * 3), (int)jogSize, (int)jogSize);
+	// =========================================================================
+	// 3. Sub-layout: waveformContainer
+	//    Children: waveformDisplay (fill), loadingLabel (overlay)
+	// =========================================================================
+	{
+		const auto wb = waveformContainer.getLocalBounds();
+		waveformDisplay.setBounds(wb);
+		loadingLabel.setBounds(wb);
+	}
 
-	// Transport buttons
-	loadButton.setBounds((int)btnX, (int)(rowH * 2 + 5), (int)btnSize, (int)btnSize);
-	playButton.setBounds((int)btnX, (int)(rowH * 5 - 10), (int)btnSize, (int)btnSize);
-	fastSyncBtn.setBounds((int)btnX, (int)(rowH * 5 - 10 + btnSize + 4), (int)btnSize, (int)(rowH * 0.5));
+	// =========================================================================
+	// 4. Sub-layout: jogWheelContainer
+	//    Children: speedSlider, speedLabel, loadButton, playButton, fastSyncBtn,
+	//              cueButton, libraryButton, jogWheel
+	// =========================================================================
+	{
+		auto jb = jogWheelContainer.getLocalBounds().reduced(gap);
 
-	// CUE button — below playButton, same column
-	cueButton.setBounds((int)btnX,
-	                    (int)(rowH * 5 - 10 + btnSize + 4 + rowH * 0.5 + 4),
-	                    (int)btnSize, 20);
+		// Speed slider: inner edge (facing the transport panel).
+		const int speedColW = juce::jmax(28, jb.getWidth() / 5);
+		auto speedCol = isDeck2 ? jb.removeFromLeft(speedColW) : jb.removeFromRight(speedColW);
+		speedLabel.setBounds(speedCol.removeFromBottom(UI::kKnobLabelHeight + 2));
+		speedSlider.setBounds(speedCol);
 
-	waveformDisplay.setBounds(0, 0, getWidth(), rowH * 2);
-	loadingLabel.setBounds(waveformDisplay.getBounds());
+		// Button column: outer edge.  FlexBox stacks them evenly top-to-bottom.
+		const int btnColW = juce::jmax(28, jb.getWidth() / 4);
+		auto btnCol = isDeck2 ? jb.removeFromRight(btnColW) : jb.removeFromLeft(btnColW);
+		const float btnSz  = (float)juce::jmin(btnColW - 4, 40);
+		juce::FlexBox fb;
+		fb.flexDirection  = juce::FlexBox::Direction::column;
+		fb.justifyContent = juce::FlexBox::JustifyContent::spaceAround;
+		fb.alignItems     = juce::FlexBox::AlignItems::center;
+		fb.items.add(juce::FlexItem(btnSz, btnSz,          loadButton)   .withMargin(2.0f));
+		fb.items.add(juce::FlexItem(btnSz, btnSz,          playButton)   .withMargin(2.0f));
+		fb.items.add(juce::FlexItem(btnSz, btnSz * 0.6f,   fastSyncBtn)  .withMargin(2.0f));
+		fb.items.add(juce::FlexItem(btnSz, btnSz * 0.5f,   cueButton)    .withMargin(2.0f));
+		fb.items.add(juce::FlexItem(btnSz, btnSz * 0.5f,   libraryButton).withMargin(2.0f));
+		fb.performLayout(btnCol.toFloat());
 
-	double yOffset = 5 + rowH * 2;
-	double cellLength = (getWidth() * 18.5 / 32 - 105) / 3;
-	double cellHeight = 44.45;
+		// Jog wheel: largest centred square in what remains.
+		const int jogSz = juce::jmin(jb.getWidth(), jb.getHeight());
+		jogWheel.setBounds(jb.withSizeKeepingCentre(jogSz, jogSz));
+	}
 
-	// Vertical tab rail on the deck's outer edge.
-	// Deck 1 (aqua) keeps the rail on the LEFT edge, Deck 2 (hotpink) on the
-	// RIGHT edge — so the active tab's theme tint appears closest to the
-	// screen edge, mirroring the symmetric "two decks meeting in the middle"
-	// layout. Each tab is square (≈ railW) and stacked top→bottom under the
-	// waveform header.
-	const int railTop = (int)(rowH * 2 + 4);
-	const int railBottom = (int)(getHeight() - 6);
-	const int railH = juce::jmax(180, railBottom - railTop);
-	const int railX = isDeck2 ? (getWidth() - railW - 2) : 2;
+	// =========================================================================
+	// 5. Sub-layout: mixerContainer
+	//    Children: lowBandFilter, midBandFilter, highBandFilter,
+	//              lbLabel, mbLabel, hbLabel, queueWidget
+	// =========================================================================
+	{
+		auto mb = mixerContainer.getLocalBounds().reduced(gap, 2);
 
-	const int tabCount = 9;
-	const int tabSpacing = 2;
-	const int tabSlot = juce::jmax(28, (railH - (tabCount - 1) * tabSpacing) / tabCount);
-
-	auto setTab = [&](juce::Component& c, int row) {
-		c.setBounds(railX, railTop + row * (tabSlot + tabSpacing), railW, tabSlot);
-	};
-	setTab(cueTabButton,      0);
-	setTab(gridTabButton,     1);
-	setTab(jumpTabButton,     2);
-	setTab(loopTabButton,     3);
-	setTab(quantizeTabButton, 4);
-	setTab(syncTabButton,     5);
-	setTab(padFxTabButton,    6);
-	setTab(beatFxTabButton,   7);
-	setTab(releaseFxTabButton, 8);
-
-	// Cue buttons (same as before)
-	for (auto i = 0; i < 3; ++i) {
-		for (auto j = 0; j < 2; ++j) {
-			int index = i * 2 + j;
-			cues[index]->setBounds(i * cellLength + xOffset, j * cellHeight + 4 + yOffset, cellLength - 4, cellHeight - 4);
+		// Queue fills the lower portion.
+		if (queueWidget)
+		{
+			const int knobRowH = UI::kKnobSize + UI::kKnobLabelHeight + gap;
+			const int qH = juce::jmax(40, mb.getHeight() - knobRowH - gap);
+			queueWidget->setBounds(mb.removeFromBottom(qH));
+			mb.removeFromBottom(gap);
 		}
+
+		// EQ knobs + labels: 3 equal columns.
+		const int eqColW = mb.getWidth() / 3;
+		auto placeKnob = [&](juce::Slider& knob, juce::Label& lbl, int col) {
+			auto cell = mb.withX(mb.getX() + col * eqColW).withWidth(eqColW);
+			knob.setBounds(cell.removeFromTop(UI::kKnobSize).withSizeKeepingCentre(UI::kKnobSize, UI::kKnobSize));
+			lbl.setBounds(cell.removeFromTop(UI::kKnobLabelHeight));
+		};
+		placeKnob(lowBandFilter,  lbLabel, 0);
+		placeKnob(midBandFilter,  mbLabel, 1);
+		placeKnob(highBandFilter, hbLabel, 2);
 	}
 
-	// Beat grid controls layout (same area as cue buttons)
-	double gridRow1Y = yOffset + 4;
-	double gridRow2Y = yOffset + cellHeight + 4;
-	double ctrlWidth = cellLength - 4;
-
-	gridBpmLabel.setBounds(xOffset, gridRow1Y, ctrlWidth * 0.4, cellHeight - 4);
-	gridBpmEditor.setBounds(xOffset + ctrlWidth * 0.4, gridRow1Y, ctrlWidth * 0.6, cellHeight - 4);
-
-	gridOffsetLabel.setBounds(xOffset + cellLength, gridRow1Y, ctrlWidth, 14);
-	gridNudgeLeftBtn.setBounds(xOffset + cellLength, gridRow1Y + 14, ctrlWidth * 0.5 - 2, cellHeight - 18);
-	gridNudgeRightBtn.setBounds(xOffset + cellLength + ctrlWidth * 0.5, gridRow1Y + 14, ctrlWidth * 0.5 - 2, cellHeight - 18);
-
-	tapTempoBtn.setBounds(xOffset + cellLength * 2, gridRow1Y, ctrlWidth, cellHeight - 4);
-
-	gridResetBtn.setBounds(xOffset, gridRow2Y, ctrlWidth, cellHeight - 4);
-
-	// Beat jump controls layout (same area as cue buttons)
-	double jumpAreaWidth = cellLength * 3 - 4;
-	double jumpBtnWidth = jumpAreaWidth / 4 - 3;
-	double jumpRow1Y = yOffset + 4;
-	double jumpRow2Y = yOffset + cellHeight + 4;
-
-	jumpLabel.setBounds(xOffset, jumpRow1Y - 14, jumpAreaWidth, 14);
-	jumpBackward16Btn.setBounds(xOffset, jumpRow1Y, jumpBtnWidth, cellHeight - 4);
-	jumpBackward8Btn.setBounds(xOffset + (jumpBtnWidth + 4), jumpRow1Y, jumpBtnWidth, cellHeight - 4);
-	jumpBackward4Btn.setBounds(xOffset + (jumpBtnWidth + 4) * 2, jumpRow1Y, jumpBtnWidth, cellHeight - 4);
-	jumpBackward1Btn.setBounds(xOffset + (jumpBtnWidth + 4) * 3, jumpRow1Y, jumpBtnWidth, cellHeight - 4);
-	jumpForward1Btn.setBounds(xOffset, jumpRow2Y, jumpBtnWidth, cellHeight - 4);
-	jumpForward4Btn.setBounds(xOffset + (jumpBtnWidth + 4), jumpRow2Y, jumpBtnWidth, cellHeight - 4);
-	jumpForward8Btn.setBounds(xOffset + (jumpBtnWidth + 4) * 2, jumpRow2Y, jumpBtnWidth, cellHeight - 4);
-	jumpForward16Btn.setBounds(xOffset + (jumpBtnWidth + 4) * 3, jumpRow2Y, jumpBtnWidth, cellHeight - 4);
-
-	// Loop controls layout (same area as cue buttons)
-	double loopRow1Y = yOffset + 4;
-	double loopRow2Y = yOffset + cellHeight + 4;
-	double loopBtnWidth = (cellLength * 3 - 4) / 3 - 3;
-	loopInBtn.setBounds(xOffset, loopRow1Y, loopBtnWidth, cellHeight - 4);
-	loopOutBtn.setBounds(xOffset + (loopBtnWidth + 4), loopRow1Y, loopBtnWidth, cellHeight - 4);
-	reloopBtn.setBounds(xOffset + (loopBtnWidth + 4) * 2, loopRow1Y, loopBtnWidth, cellHeight - 4);
-	loopHalveBtn.setBounds(xOffset, loopRow2Y, loopBtnWidth, cellHeight - 4);
-	loopDoubleBtn.setBounds(xOffset + (loopBtnWidth + 4), loopRow2Y, loopBtnWidth, cellHeight - 4);
-	loopClearBtn.setBounds(xOffset + (loopBtnWidth + 4) * 2, loopRow2Y, loopBtnWidth, cellHeight - 4);
-
-	// Quantize controls layout (same area as cue buttons)
-	double qContentWidth = cellLength * 3 - 4;
-	quantizeLabel.setBounds(xOffset, yOffset + 4, qContentWidth, 20);
-	quantizeComboBox.setBounds(xOffset, yOffset + 26, qContentWidth, 28);
-
-	// Sync controls layout (same area as cue buttons): 4 cols x 2 rows.
-	double syncRow1Y = yOffset + 4;
-	double syncRow2Y = yOffset + cellHeight + 4;
-	double syncTotalW = cellLength * 3 - 4;
-	double syncCol4W  = (syncTotalW - 4 * 3) / 4;
-	masterToggleBtn.setBounds(xOffset + (syncCol4W + 4) * 0, syncRow1Y, syncCol4W, cellHeight - 4);
-	syncEngageBtn  .setBounds(xOffset + (syncCol4W + 4) * 1, syncRow1Y, syncCol4W, cellHeight - 4);
-	targetBpmLabel .setBounds(xOffset + (syncCol4W + 4) * 2, syncRow1Y, syncCol4W, cellHeight - 4);
-	syncResetBtn   .setBounds(xOffset + (syncCol4W + 4) * 3, syncRow1Y, syncCol4W, cellHeight - 4);
-	// Row 2: ×½ ×1 ×2 (3 buttons), snap dropdown, status label.
-	double row2TotalW = syncTotalW;
-	double multBtnWidth = row2TotalW * 0.16;
-	double snapBoxWidth = row2TotalW * 0.28;
-	double statusWidth  = row2TotalW - multBtnWidth * 3 - snapBoxWidth - 4 * 4;
-	if (statusWidth < 0) statusWidth = 0;
-	double cx = xOffset;
-	multHalfBtn.setBounds(cx, syncRow2Y, multBtnWidth, cellHeight - 4); cx += multBtnWidth + 4;
-	multOneBtn.setBounds (cx, syncRow2Y, multBtnWidth, cellHeight - 4); cx += multBtnWidth + 4;
-	multTwoBtn.setBounds (cx, syncRow2Y, multBtnWidth, cellHeight - 4); cx += multBtnWidth + 4;
-	snapBox.setBounds    (cx, syncRow2Y, snapBoxWidth, cellHeight - 4); cx += snapBoxWidth + 4;
-	syncStatusLabel.setBounds(cx, syncRow2Y, statusWidth, cellHeight - 4);
-
-	// ----- Pad FX layout: 4×2 tile grid in the cue/grid area. -----
+	// =========================================================================
+	// 6. Sub-layout: transportContainer
+	//    All coordinates are in transportContainer's local coordinate space.
+	// =========================================================================
 	{
-		double gridW = cellLength * 3;
-		double padCellW = (gridW - 4) / 4;     // 4 columns
-		double padCellH = cellHeight;          // 2 rows × cellHeight matches existing area
-		for (int idx = 0; idx < (int) padFxTiles.size(); ++idx) {
-			int col = idx % 4;
-			int row = idx / 4;
-			padFxTiles[idx]->setBounds(
-				xOffset + col * padCellW,
-				yOffset + 4 + row * padCellH,
-				padCellW - 4,
-				padCellH - 4);
+		auto tb = transportContainer.getLocalBounds();
+
+		// -- Tab rail on the outer edge of the transport area --
+		const int railW    = UI::kRailWidth;
+		const int tabCount = 9;
+		const int tabGap   = 2;
+		auto railArea = isDeck2 ? tb.removeFromRight(railW + 2)
+		                        : tb.removeFromLeft(railW + 2);
+		const int tabSlot = juce::jmax(28, (railArea.getHeight() - (tabCount - 1) * tabGap) / tabCount);
+		auto setTab = [&](juce::Component& c, int row) {
+			c.setBounds(railArea.getX(),
+			            railArea.getY() + row * (tabSlot + tabGap),
+			            railW, tabSlot);
+		};
+		setTab(cueTabButton,       0);
+		setTab(gridTabButton,      1);
+		setTab(jumpTabButton,      2);
+		setTab(loopTabButton,      3);
+		setTab(quantizeTabButton,  4);
+		setTab(syncTabButton,      5);
+		setTab(padFxTabButton,     6);
+		setTab(beatFxTabButton,    7);
+		setTab(releaseFxTabButton, 8);
+
+		// -- Content panel: all tab panels share this rectangle --
+		const auto ca    = tb.reduced(gap);
+		const int  xOff  = ca.getX();
+		const int  yOff  = ca.getY();
+		const int  totalW = ca.getWidth();
+		const int  totalH = ca.getHeight();
+		const int  cellW  = juce::jmax(1, totalW / 3);
+		const int  cellH  = juce::jmax(20, totalH / 2);
+		const int  ctrlW  = cellW - 4;
+
+		// -- Cue buttons: 3 columns × 2 rows --
+		for (int i = 0; i < 3; ++i)
+			for (int j = 0; j < 2; ++j)
+				cues[i * 2 + j]->setBounds(xOff + i * cellW, yOff + j * cellH, cellW - 4, cellH - 4);
+
+		// -- Beat grid controls --
+		gridBpmLabel    .setBounds(xOff,                        yOff, ctrlW * 4 / 10, cellH - 4);
+		gridBpmEditor   .setBounds(xOff + ctrlW * 4 / 10,       yOff, ctrlW * 6 / 10, cellH - 4);
+		gridOffsetLabel .setBounds(xOff + cellW,                yOff,        ctrlW,      14);
+		gridNudgeLeftBtn .setBounds(xOff + cellW,               yOff + 14, ctrlW / 2 - 2, cellH - 18);
+		gridNudgeRightBtn.setBounds(xOff + cellW + ctrlW / 2,   yOff + 14, ctrlW / 2 - 2, cellH - 18);
+		tapTempoBtn     .setBounds(xOff + cellW * 2,            yOff,        ctrlW,      cellH - 4);
+		gridResetBtn    .setBounds(xOff,                        yOff + cellH, ctrlW,     cellH - 4);
+
+		// -- Beat jump: 4×2 grid --
+		{
+			const int jumpBtnW = juce::jmax(1, (totalW - 4) / 4 - 3);
+			jumpLabel.setBounds(xOff, juce::jmax(0, yOff - 14), totalW - 4, 14);
+			juce::TextButton* row1[] = { &jumpBackward16Btn, &jumpBackward8Btn,  &jumpBackward4Btn,  &jumpBackward1Btn };
+			juce::TextButton* row2[] = { &jumpForward1Btn,   &jumpForward4Btn,   &jumpForward8Btn,   &jumpForward16Btn };
+			for (int i = 0; i < 4; ++i)
+			{
+				const int bx = xOff + i * (jumpBtnW + 4);
+				row1[i]->setBounds(bx, yOff,         jumpBtnW, cellH - 4);
+				row2[i]->setBounds(bx, yOff + cellH, jumpBtnW, cellH - 4);
+			}
 		}
-	}
 
-	// ----- Beat FX layout: row 1 = effect picker + division + ON/OFF;
-	// row 2 = wet slider + EDIT button. -----
-	{
-		double bfxRow1Y = yOffset + 4;
-		double bfxRow2Y = yOffset + cellHeight + 4;
-		double bfxTotalW = cellLength * 3 - 4;
-		double bfxColW   = (bfxTotalW - 4 * 2) / 3; // 3 cols, 2 gaps
-		beatFxSelector   .setBounds(xOffset + 0,                    bfxRow1Y, bfxColW, cellHeight - 4);
-		beatFxDivisionBox.setBounds(xOffset + (bfxColW + 4),        bfxRow1Y, bfxColW, cellHeight - 4);
-		beatFxOnButton   .setBounds(xOffset + (bfxColW + 4) * 2,    bfxRow1Y, bfxColW, cellHeight - 4);
-
-		double labelW = 36;
-		double editW  = bfxColW;
-		double wetW   = bfxTotalW - labelW - editW - 4 * 2;
-		if (wetW < 40) wetW = 40;
-		beatFxWetLabel .setBounds(xOffset,                              bfxRow2Y, labelW, cellHeight - 4);
-		beatFxWetSlider.setBounds(xOffset + labelW + 4,                 bfxRow2Y, wetW,   cellHeight - 4);
-		beatFxEditButton.setBounds(xOffset + labelW + 4 + wetW + 4,     bfxRow2Y, editW,  cellHeight - 4);
-	}
-
-	// ----- Release FX layout: 3 tiles single row. -----
-	{
-		double rfxTotalW = cellLength * 3;
-		double rfxCellW  = (rfxTotalW - 4) / 3;
-		double rfxH      = cellHeight * 2 - 4;
-		double rfxY      = yOffset + 4;
-		for (int idx = 0; idx < (int) releaseFxTiles.size(); ++idx) {
-			releaseFxTiles[idx]->setBounds(
-				xOffset + idx * rfxCellW,
-				rfxY,
-				rfxCellW - 4,
-				rfxH);
+		// -- Loop: 3×2 grid --
+		{
+			const int loopBtnW = juce::jmax(1, (totalW - 4) / 3 - 3);
+			juce::TextButton* row1[] = { &loopInBtn,    &loopOutBtn,    &reloopBtn    };
+			juce::TextButton* row2[] = { &loopHalveBtn, &loopDoubleBtn, &loopClearBtn };
+			for (int i = 0; i < 3; ++i)
+			{
+				const int lx = xOff + i * (loopBtnW + 4);
+				row1[i]->setBounds(lx, yOff,         loopBtnW, cellH - 4);
+				row2[i]->setBounds(lx, yOff + cellH, loopBtnW, cellH - 4);
+			}
 		}
-	}
 
-	// EQ spacing: Deck 2 uses W/5; Deck 1 uses content-area-relative spacing to stay clear of the speed slider.
-	const double eqSpacing = isDeck2 ? (double)getWidth() / 5.0
-	                                 : std::max((contentWidth - 50.0) / 2.0, 20.0);
-	lowBandFilter.setBounds((int)xOffset, (int)(rowH * 5.8), 50, 50);
-	midBandFilter.setBounds((int)(xOffset + eqSpacing), (int)(rowH * 5.8), 50, 50);
-	highBandFilter.setBounds((int)(xOffset + eqSpacing * 2), (int)(rowH * 5.8), 50, 50);
-	lbLabel.setBounds((int)xOffset, (int)(rowH * 6.9), 50, 50);
-	mbLabel.setBounds((int)(xOffset + eqSpacing), (int)(rowH * 6.9), 50, 50);
-	hbLabel.setBounds((int)(xOffset + eqSpacing * 2), (int)(rowH * 6.9), 50, 50);
+		// -- Quantize --
+		quantizeLabel   .setBounds(xOff, yOff,      totalW - 4, 20);
+		quantizeComboBox.setBounds(xOff, yOff + 22, totalW - 4, 28);
 
-	// Queue: full-width strip at the bottom of the deck, below the EQ labels.
-	// Y is computed from the filter-label bottom so it never overlaps them.
-	if (queueWidget)
-	{
-		const int qY = (int)(rowH * 6.9) + 54; // filter label top + 50px label + 4px gap
-		const int qH = std::max(getHeight() - qY - 2, 40);
-		const int qX = (int)xOffset;
-		const int qW = std::max(
-			isDeck2 ? (int)(getWidth() - rightClear - 2) - qX
-			        : (int)(speedXOffset) - qX - 4,
-			100);
-		queueWidget->setBounds(qX, qY, qW, qH);
+		// -- Sync: 4-column top row + multiplier / snap / status bottom row --
+		{
+			const int syncTotalW = totalW - 4;
+			const int syncColW   = juce::jmax(1, (syncTotalW - 4 * 3) / 4);
+			masterToggleBtn.setBounds(xOff + (syncColW + 4) * 0, yOff, syncColW, cellH - 4);
+			syncEngageBtn  .setBounds(xOff + (syncColW + 4) * 1, yOff, syncColW, cellH - 4);
+			targetBpmLabel .setBounds(xOff + (syncColW + 4) * 2, yOff, syncColW, cellH - 4);
+			syncResetBtn   .setBounds(xOff + (syncColW + 4) * 3, yOff, syncColW, cellH - 4);
+
+			const int multBtnW = syncTotalW * 16 / 100;
+			const int snapBoxW = syncTotalW * 28 / 100;
+			const int statusW  = juce::jmax(0, syncTotalW - multBtnW * 3 - snapBoxW - 16);
+			int cx = xOff;
+			multHalfBtn    .setBounds(cx, yOff + cellH, multBtnW, cellH - 4); cx += multBtnW + 4;
+			multOneBtn     .setBounds(cx, yOff + cellH, multBtnW, cellH - 4); cx += multBtnW + 4;
+			multTwoBtn     .setBounds(cx, yOff + cellH, multBtnW, cellH - 4); cx += multBtnW + 4;
+			snapBox        .setBounds(cx, yOff + cellH, snapBoxW, cellH - 4); cx += snapBoxW + 4;
+			syncStatusLabel.setBounds(cx, yOff + cellH, statusW,  cellH - 4);
+		}
+
+		// -- Pad FX: 4×2 tile grid --
+		{
+			const int padCellW = juce::jmax(1, totalW / 4);
+			const int padCellH = juce::jmax(1, totalH / 2);
+			for (int idx = 0; idx < (int) padFxTiles.size(); ++idx)
+				padFxTiles[idx]->setBounds(
+					xOff + (idx % 4) * padCellW,
+					yOff + (idx / 4) * padCellH,
+					padCellW - 4, padCellH - 4);
+		}
+
+		// -- Beat FX: selector/division/ON top; wet/edit bottom --
+		{
+			const int bfxTotalW = totalW - 4;
+			const int bfxColW   = juce::jmax(1, (bfxTotalW - 8) / 3);
+			beatFxSelector   .setBounds(xOff,                     yOff, bfxColW, cellH - 4);
+			beatFxDivisionBox.setBounds(xOff + bfxColW + 4,       yOff, bfxColW, cellH - 4);
+			beatFxOnButton   .setBounds(xOff + (bfxColW + 4) * 2, yOff, bfxColW, cellH - 4);
+
+			const int labelW = 36;
+			const int editW  = bfxColW;
+			const int wetW   = juce::jmax(40, bfxTotalW - labelW - editW - 8);
+			beatFxWetLabel  .setBounds(xOff,                            yOff + cellH, labelW, cellH - 4);
+			beatFxWetSlider .setBounds(xOff + labelW + 4,               yOff + cellH, wetW,   cellH - 4);
+			beatFxEditButton.setBounds(xOff + labelW + 4 + wetW + 4,    yOff + cellH, editW,  cellH - 4);
+		}
+
+		// -- Release FX: 3 full-height tiles --
+		{
+			const int rfxCellW = juce::jmax(1, (totalW - 4) / 3);
+			for (int idx = 0; idx < (int) releaseFxTiles.size(); ++idx)
+				releaseFxTiles[idx]->setBounds(
+					xOff + idx * rfxCellW, yOff,
+					rfxCellW - 4, totalH - 4);
+		}
 	}
 }
 
@@ -758,6 +777,11 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 			onLoadButtonClicked(deckIndex);
 		else if (library != nullptr && library->selectionIsValid())
 			loadDeck(library->getSelectedTrack());
+	}
+
+	if (button == &libraryButton) {
+		if (onLoadButtonClicked)
+			onLoadButtonClicked(deckIndex);
 	}
 
 	if (button == &cueButton)
@@ -1713,7 +1737,10 @@ void DeckGUI::syncStateChanged() {
 	if (isSynced && outOfRange)
 		offColour = UI::accentWarning.withAlpha(0.6f);
 	syncEngageBtn.setColour(juce::TextButton::buttonColourId, offColour);
-	fastSyncBtn.setColour(juce::DrawableButton::backgroundColourId, offColour);
+	// fastSyncBtn is an icon DrawableButton — keep transparent unless in warning state.
+	fastSyncBtn.setColour(juce::DrawableButton::backgroundColourId,
+	                      (isSynced && outOfRange) ? UI::accentWarning.withAlpha(0.6f)
+	                                               : juce::Colours::transparentBlack);
 
 	// Target BPM display.
 	double tgt = syncManager->getTargetBpm(deckIndex);
@@ -2028,7 +2055,7 @@ void DeckGUI::buildFxPanels()
 				showFxParameterModal(FxCategory::Pad, padFxTiles[(size_t) (procIdx - 1)].get());
 			};
 
-			addChildComponent(*tile);
+			transportContainer.addChildComponent(*tile);
 			padFxTiles.push_back(std::move(tile));
 		}
 	}
@@ -2048,7 +2075,7 @@ void DeckGUI::buildFxPanels()
 			int idx = beatFxSelector.getSelectedId() - 1;
 			if (idx >= 0) postFxSelect(FxCategory::Beat, idx);
 		};
-		addChildComponent(beatFxSelector);
+		transportContainer.addChildComponent(beatFxSelector);
 
 		// Beat division: maps 1..7 → 1/16, 1/8, 1/4, 1/2, 1, 2, 4 beats.
 		beatFxDivisionBox.clear(juce::dontSendNotification);
@@ -2072,7 +2099,7 @@ void DeckGUI::buildFxPanels()
 				}
 			}
 		};
-		addChildComponent(beatFxDivisionBox);
+		transportContainer.addChildComponent(beatFxDivisionBox);
 
 		beatFxOnButton.setClickingTogglesState(true);
 		beatFxOnButton.addListener(this);
@@ -2080,7 +2107,7 @@ void DeckGUI::buildFxPanels()
 		beatFxOnButton.setColour(juce::TextButton::buttonOnColourId, theme.withAlpha(0.85f));
 		beatFxOnButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 		beatFxOnButton.setColour(juce::TextButton::textColourOnId,  juce::Colours::black);
-		addChildComponent(beatFxOnButton);
+		transportContainer.addChildComponent(beatFxOnButton);
 
 		beatFxWetSlider.setSliderStyle(juce::Slider::LinearHorizontal);
 		beatFxWetSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
@@ -2098,16 +2125,16 @@ void DeckGUI::buildFxPanels()
 				}
 			}
 		};
-		addChildComponent(beatFxWetSlider);
+		transportContainer.addChildComponent(beatFxWetSlider);
 
 		beatFxWetLabel.setJustificationType(juce::Justification::centred);
 		beatFxWetLabel.setColour(juce::Label::textColourId, juce::Colours::white);
-		addChildComponent(beatFxWetLabel);
+		transportContainer.addChildComponent(beatFxWetLabel);
 
 		beatFxEditButton.addListener(this);
 		beatFxEditButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		beatFxEditButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-		addChildComponent(beatFxEditButton);
+		transportContainer.addChildComponent(beatFxEditButton);
 	}
 
 	// ---- Release FX tiles ----------------------------------------------------
@@ -2141,7 +2168,7 @@ void DeckGUI::buildFxPanels()
 				postFxSelect(FxCategory::Release, procIdx);
 				showFxParameterModal(FxCategory::Release, releaseFxTiles[(size_t) (procIdx - 1)].get());
 			};
-			addChildComponent(*tile);
+			transportContainer.addChildComponent(*tile);
 			releaseFxTiles.push_back(std::move(tile));
 		}
 	}
@@ -2276,7 +2303,7 @@ void DeckGUI::setCueActive(bool active) noexcept
 {
 	cueButton.setColour(juce::DrawableButton::backgroundColourId,
 	                    active ? theme.withAlpha(0.85f)
-	                           : UI::bgCard);
+	                           : juce::Colours::transparentBlack);
 	cueButton.repaint();
 }
 
