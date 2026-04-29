@@ -35,7 +35,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	loadingLabel.setColour(juce::Label::backgroundColourId, UI::bgRoot.withAlpha(0.86f));
 	loadingLabel.setVisible(false);
 	addAndMakeVisible(loadingLabel);
-	std::vector<juce::Label*> labels{ &volLabel, &speedLabel, &filterLabel, &lbLabel, &mbLabel, &hbLabel };
+	std::vector<juce::Label*> labels{ &speedLabel, &lbLabel, &mbLabel, &hbLabel };
 	for (auto& label : labels) {
 		label->setEditable(false);
 		label->setJustificationType(juce::Justification::centred);
@@ -56,21 +56,18 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	addAndMakeVisible(bpmPercentLabel);
 
 	addAndMakeVisible(playButton);
-	addAndMakeVisible(volSlider);
 	addAndMakeVisible(speedSlider);
 	addAndMakeVisible(loadButton);
 	addAndMakeVisible(waveformDisplay);
 	addAndMakeVisible(jogWheel);
-	addAndMakeVisible(filter);
 	addAndMakeVisible(lowBandFilter);
 	addAndMakeVisible(midBandFilter);
 	addAndMakeVisible(highBandFilter);
 
-	cueButton.setColour(juce::TextButton::buttonColourId,
-	                    UI::bgCard);
-	cueButton.setColour(juce::TextButton::buttonOnColourId,  theme.withAlpha(0.85f));
-	cueButton.setColour(juce::TextButton::textColourOffId,   juce::Colours::white);
-	cueButton.setColour(juce::TextButton::textColourOnId,    juce::Colours::black);
+	cueButtonImage = juce::Drawable::createFromImageData(BinaryData::iconHeadphone_svg, (size_t)BinaryData::iconHeadphone_svgSize);
+	cueButton.setImages(cueButtonImage.get());
+	cueButton.setColour(juce::DrawableButton::backgroundColourId,   UI::bgCard);
+	cueButton.setColour(juce::DrawableButton::backgroundOnColourId, theme.withAlpha(0.85f));
 	cueButton.setClickingTogglesState(false);
 	cueButton.addListener(this);
 	addAndMakeVisible(cueButton);
@@ -79,11 +76,8 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	queueWidget = std::make_unique<DeckQueue>(theme, [this](const track& t) { loadDeck(t); });
 	addAndMakeVisible(*queueWidget);
 
-	volSlider.setRange(0, 1);
-	volSlider.setSkewFactorFromMidPoint(0.25); // logarithmic feel for the human ear
 	speedSlider.setRange(0.5, 2.0);
 	speedSlider.setSkewFactorFromMidPoint(1.0); // 1.0 sits at the visual centre of a 50%–200% range
-	filter.setRange(-20000, 20000);
 	lowBandFilter.setRange(0.01, 2);
 	midBandFilter.setRange(0.01, 2);
 	highBandFilter.setRange(0.01, 2);
@@ -91,22 +85,16 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	zoomedDisplay->setRange(0, 1);
 	jogWheel.setRange(0, 1);
 
-	filter.setValue(0);
 	lowBandFilter.setValue(1);
 	midBandFilter.setValue(1);
 	highBandFilter.setValue(1);
-	volSlider.setValue(0.5);
 	speedSlider.setValue(1);
 
 	playButton.addListener(this);
 	loadButton.addListener(this);
-	volSlider.addListener(this);
-	volSlider.addMouseListener(this, false);
 	speedSlider.addListener(this);
 	speedSlider.addMouseListener(this, false);
 
-	filter.addListener(this);
-	filter.addMouseListener(this, false);
 	lowBandFilter.addListener(this);
 	lowBandFilter.addMouseListener(this, false);
 	midBandFilter.addListener(this);
@@ -192,12 +180,12 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	addChildComponent(syncStatusLabel);
 
 	// Fast-sync compact button (always visible near play/load).
+	fastSyncBtnImage = juce::Drawable::createFromImageData(BinaryData::iconSyncBolt_svg, (size_t)BinaryData::iconSyncBolt_svgSize);
+	fastSyncBtn.setImages(fastSyncBtnImage.get());
+	fastSyncBtn.setColour(juce::DrawableButton::backgroundColourId,   juce::Colours::transparentBlack);
+	fastSyncBtn.setColour(juce::DrawableButton::backgroundOnColourId, UI::accentPositive.withAlpha(0.85f));
 	fastSyncBtn.setClickingTogglesState(true);
 	fastSyncBtn.addListener(this);
-	fastSyncBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
-	fastSyncBtn.setColour(juce::TextButton::buttonOnColourId, UI::accentPositive.withAlpha(0.85f));
-	fastSyncBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-	fastSyncBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
 	addAndMakeVisible(fastSyncBtn);
 
 	// Snap-quantisation combo for sync (1 BAR / 1/2 / 1/4).
@@ -349,10 +337,12 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	playButton.setClickingTogglesState(true);
 	playButton.setEdgeIndent(0);
 	loadButton.setEdgeIndent(0);
+	playButton.setColour(juce::DrawableButton::backgroundColourId,   juce::Colours::transparentBlack);
+	playButton.setColour(juce::DrawableButton::backgroundOnColourId, juce::Colours::transparentBlack);
+	loadButton.setColour(juce::DrawableButton::backgroundColourId,   juce::Colours::transparentBlack);
+	loadButton.setColour(juce::DrawableButton::backgroundOnColourId, juce::Colours::transparentBlack);
 
-	volSlider.setLookAndFeel(&customLookAndFeel);
 	speedSlider.setLookAndFeel(&customLookAndFeel);
-	filter.setLookAndFeel(&customLookAndFeel);
 	lowBandFilter.setLookAndFeel(&customLookAndFeel);
 	midBandFilter.setLookAndFeel(&customLookAndFeel);
 	highBandFilter.setLookAndFeel(&customLookAndFeel);
@@ -360,7 +350,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	// Per-deck rotary accent colour: deck 2 uses pink-red, deck 1 uses blue.
 	{
 		const juce::Colour knobAccent = (deckIndex == 1) ? UI::deck2Accent : UI::deck1Accent;
-		for (auto* s : { &filter, &lowBandFilter, &midBandFilter, &highBandFilter })
+		for (auto* s : { &lowBandFilter, &midBandFilter, &highBandFilter })
 			s->setColour(juce::Slider::rotarySliderFillColourId, knobAccent);
 	}
 
@@ -407,31 +397,6 @@ void DeckGUI::paint(juce::Graphics& g)
 		g.fillRect(juce::Rectangle<float>(stripX, r.getY() + 6.0f, stripW, r.getHeight() - 12.0f));
 	}
 
-	double rowH = getHeight() / 9;
-	float offset = rowH * 2.23;
-	float volMeterHeight = rowH * 2.5;
-	float volCurrentHeight = juce::jmap(player->getRMSLevel(), -60.0f, 0.0f, offset + volMeterHeight - 5, offset);
-
-	for (auto i = offset + volMeterHeight - 5; i > offset; i -= volMeterHeight / 10) {
-		float pos = i;
-		float redStrength = juce::jmap(pos, offset + volMeterHeight - 5, offset, 0.0f, 255.0f);
-
-		juce::Colour colorRGB(redStrength, 255 - redStrength, 0);
-		g.setColour(colorRGB);
-
-		if (volCurrentHeight < pos) {
-			g.setColour(colorRGB);
-		}
-		else {
-			g.setColour(UI::bgRoot);
-		}
-
-		double volXOffset = deckIndex == 1 ? 62.5 : getWidth() - (double)75;
-
-		juce::Rectangle<float> rect(volXOffset, pos, 12.5, (volMeterHeight / 10) - 2);
-		g.fillRect(rect);
-	}
-
 	for (auto& cue : cues) {
 		juce::TextButton* thisButton = cue;
 		bool hasCue = cueTargets.find(thisButton) != cueTargets.end();
@@ -457,9 +422,6 @@ void DeckGUI::paint(juce::Graphics& g)
 		}
 	}
 
-	double mainXOffset = deckIndex == 1 ? getWidth() * 7 / 32 : getWidth() * 25 / 32;
-	g.setColour(UI::bgRoot);
-	g.drawLine(mainXOffset, 0, mainXOffset, getHeight());
 }
 
 /**
@@ -485,35 +447,35 @@ void DeckGUI::resized()
 	const int    leftClear   = isDeck2 ? 4         : railClear;
 	const int    rightClear  = isDeck2 ? railClear : 4;
 
-	// Volume column sits on the deck's INNER edge (toward the crossfader).
-	double volXOffset = isDeck2 ? 5.5 : getWidth() - (double)55;
+	// (Vol slider and filter knob are now in the MainComponent mixer column.)
 	const double sliderTopRow    = 2.15;             // was 1.3 (clipped behind waveform)
-	const double sliderHeightRow = 4.2;              // tightened so filter row still fits
+	const double sliderHeightRow = 4.2;
 	const double sliderBottomRow = sliderTopRow + sliderHeightRow;
 
-	volSlider.setBounds(volXOffset, rowH * sliderTopRow, 50, rowH * sliderHeightRow);
-	volLabel.setBounds(volXOffset, rowH * sliderBottomRow + 2, 50, rowH * 0.5);
-	filter.setBounds(volXOffset, rowH * (sliderBottomRow + 0.6), 50, 50);
-	filterLabel.setBounds(volXOffset, rowH * (sliderBottomRow + 1.7), 50, rowH * 0.5);
+	// Speed slider: Deck 2 on the LEFT (inner) side; Deck 1 mirrored to the RIGHT (inner) side.
+	const double speedXOffset = isDeck2
+		? (double)(getWidth() * 7 / 32)
+		: (double)(getWidth() - rightClear - getWidth() / 8.0 - 4);
 
-	// Speed slider on the OUTER side of the deck — but shifted past the rail.
-	double mainXOffset = isDeck2 ? (double)(getWidth() * 7 / 32) : (double) leftClear;
+	// Content area (cue/grid/loop/EQ): Deck 2 starts right after speed slider;
+	// Deck 1 ends right before speed slider (mirrored anchor).
+	const double contentWidth = std::max(getWidth() * 18.5 / 32.0 - 105.0, 60.0);
+	double xOffset = isDeck2 ? (speedXOffset + getWidth() / 8.0)
+	                         : (speedXOffset - contentWidth - 4.0);
 
 	// BPM value label above speed slider
-	bpmValueLabel.setBounds(mainXOffset, rowH * 0.3, getWidth() / 8, 20);
-	bpmPercentLabel.setBounds(mainXOffset, rowH * 0.3 + 18, getWidth() / 8, 14);
+	bpmValueLabel.setBounds((int)speedXOffset, (int)(rowH * 0.3), getWidth() / 8, 20);
+	bpmPercentLabel.setBounds((int)speedXOffset, (int)(rowH * 0.3 + 18), getWidth() / 8, 14);
 
-	speedSlider.setBounds(mainXOffset, rowH * sliderTopRow, getWidth() / 8, rowH * sliderHeightRow);
-	speedLabel.setBounds(mainXOffset, rowH * sliderBottomRow + 2, getWidth() / 8, rowH * 0.5);
+	speedSlider.setBounds((int)speedXOffset, (int)(rowH * sliderTopRow), getWidth() / 8, (int)(rowH * sliderHeightRow));
+	speedLabel.setBounds((int)speedXOffset, (int)(rowH * sliderBottomRow + 2), getWidth() / 8, (int)(rowH * 0.5));
 
 	// Jog wheel + transport: clear the outer rail.
 	const double jogSize = (rowH * 3.3) - 10;
 	const double btnSize = rowH * 0.7;
 
-	// For deck 1: compute transport-button X first (right of jog anchor), then
-	// place jog immediately LEFT of the buttons so they can never overlap.
-	// For deck 2: buttons go LEFT of jog (clear right rail), so compute btnX
-	// from the rail-cleared right edge first.
+	// Deck 2: buttons on RIGHT outer edge, jog to their left.
+	// Deck 1 (mirrored): buttons on LEFT outer edge, jog to their right.
 	double btnX, jogX;
 	if (isDeck2)
 	{
@@ -523,13 +485,12 @@ void DeckGUI::resized()
 	}
 	else
 	{
-		// Left-anchor: use the original midpoint formula for buttons, then jog goes left of them
-		btnX = mainXOffset + getWidth() * 22.5 / 32;
-		jogX = btnX - jogSize - 6;
-		// Clamp so jog doesn't go behind the speed slider column
-		const double speedSliderRight = mainXOffset + (double)(getWidth() / 8) + 6;
-		if (jogX < speedSliderRight)
-			jogX = speedSliderRight;
+		// Left-anchor: buttons on outer-left side, jog immediately to their right.
+		btnX = (double)leftClear + 4;
+		jogX = btnX + btnSize + 6;
+		// Clamp so jog doesn't push into the content area
+		if (jogX + jogSize + 6 > xOffset)
+			jogX = xOffset - jogSize - 6;
 	}
 
 	jogWheel.setBounds((int)jogX, (int)(5 + rowH * 3), (int)jogSize, (int)jogSize);
@@ -547,7 +508,6 @@ void DeckGUI::resized()
 	waveformDisplay.setBounds(0, 0, getWidth(), rowH * 2);
 	loadingLabel.setBounds(waveformDisplay.getBounds());
 
-	double xOffset = mainXOffset + getWidth() * 4 / 32;
 	double yOffset = 5 + rowH * 2;
 	double cellLength = (getWidth() * 18.5 / 32 - 105) / 3;
 	double cellHeight = 44.45;
@@ -709,12 +669,15 @@ void DeckGUI::resized()
 		}
 	}
 
-	lowBandFilter.setBounds(xOffset, rowH * 5.8, 50, 50);
-	midBandFilter.setBounds(xOffset + getWidth() / 5, rowH * 5.8, 50, 50);
-	highBandFilter.setBounds(xOffset + getWidth() * 2 / 5, rowH * 5.8, 50, 50);
-	lbLabel.setBounds(xOffset, rowH * 6.9, 50, 50);
-	mbLabel.setBounds(xOffset + getWidth() / 5, rowH * 6.9, 50, 50);
-	hbLabel.setBounds(xOffset + getWidth() * 2 / 5, rowH * 6.9, 50, 50);
+	// EQ spacing: Deck 2 uses W/5; Deck 1 uses content-area-relative spacing to stay clear of the speed slider.
+	const double eqSpacing = isDeck2 ? (double)getWidth() / 5.0
+	                                 : std::max((contentWidth - 50.0) / 2.0, 20.0);
+	lowBandFilter.setBounds((int)xOffset, (int)(rowH * 5.8), 50, 50);
+	midBandFilter.setBounds((int)(xOffset + eqSpacing), (int)(rowH * 5.8), 50, 50);
+	highBandFilter.setBounds((int)(xOffset + eqSpacing * 2), (int)(rowH * 5.8), 50, 50);
+	lbLabel.setBounds((int)xOffset, (int)(rowH * 6.9), 50, 50);
+	mbLabel.setBounds((int)(xOffset + eqSpacing), (int)(rowH * 6.9), 50, 50);
+	hbLabel.setBounds((int)(xOffset + eqSpacing * 2), (int)(rowH * 6.9), 50, 50);
 
 	// Queue: full-width strip at the bottom of the deck, below the EQ labels.
 	// Y is computed from the filter-label bottom so it never overlaps them.
@@ -724,7 +687,9 @@ void DeckGUI::resized()
 		const int qH = std::max(getHeight() - qY - 2, 40);
 		const int qX = (int)xOffset;
 		const int qW = std::max(
-			(int)(mainXOffset + getWidth() * 22.5 / 32 + rowH * 0.7 + 2) - qX, 100);
+			isDeck2 ? (int)(getWidth() - rightClear - 2) - qX
+			        : (int)(speedXOffset) - qX - 4,
+			100);
 		queueWidget->setBounds(qX, qY, qW, qH);
 	}
 }
@@ -1167,17 +1132,6 @@ void DeckGUI::mouseDown(const juce::MouseEvent& event) {
 		return;
 	}
 
-	if (source == &volSlider) {
-		juce::PopupMenu menu;
-		menu.addItem(1, "Reset to default (50%)");
-		menu.showMenuAsync(juce::PopupMenu::Options(),
-			[this](int result) {
-				if (result == 1)
-					volSlider.setValue(0.5, juce::sendNotification);
-			});
-		return;
-	}
-
 	if (source == &lowBandFilter) {
 		juce::PopupMenu menu;
 		menu.addItem(1, "Reset to unity gain");
@@ -1207,17 +1161,6 @@ void DeckGUI::mouseDown(const juce::MouseEvent& event) {
 			[this](int result) {
 				if (result == 1)
 					highBandFilter.setValue(1.0, juce::sendNotification);
-			});
-		return;
-	}
-
-	if (source == &filter) {
-		juce::PopupMenu menu;
-		menu.addItem(1, "Reset to centre");
-		menu.showMenuAsync(juce::PopupMenu::Options(),
-			[this](int result) {
-				if (result == 1)
-					filter.setValue(0.0, juce::sendNotification);
 			});
 		return;
 	}
@@ -1268,11 +1211,6 @@ void DeckGUI::mouseDown(const juce::MouseEvent& event) {
  */
 void DeckGUI::sliderValueChanged(juce::Slider* slider) {
 
-	if (slider == &volSlider) {
-		DBG("MainComponent::sliderValueChanged: They change the volume slider " << slider->getValue());
-		player->setGain(slider->getValue());
-	}
-
 	if (slider == &speedSlider) {
 		DBG("MainComponent::sliderValueChanged: They change the speed slider " << slider->getValue());
 		// Capture the user's intended value before any side-effects can overwrite it.
@@ -1292,11 +1230,6 @@ void DeckGUI::sliderValueChanged(juce::Slider* slider) {
 		const BeatGrid& grid = player->getBeatGrid();
 		for (auto* display : displays)
 			display->setBeatGrid(grid.bpm, grid.gridOffsetSecs, userSpeed);
-	}
-
-	if (slider == &filter) {
-		DBG("MainComponent::sliderValueChanged: They change the filter slider " << slider->getValue());
-		player->setFilter(slider->getValue());
 	}
 
 	if (slider == &lowBandFilter) {
@@ -1539,7 +1472,7 @@ void DeckGUI::finishLoadDeck() {
 		display->setBandData(nullptr); // clear stale colours; will be filled when analysis completes
 	}
 
-	player->setGain(volSlider.getValue(), true);
+	player->setGain(1.0, true);
 	cueTargets.clear();
 
 	// Update current track identity early so async callbacks below can stale-guard against it.
@@ -1780,7 +1713,7 @@ void DeckGUI::syncStateChanged() {
 	if (isSynced && outOfRange)
 		offColour = UI::accentWarning.withAlpha(0.6f);
 	syncEngageBtn.setColour(juce::TextButton::buttonColourId, offColour);
-	fastSyncBtn.setColour  (juce::TextButton::buttonColourId, offColour);
+	fastSyncBtn.setColour(juce::DrawableButton::backgroundColourId, offColour);
 
 	// Target BPM display.
 	double tgt = syncManager->getTargetBpm(deckIndex);
@@ -2341,7 +2274,7 @@ void DeckGUI::enqueueTrack(const track& t) {
  */
 void DeckGUI::setCueActive(bool active) noexcept
 {
-	cueButton.setColour(juce::TextButton::buttonColourId,
+	cueButton.setColour(juce::DrawableButton::backgroundColourId,
 	                    active ? theme.withAlpha(0.85f)
 	                           : UI::bgCard);
 	cueButton.repaint();

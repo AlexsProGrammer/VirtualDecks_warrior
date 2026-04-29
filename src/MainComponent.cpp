@@ -121,6 +121,74 @@ MainComponent::MainComponent()
 	crossFader.addListener(this);
 	crossFader.addMouseListener(this, false);
 
+	// ── Mixer column: volume faders ───────────────────────────────────────────
+	vol1Slider.setRange(0.0, 1.0);
+	vol1Slider.setSkewFactorFromMidPoint(0.25);
+	vol1Slider.setValue(1.0);
+	vol1Slider.setColour(juce::Slider::thumbColourId, UI::deck1Accent);
+	vol1Slider.addListener(this);
+	addAndMakeVisible(vol1Slider);
+
+	vol2Slider.setRange(0.0, 1.0);
+	vol2Slider.setSkewFactorFromMidPoint(0.25);
+	vol2Slider.setValue(1.0);
+	vol2Slider.setColour(juce::Slider::thumbColourId, UI::deck2Accent);
+	vol2Slider.addListener(this);
+	addAndMakeVisible(vol2Slider);
+
+	vol1Label.setText("VOL", juce::dontSendNotification);
+	vol1Label.setJustificationType(juce::Justification::centred);
+	vol1Label.setFont(juce::Font(juce::FontOptions(10.0f)));
+	vol1Label.setColour(juce::Label::textColourId, juce::Colours::grey);
+	addAndMakeVisible(vol1Label);
+
+	vol2Label.setText("VOL", juce::dontSendNotification);
+	vol2Label.setJustificationType(juce::Justification::centred);
+	vol2Label.setFont(juce::Font(juce::FontOptions(10.0f)));
+	vol2Label.setColour(juce::Label::textColourId, juce::Colours::grey);
+	addAndMakeVisible(vol2Label);
+
+	// ── Mixer column: filter knobs ────────────────────────────────────────────
+	filter1Slider.setRange(-20000.0, 20000.0);
+	filter1Slider.setValue(0.0);
+	filter1Slider.setColour(juce::Slider::thumbColourId, UI::deck1Accent);
+	filter1Slider.addListener(this);
+	addAndMakeVisible(filter1Slider);
+
+	filter2Slider.setRange(-20000.0, 20000.0);
+	filter2Slider.setValue(0.0);
+	filter2Slider.setColour(juce::Slider::thumbColourId, UI::deck2Accent);
+	filter2Slider.addListener(this);
+	addAndMakeVisible(filter2Slider);
+
+	filter1Label.setText("FILTER", juce::dontSendNotification);
+	filter1Label.setJustificationType(juce::Justification::centred);
+	filter1Label.setFont(juce::Font(juce::FontOptions(10.0f)));
+	filter1Label.setColour(juce::Label::textColourId, juce::Colours::grey);
+	addAndMakeVisible(filter1Label);
+
+	filter2Label.setText("FILTER", juce::dontSendNotification);
+	filter2Label.setJustificationType(juce::Justification::centred);
+	filter2Label.setFont(juce::Font(juce::FontOptions(10.0f)));
+	filter2Label.setColour(juce::Label::textColourId, juce::Colours::grey);
+	addAndMakeVisible(filter2Label);
+
+	// Apply CustomLookAndFeel and per-deck accent colours to the mixer sliders.
+	vol1Slider.setLookAndFeel(&customLookAndFeel);
+	vol2Slider.setLookAndFeel(&customLookAndFeel);
+	filter1Slider.setLookAndFeel(&customLookAndFeel);
+	filter2Slider.setLookAndFeel(&customLookAndFeel);
+	filter1Slider.setColour(juce::Slider::rotarySliderFillColourId, UI::deck1Accent);
+	filter2Slider.setColour(juce::Slider::rotarySliderFillColourId, UI::deck2Accent);
+
+	// Enable right-click reset on mixer sliders.
+	vol1Slider.addMouseListener(this, false);
+	vol2Slider.addMouseListener(this, false);
+	filter1Slider.addMouseListener(this, false);
+	filter2Slider.addMouseListener(this, false);
+
+	startTimer(20); // ~50 fps repaint for volume meters
+
 	formatManager.registerBasicFormats();
 
 	getLookAndFeel().setColour(juce::ResizableWindow::backgroundColourId, UI::bgRoot);
@@ -139,6 +207,7 @@ MainComponent::MainComponent()
  */
 MainComponent::~MainComponent()
 {
+	stopTimer();
 	cueDeviceManager.removeAudioCallback(&cueCallback);
 	shutdownAudio();
 }
@@ -201,22 +270,53 @@ void MainComponent::paint(juce::Graphics& g)
 	g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 
 	// Dedicated mixer card: a rounded card strip centred between the two decks.
-	constexpr int kCardW   = 200;
-	constexpr int kZoomBaseH = 75;
+	constexpr int kMixerW    = 200;
 	constexpr int kDeckBaseY = 150;
-	const int     zoomH      = kZoomBaseH + getHeight() / 32;
 	const int     deckY      = kDeckBaseY + getHeight() / 16;
 
 	juce::Rectangle<float> mixCard(
-		(float)(getWidth() / 2 - kCardW / 2),
+		(float)(getWidth() / 2 - kMixerW / 2),
 		(float)deckY,
-		(float)kCardW,
+		(float)kMixerW,
 		(float)(getHeight() - deckY));
 	CustomLookAndFeel::paintCardBackground(g, mixCard, UI::kCardRadius);
 
-	// Cover the crossfader's background
+	// Erase the card background behind the crossfader so it sits flush.
 	g.setColour(UI::bgRoot);
-	g.fillRect(crossFader.getLocalBounds());
+	g.fillRect(crossFader.getBounds());
+
+	// ── Volume meters (drawn beside each fader, updated at 50 fps via timer) ──
+	auto drawMeter = [&](const juce::Slider& slider, DJAudioPlayer& player, bool rightSide)
+	{
+		const auto  sb      = slider.getBounds();
+		constexpr float kMeterW = 8.0f;
+		const float meterX  = rightSide ? (float)sb.getRight() + 3.0f
+		                                 : (float)sb.getX() - kMeterW - 3.0f;
+		const float meterTop = (float)sb.getY();
+		const float meterH   = (float)sb.getHeight();
+
+		// Map RMS (dB, −60→0) to a Y threshold: 0 dB = top, −60 dB = bottom.
+		const float rms       = player.getRMSLevel();
+		const float threshold = juce::jmap(rms, -60.0f, 0.0f,
+		                                   meterTop + meterH, meterTop);
+
+		constexpr int kSegments = 12;
+		const float   segH      = meterH / kSegments;
+		for (int i = 0; i < kSegments; ++i)
+		{
+			// i=0 = bottom segment (green), i=kSegments-1 = top (red)
+			const float posY   = meterTop + meterH - (i + 1) * segH;
+			const float frac   = (float)i / (float)(kSegments - 1);
+			const float r      = frac * 255.0f;
+			const juce::Colour seg(juce::uint8(r), juce::uint8(255.0f - r), juce::uint8(0));
+			// Segment is active when its centre Y is below (larger than) the threshold.
+			const bool  active = (posY + segH * 0.5f) > threshold;
+			g.setColour(active ? seg.withAlpha(0.85f) : UI::bgRoot);
+			g.fillRect(meterX, posY + 1.0f, kMeterW, segH - 2.0f);
+		}
+	};
+	drawMeter(vol1Slider, audioEngine.getPlayer(0), true);
+	drawMeter(vol2Slider, audioEngine.getPlayer(1), false);
 }
 
 /**
@@ -229,38 +329,71 @@ void MainComponent::resized()
 {
 	DBG("MainComponent::resized");
 
-	// Layout constants (Phase 5: replace ad-hoc magic numbers)
+	// ── Shared layout constants ───────────────────────────────────────────────
 	constexpr int kZoomBaseH       = 75;   // zoomed waveform base height
 	constexpr int kZoomGrowDivisor = 32;   // grow zoom strip slowly with window height
-	constexpr int kDeckBaseY       = 150;  // top of the deck panel below 2 zoom strips
+	constexpr int kDeckBaseY       = 150;  // top of deck panel (below 2 zoom strips)
 	constexpr int kDeckGrowDivisor = 16;
+	constexpr int kMixerW          = 200;  // mixer column width (matches paint() card)
 	constexpr int kCrossFaderW     = 160;
 	constexpr int kCrossFaderH     = 37;
-	constexpr int kSettingsBtnSize = 26;
-	constexpr double kRowCapPx     = 40.0; // mirror DeckGUI's rowH cap
-	constexpr double kCrossFaderRow = 8.55; // bottom row inside deck panel (below filter knob/label)
+	constexpr int kSettingsBtnSize = 32;   // gear button (larger for better hit area)
 
-	const int zoomH  = kZoomBaseH + getHeight() / kZoomGrowDivisor;
-	const int deckY  = kDeckBaseY + getHeight() / kDeckGrowDivisor;
-	const int deckH  = getHeight() - deckY;
+	const int zoomH = kZoomBaseH + getHeight() / kZoomGrowDivisor;
+	const int deckY = kDeckBaseY + getHeight() / kDeckGrowDivisor;
+	const int deckH = getHeight() - deckY;
 
-	zoomedDisplay1.setBounds(0, 0,        getWidth(),       zoomH);
-	zoomedDisplay2.setBounds(0, zoomH,    getWidth(),       zoomH);
-	deckGUI1.setBounds(0,              deckY, getWidth() / 2, deckH);
-	deckGUI2.setBounds(getWidth() / 2, deckY, getWidth() / 2, deckH);
+	// ── Waveform strips — full width ──────────────────────────────────────────
+	zoomedDisplay1.setBounds(0, 0,     getWidth(), zoomH);
+	zoomedDisplay2.setBounds(0, zoomH, getWidth(), zoomH);
 
-	// Crossfader: vertically track the capped rowH used by DeckGUI so it
-	// always sits below the (now-longer) speed/volume sliders.
-	const double deckRowH = std::min(deckH / 9.0, kRowCapPx);
-	const int crossFaderY = (int)(deckY + deckRowH * kCrossFaderRow);
-	crossFader.setBounds(getWidth() / 2 - kCrossFaderW / 2, crossFaderY, kCrossFaderW, kCrossFaderH);
+	// ── Deck panels — carve out the centre mixer column ───────────────────────
+	const int deckW = (getWidth() - kMixerW) / 2;
+	deckGUI1.setBounds(0,              deckY, deckW, deckH);
+	deckGUI2.setBounds(deckW + kMixerW, deckY, deckW, deckH);
 
-	// Gear / settings button — top of the mixer card, centred.
-	settingsButton.setBounds(getWidth() / 2 - kSettingsBtnSize / 2,
-	                         deckY + 8,
+	// ── Mixer column layout ───────────────────────────────────────────────────
+	const int mixX    = getWidth() / 2 - kMixerW / 2;
+	const int halfCol = kMixerW / 2;   // 100 px — left = Deck 1, right = Deck 2
+
+	// Settings gear — centred at top of mixer column.
+	settingsButton.setBounds(mixX + halfCol - kSettingsBtnSize / 2,
+	                         deckY + 10,
 	                         kSettingsBtnSize, kSettingsBtnSize);
 
-	// Settings panel: full-width strip at the top when open, parked off-screen when closed.
+	// Crossfader — bottom-anchored with generous gap above.
+	const int kCrossFaderY = deckY + deckH - kCrossFaderH - 20;
+	crossFader.setBounds(getWidth() / 2 - kCrossFaderW / 2, kCrossFaderY,
+	                     kCrossFaderW, kCrossFaderH);
+
+	// Vol faders + filter knobs fill the space between settings button and crossfader.
+	constexpr int kSliderW   = 20;
+	constexpr int kKnobSize  = 50;
+	constexpr int kLabelH    = 14;
+
+	const int volSliderTop = deckY + 10 + kSettingsBtnSize + 16;
+	// Fixed height consumed below the vol slider: label + gap + knob + label + padding.
+	const int fixedBelow   = kLabelH + 8 + kKnobSize + kLabelH + 12;
+	const int volSliderH   = std::max(kCrossFaderY - volSliderTop - fixedBelow, 40);
+	const int volLabelY    = volSliderTop + volSliderH + 4;
+	const int filterKnobY  = volLabelY + kLabelH + 8;
+	const int filterLabelY = filterKnobY + kKnobSize + 4;
+
+	// Deck 1 — left half of mixer (centre at mixX + halfCol/2).
+	const int col1 = mixX + halfCol / 2;
+	vol1Slider.setBounds   (col1 - kSliderW / 2,  volSliderTop, kSliderW,  volSliderH);
+	vol1Label.setBounds    (col1 - 20,             volLabelY,    40,        kLabelH);
+	filter1Slider.setBounds(col1 - kKnobSize / 2,  filterKnobY,  kKnobSize, kKnobSize);
+	filter1Label.setBounds (col1 - kKnobSize / 2,  filterLabelY, kKnobSize, kLabelH);
+
+	// Deck 2 — right half of mixer (centre at mixX + halfCol + halfCol/2).
+	const int col2 = mixX + halfCol + halfCol / 2;
+	vol2Slider.setBounds   (col2 - kSliderW / 2,  volSliderTop, kSliderW,  volSliderH);
+	vol2Label.setBounds    (col2 - 20,             volLabelY,    40,        kLabelH);
+	filter2Slider.setBounds(col2 - kKnobSize / 2,  filterKnobY,  kKnobSize, kKnobSize);
+	filter2Label.setBounds (col2 - kKnobSize / 2,  filterLabelY, kKnobSize, kLabelH);
+
+	// ── Settings panel (full-width, slides from top) ──────────────────────────
 	if (settingsPanel != nullptr)
 	{
 		if (settingsPanel->isVisible())
@@ -269,8 +402,7 @@ void MainComponent::resized()
 			settingsPanel->setBounds(settingsPanelClosedBounds());
 	}
 
-	// Sidebars track their visibility-driven position. If currently visible,
-	// reposition them to the open bounds; otherwise park them off-screen.
+	// ── Sidebars ──────────────────────────────────────────────────────────────
 	auto fitSidebar = [this](DeckLibrarySidebar* s, int idx)
 	{
 		if (s == nullptr) return;
@@ -374,6 +506,15 @@ void MainComponent::closeSettings()
 	});
 }
 
+void MainComponent::timerCallback()
+{
+	// Repaint only the mixer column to update the volume meters efficiently.
+	constexpr int kMixerW    = 200;
+	constexpr int kDeckBaseY = 150;
+	const int     deckY      = kDeckBaseY + getHeight() / 16;
+	repaint(getWidth() / 2 - kMixerW / 2, deckY, kMixerW, getHeight() - deckY);
+}
+
 //==============================================================================
 
 /**
@@ -398,6 +539,46 @@ void MainComponent::mouseDown(const juce::MouseEvent& event)
 					crossFader.setValue(0.0, juce::sendNotification);
 			});
 	}
+
+	if (event.eventComponent == &vol1Slider) {
+		juce::PopupMenu menu;
+		menu.addItem(1, "Reset to maximum");
+		menu.showMenuAsync(juce::PopupMenu::Options(),
+			[this](int result) {
+				if (result == 1)
+					vol1Slider.setValue(1.0, juce::sendNotification);
+			});
+	}
+
+	if (event.eventComponent == &vol2Slider) {
+		juce::PopupMenu menu;
+		menu.addItem(1, "Reset to maximum");
+		menu.showMenuAsync(juce::PopupMenu::Options(),
+			[this](int result) {
+				if (result == 1)
+					vol2Slider.setValue(1.0, juce::sendNotification);
+			});
+	}
+
+	if (event.eventComponent == &filter1Slider) {
+		juce::PopupMenu menu;
+		menu.addItem(1, "Reset to centre");
+		menu.showMenuAsync(juce::PopupMenu::Options(),
+			[this](int result) {
+				if (result == 1)
+					filter1Slider.setValue(0.0, juce::sendNotification);
+			});
+	}
+
+	if (event.eventComponent == &filter2Slider) {
+		juce::PopupMenu menu;
+		menu.addItem(1, "Reset to centre");
+		menu.showMenuAsync(juce::PopupMenu::Options(),
+			[this](int result) {
+				if (result == 1)
+					filter2Slider.setValue(0.0, juce::sendNotification);
+			});
+	}
 }
 
 void MainComponent::sliderValueChanged(juce::Slider* slider) {
@@ -413,6 +594,18 @@ void MainComponent::sliderValueChanged(juce::Slider* slider) {
 			audioEngine.getPlayer(1).setGain(val, false);
 			audioEngine.getPlayer(0).setGain(1, false);
 		}
+	}
+	else if (slider == &vol1Slider) {
+		audioEngine.getPlayer(0).setGain(slider->getValue());
+	}
+	else if (slider == &vol2Slider) {
+		audioEngine.getPlayer(1).setGain(slider->getValue());
+	}
+	else if (slider == &filter1Slider) {
+		audioEngine.getPlayer(0).setFilter(slider->getValue());
+	}
+	else if (slider == &filter2Slider) {
+		audioEngine.getPlayer(1).setFilter(slider->getValue());
 	}
 }
 

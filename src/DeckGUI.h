@@ -221,22 +221,14 @@ private:
 	/// juce::DrawableButton for the load button component
 	juce::DrawableButton loadButton{ "Load", juce::DrawableButton::ButtonStyle::ImageFitted };
 
-	/// Button that routes this deck's audio to the headphone (cue) output.
-	IconTabButton cueButton{ "Cue (headphone)", BinaryData::iconHeadphone_svg, BinaryData::iconHeadphone_svgSize };
+	/// Unique pointer to juce::Drawable storing the cue (headphone) button image.
+	std::unique_ptr<juce::Drawable> cueButtonImage;
+
+	/// DrawableButton that routes this deck's audio to the headphone (cue) output.
+	juce::DrawableButton cueButton{ "Cue (headphone)", juce::DrawableButton::ButtonStyle::ImageFitted };
 
 	/// juce::Colour to define the theme of the DeckGUI
 	juce::Colour theme;
-
-	/// juce::Label to label the volume slider
-	juce::Label volLabel{ "VOLUME", "VOLUME" };
-
-	/// Linear slider subclass that passes right-click events to the parent so the
-	/// context-menu handler in DeckGUI::mouseDown can show a reset popup.
-	struct ResetableLinear : public juce::Slider {
-		ResetableLinear() : juce::Slider(juce::Slider::SliderStyle::LinearVertical, juce::Slider::TextEntryBoxPosition::NoTextBox) {}
-		void mouseDown(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDown(e); }
-		void mouseDrag(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDrag(e); }
-	};
 
 	/// Rotary slider subclass that passes right-click events to the parent so the
 	/// context-menu handler in DeckGUI::mouseDown can show a reset popup.
@@ -245,9 +237,6 @@ private:
 		void mouseDown(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDown(e); }
 		void mouseDrag(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDrag(e); }
 	};
-
-	/// Slider to adjust the gain of the audio source (logarithmic skew).
-	ResetableLinear volSlider;
 
 	/// juce::Label to label the BPM slider
 	juce::Label speedLabel{ "SPEED", "SPEED" };
@@ -267,12 +256,6 @@ private:
 
 	/// juce::Label to display the speed % deviation
 	juce::Label bpmPercentLabel{ "BPM_PCT", "" };
-
-	/// juce::Slider to adjust the low pass/high pass filter on the audio source.
-	ResetableKnob filter;
-
-	/// juce::Label to label the filter slider
-	juce::Label filterLabel{ "FILTER", "FILTER" };
 
 	/// juce::Slider to adjust the low band filter on the audio source.
 	ResetableKnob lowBandFilter;
@@ -512,8 +495,11 @@ private:
 	/// Displays human-readable sync status ("SYNCED", "OUT OF RANGE", etc.).
 	juce::Label syncStatusLabel{ "SYNC_ST", "" };
 
-	/// Compact fast-sync button placed near play/load buttons.
-	IconTabButton fastSyncBtn{ "Fast Sync", BinaryData::iconSyncBolt_svg, BinaryData::iconSyncBolt_svgSize };
+	/// Unique pointer to juce::Drawable storing the fast-sync button image.
+	std::unique_ptr<juce::Drawable> fastSyncBtnImage;
+
+	/// DrawableButton for fast (one-click) sync, placed near play/load buttons.
+	juce::DrawableButton fastSyncBtn{ "Fast Sync", juce::DrawableButton::ButtonStyle::ImageFitted };
 
 	/// Resets sync + master + speed back to defaults (track plays normally).
 	juce::TextButton syncResetBtn{ "RESET" };

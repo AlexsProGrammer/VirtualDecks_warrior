@@ -17,7 +17,10 @@
 	This component lives inside our window, and this is where you should put all
 	your controls and content.
 */
-class MainComponent : public juce::AudioAppComponent, public juce::Slider::Listener, public juce::KeyListener
+class MainComponent : public juce::AudioAppComponent,
+                      public juce::Slider::Listener,
+                      public juce::KeyListener,
+                      public juce::Timer
 {
 public:
 	//==============================================================================
@@ -62,6 +65,13 @@ public:
 		* Release resources on audio sources.
 	*/
 	void releaseResources() override;
+	//==============================================================================
+
+	/**
+		* Called periodically to repaint the mixer column volume meters.
+	*/
+	void timerCallback() override;
+
 	//==============================================================================
 
 	/**
@@ -138,6 +148,27 @@ private:
 
 	/// Instance of juce::Slider for cross fading functionality.
 	ResetableFader crossFader;
+
+	// ── Mixer column: per-deck volume faders and filter knobs ──────────────────
+
+	/// Volume fader for Deck 1 (linear vertical, range 0–1, log skew).
+	juce::Slider vol1Slider{ juce::Slider::SliderStyle::LinearVertical,
+	                         juce::Slider::TextEntryBoxPosition::NoTextBox };
+
+	/// Volume fader for Deck 2 (linear vertical, range 0–1, log skew).
+	juce::Slider vol2Slider{ juce::Slider::SliderStyle::LinearVertical,
+	                         juce::Slider::TextEntryBoxPosition::NoTextBox };
+
+	/// Filter sweep knob for Deck 1 (LP→HP, range −20000…20000).
+	juce::Slider filter1Slider{ juce::Slider::SliderStyle::RotaryVerticalDrag,
+	                             juce::Slider::TextEntryBoxPosition::NoTextBox };
+
+	/// Filter sweep knob for Deck 2 (LP→HP, range −20000…20000).
+	juce::Slider filter2Slider{ juce::Slider::SliderStyle::RotaryVerticalDrag,
+	                             juce::Slider::TextEntryBoxPosition::NoTextBox };
+
+	/// Labels for the mixer column controls.
+	juce::Label vol1Label, vol2Label, filter1Label, filter2Label;
 
 	/// Per-deck library sidebars. Slide in from the opposite side of the deck.
 	std::unique_ptr<DeckLibrarySidebar> sidebar1;
