@@ -95,7 +95,7 @@ else()
         COMPANY_COPYRIGHT "Copyright © 2025 Pro-Grammer"
         COMPANY_WEBSITE "https://pro-grammer.de"
         COMPANY_EMAIL "info@pro-grammer.de"
-        VERSION "0.5.2"
+        VERSION "0.9.5"
         ICON_BIG "${CMAKE_SOURCE_DIR}/assets/logo.png"
         MICROPHONE_PERMISSION_ENABLED TRUE
         MICROPHONE_PERMISSION_TEXT "VirtualLooper requires microphone access for audio recording."

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(juceDjApp VERSION 0.0.1 LANGUAGES C CXX)
+project(juceDjApp VERSION 0.9.5 LANGUAGES C CXX)
 
 # Use modern C++ by default
 set(CMAKE_CXX_STANDARD 17)

@@ -73,7 +73,7 @@ public:
 #else
 			setResizable(true, true);
 			setResizeLimits(UI::kMinWindowW, UI::kMinWindowH, getParentMonitorArea().getWidth(), getParentMonitorArea().getHeight());
-			centreWithSize(getWidth(), getHeight());
+			centreWithSize(1400, 900);
 #endif
 
 			setVisible(true);
