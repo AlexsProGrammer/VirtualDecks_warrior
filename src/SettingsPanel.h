@@ -39,7 +39,7 @@ private:
 	juce::AudioDeviceSelectorComponent masterSelector;
 	juce::AudioDeviceSelectorComponent headphoneSelector;
 
-	juce::TextButton closeButton{ "\u00d7" };
+	juce::TextButton closeButton{ "X" };
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SettingsPanel)
 };
