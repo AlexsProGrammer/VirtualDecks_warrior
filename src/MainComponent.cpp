@@ -188,7 +188,7 @@ MainComponent::MainComponent()
 	filter1Slider.addMouseListener(this, false);
 	filter2Slider.addMouseListener(this, false);
 
-	startTimer(20); // ~50 fps repaint for volume meters
+	startTimer(33); // ~30 fps repaint for volume meters
 
 	formatManager.registerBasicFormats();
 
@@ -505,11 +505,17 @@ void MainComponent::closeSettings()
 
 void MainComponent::timerCallback()
 {
-	// Repaint only the mixer column to update the volume meters efficiently.
-	constexpr int kMixerW    = 200;
-	constexpr int kDeckBaseY = 150;
-	const int     deckY      = kDeckBaseY + getHeight() / 16;
-	repaint(getWidth() / 2 - kMixerW / 2, deckY, kMixerW, getHeight() - deckY);
+	// Repaint only the mixer column when the displayed RMS values change.
+	const float rms1 = audioEngine.getPlayer(0).getRMSLevel();
+	const float rms2 = audioEngine.getPlayer(1).getRMSLevel();
+	if (std::abs(rms1 - lastRms1) > 0.4f || std::abs(rms2 - lastRms2) > 0.4f) {
+		lastRms1 = rms1;
+		lastRms2 = rms2;
+		constexpr int kMixerW    = 200;
+		constexpr int kDeckBaseY = 150;
+		const int     deckY      = kDeckBaseY + getHeight() / 16;
+		repaint(getWidth() / 2 - kMixerW / 2, deckY, kMixerW, getHeight() - deckY);
+	}
 }
 
 //==============================================================================

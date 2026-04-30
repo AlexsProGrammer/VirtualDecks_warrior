@@ -80,5 +80,8 @@ private:
 	/// Bounds when bgCache was last rendered; used to detect resize.
 	juce::Rectangle<int> bgCachedBounds;
 
+	/// Cached bold font used for the time overlay.
+	juce::Font jogFont { 11.0f, juce::Font::bold };
+
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(JogWheel)
 };

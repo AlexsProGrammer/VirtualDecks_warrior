@@ -209,5 +209,10 @@ private:
 	/// @return Bounds used when settings panel is fully closed (off-screen top).
 	juce::Rectangle<int> settingsPanelClosedBounds() const;
 
+	/// Cached RMS levels used to gate timer repaints (only repaint when meters change).
+	float lastRms1 = -999.0f;
+	/// Cached RMS level for deck 2.
+	float lastRms2 = -999.0f;
+
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

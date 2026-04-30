@@ -431,31 +431,6 @@ void DeckGUI::paint(juce::Graphics& g)
 		g.fillRect(juce::Rectangle<float>(stripX, r.getY() + 6.0f, stripW, r.getHeight() - 12.0f));
 	}
 
-	for (auto& cue : cues) {
-		juce::TextButton* thisButton = cue;
-		bool hasCue = cueTargets.find(thisButton) != cueTargets.end();
-
-		// Skip color update if this button has a pending quantize action (orange)
-		if (pendingAction.isValid() && pendingAction.srcButton == thisButton) {
-			// Keep orange — don't override
-		}
-		else if (hasCue && flash) {
-			thisButton->setColour(juce::TextButton::ColourIds::buttonColourId, juce::Colour::fromHSL(cueTargets[thisButton].second, (float)1, (float)0.5, (float)1));
-		}
-		else {
-			thisButton->setColour(juce::TextButton::ColourIds::buttonColourId, UI::bgRoot);
-		}
-
-		if (hasCue) {
-			double cueSeconds = cueTargets[thisButton].first * player->getLengthInSeconds();
-			std::string timeStr = track::getLengthString(cueSeconds);
-			thisButton->setButtonText(juce::String(timeStr) + "  x");
-		}
-		else {
-			thisButton->setButtonText("");
-		}
-	}
-
 }
 
 /**
@@ -1344,7 +1319,7 @@ void DeckGUI::timerCallback() {
 	counter++;
 	if (counter % 10 == 0) {
 		flash = !flash;
-		repaint();
+		updateCueButtons();
 	}
 
 	for (auto i = 0; i < displays.size(); ++i) {
@@ -1386,10 +1361,7 @@ void DeckGUI::timerCallback() {
 		}
 	}
 
-	if (volRMS != player->getRMSLevel()) {
-		volRMS = player->getRMSLevel();
-		repaint();
-	}
+	volRMS = player->getRMSLevel(); // cached for external readers; DeckGUI doesn't draw meters
 
 	// Update BPM display
 	double currentBpm = player->getCurrentBpm();
@@ -1458,6 +1430,36 @@ void DeckGUI::timerCallback() {
 }
 
 //============================================================================== 
+
+void DeckGUI::updateCueButtons()
+{
+	for (auto& cue : cues) {
+		juce::TextButton* thisButton = cue;
+		bool hasCue = cueTargets.find(thisButton) != cueTargets.end();
+
+		if (pendingAction.isValid() && pendingAction.srcButton == thisButton) {
+			// Keep orange — don't override
+		}
+		else if (hasCue && flash) {
+			thisButton->setColour(juce::TextButton::ColourIds::buttonColourId,
+				juce::Colour::fromHSL(cueTargets[thisButton].second, 1.0f, 0.5f, 1.0f));
+		}
+		else {
+			thisButton->setColour(juce::TextButton::ColourIds::buttonColourId, UI::bgRoot);
+		}
+
+		if (hasCue) {
+			double cueSeconds = cueTargets[thisButton].first * player->getLengthInSeconds();
+			std::string timeStr = track::getLengthString(cueSeconds);
+			thisButton->setButtonText(juce::String(timeStr) + "  x");
+		}
+		else {
+			thisButton->setButtonText("");
+		}
+	}
+}
+
+//==============================================================================
 
 /**
  * Implementation of loadDeck method for DeckGUI

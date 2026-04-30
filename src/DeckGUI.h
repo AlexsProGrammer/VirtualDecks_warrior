@@ -165,6 +165,10 @@ private:
 	*/
 	void loadDeck(track track);
 
+	/** Updates cue button colours and labels from cueTargets/flash state.
+	 *  Called from timerCallback() instead of paint() to avoid per-frame layout work. */
+	void updateCueButtons();
+
 	/**
 		* Final post-load setup: thumbnails, gain, BPM cache, autoplay.
 		* Runs on the message thread once the audio source is ready.

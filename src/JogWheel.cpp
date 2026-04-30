@@ -107,7 +107,7 @@ void JogWheel::paint(juce::Graphics& g)
 		std::string time = track::getLengthString(position * audioThumb.getTotalLength(), true);
 		juce::Rectangle<float> rect(0, cy - 10, w, 14);
 		g.setColour(UI::textPrimary);
-		g.setFont(juce::Font(11.0f, juce::Font::bold));
+		g.setFont(jogFont);
 		g.drawText(time, rect, juce::Justification::centred);
 	}
 }

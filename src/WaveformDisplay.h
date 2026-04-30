@@ -187,6 +187,12 @@ private:
 
 protected:
 
+	/// Cached rendered waveform image. Rebuilt only when thumbnail data changes or component resizes.
+	juce::Image waveformCache;
+
+	/// Flag: waveformCache needs to be redrawn on next paint.
+	bool waveformCacheDirty = true;
+
 	/// Song name of the loaded audio file
 	juce::String songNameLoaded;
 

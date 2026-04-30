@@ -263,13 +263,28 @@ void WaveformDisplay::paint(juce::Graphics& g)
 	if (isLoaded) {
 		g.drawText(songNameLoaded, 5, 5, getWidth() * 3 / 4, 6, juce::Justification::left);
 
-		if (bandData != nullptr && ! bandData->empty()) {
-			drawBandWaveform(g, getLocalBounds(), 0.0, audioThumb.getTotalLength());
-		}
-		else {
-			audioThumb.drawChannel(g, getLocalBounds(), 0, audioThumb.getTotalLength(), 0, 0.55);
+		// Rebuild waveform cache only when thumbnail data changed or size changed.
+		if (waveformCacheDirty ||
+		    waveformCache.getWidth()  != getWidth() ||
+		    waveformCache.getHeight() != getHeight())
+		{
+			waveformCache = juce::Image(juce::Image::RGB, getWidth(), getHeight(), true);
+			juce::Graphics cg(waveformCache);
+			cg.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+			cg.setColour(theme);
+			if (bandData != nullptr && ! bandData->empty()) {
+				drawBandWaveform(cg, getLocalBounds(), 0.0, audioThumb.getTotalLength());
+			}
+			else {
+				audioThumb.drawChannel(cg, getLocalBounds(), 0, audioThumb.getTotalLength(), 0, 0.55);
+			}
+			waveformCacheDirty = false;
 		}
 
+		// Blit cached waveform (zero cost, just a memcpy).
+		g.drawImageAt(waveformCache, 0, 0);
+
+		// Draw dynamic overlays (playhead, hover, cues, loop) on top.
 		g.setColour(juce::Colours::lightgreen);
 		g.drawRect(position * getWidth(), 0, 1, getHeight());
 
@@ -318,6 +333,7 @@ void WaveformDisplay::paint(juce::Graphics& g)
  */
 void WaveformDisplay::resized()
 {
+	waveformCacheDirty = true;
 }
 
 //==============================================================================
@@ -329,6 +345,7 @@ void WaveformDisplay::resized()
  *
  */
 void WaveformDisplay::changeListenerCallback(juce::ChangeBroadcaster* source) {
+	waveformCacheDirty = true;
 	repaint();
 }
 

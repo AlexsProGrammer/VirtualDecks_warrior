@@ -90,9 +90,15 @@ void CustomLookAndFeel::paintPanelBackground(juce::Graphics& g, juce::Rectangle<
 		g.fillRoundedRectangle(bounds.expanded(2.0f), radius + 2.0f);
 	}
 
-	juce::ColourGradient grad(UI::bgSurface.brighter(0.04f), bounds.getX(), bounds.getY(),
-		UI::bgSurface.darker(0.10f), bounds.getX(), bounds.getBottom(), false);
-	g.setGradientFill(grad);
+	// Cache the gradient: rebuild only when bounds changes (avoids heap alloc per frame).
+	static juce::Rectangle<float> cachedBounds;
+	static juce::ColourGradient cachedGrad;
+	if (bounds != cachedBounds) {
+		cachedBounds = bounds;
+		cachedGrad = juce::ColourGradient(UI::bgSurface.brighter(0.04f), bounds.getX(), bounds.getY(),
+			UI::bgSurface.darker(0.10f), bounds.getX(), bounds.getBottom(), false);
+	}
+	g.setGradientFill(cachedGrad);
 	g.fillRoundedRectangle(bounds, radius);
 
 	g.setColour(UI::borderSubtle);
