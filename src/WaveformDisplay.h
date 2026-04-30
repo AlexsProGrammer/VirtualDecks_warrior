@@ -193,6 +193,9 @@ protected:
 	/// Flag: waveformCache needs to be redrawn on next paint.
 	bool waveformCacheDirty = true;
 
+	/// Default (file) BPM stored when a track is loaded.
+	double trackDefaultBpm = 0.0;
+
 	/// Song name of the loaded audio file
 	juce::String songNameLoaded;
 

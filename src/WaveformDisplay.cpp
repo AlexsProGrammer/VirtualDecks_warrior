@@ -68,6 +68,7 @@ void WaveformDisplay::loadTrack(track track) {
 	loadURL(track.url);
 	if (isLoaded) {
 		songNameLoaded = track.title;
+		trackDefaultBpm = track.bpm;
 	}
 };
 
@@ -261,8 +262,6 @@ void WaveformDisplay::paint(juce::Graphics& g)
 
 	g.setColour(theme);
 	if (isLoaded) {
-		g.drawText(songNameLoaded, 5, 5, getWidth() * 3 / 4, 6, juce::Justification::left);
-
 		// Rebuild waveform cache only when thumbnail data changed or size changed.
 		if (waveformCacheDirty ||
 		    waveformCache.getWidth()  != getWidth() ||
@@ -283,6 +282,15 @@ void WaveformDisplay::paint(juce::Graphics& g)
 
 		// Blit cached waveform (zero cost, just a memcpy).
 		g.drawImageAt(waveformCache, 0, 0);
+
+		// Draw text overlays on top of the waveform.
+		g.setFont(juce::Font(juce::FontOptions(11.0f)));
+		g.setColour(juce::Colours::white.withAlpha(0.85f));
+		g.drawText(songNameLoaded, 5, 3, getWidth() * 3 / 4, 14, juce::Justification::left, true);
+		if (trackDefaultBpm > 0.0) {
+			juce::String bpmText = juce::String(trackDefaultBpm, 1) + " BPM";
+			g.drawText(bpmText, getWidth() * 3 / 4, 3, getWidth() / 4 - 4, 14, juce::Justification::right, false);
+		}
 
 		// Draw dynamic overlays (playhead, hover, cues, loop) on top.
 		g.setColour(juce::Colours::lightgreen);
