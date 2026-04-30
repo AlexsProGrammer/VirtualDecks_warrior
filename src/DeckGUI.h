@@ -636,6 +636,11 @@ private:
 	/// Jog wheel and its surrounding utility buttons (sync, cue icon).
 	juce::Component jogWheelContainer;
 
+	/// Full-height vertical tab rail on the deck's outer edge (hosts the 9
+	/// IconTabButtons). Lives outside transportContainer so it can span
+	/// from the absolute top to the absolute bottom of the deck panel.
+	juce::Component sidebarContainer;
+
 	//==============================================================================
 	// Phase 1 — New utility button declarations.
 

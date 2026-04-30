@@ -166,6 +166,47 @@ void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
 	const float corner = UI::kButtonRadius;
 	auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
 
+	// Phase 4 — Buttons tagged with the "circularOutline" property render as a
+	// matched set: identical circular outline, fill on hover/press/active.
+	// This is used for the 4 buttons surrounding the jog wheel (Load, Play,
+	// Cue, FastSync) so they look like a unified group.
+	if ((bool) button.getProperties().getWithDefault("circularOutline", false))
+	{
+		const float diameter = juce::jmin(bounds.getWidth(), bounds.getHeight()) - 2.0f;
+		auto circle = juce::Rectangle<float>(diameter, diameter).withCentre(bounds.getCentre());
+		const bool toggled = button.getToggleState();
+		const bool hasActiveTint = (backgroundColour.getAlpha() > 10);
+
+		// Active fill: prefer the explicit on-colour if the button is toggled
+		// or has been given a tinted background; otherwise pure outline.
+		if (toggled || hasActiveTint)
+		{
+			juce::Colour fill = backgroundColour.getAlpha() > 10 ? backgroundColour
+			                                                     : juce::Colours::white.withAlpha(0.10f);
+			g.setColour(fill.withAlpha(0.20f));
+			g.fillEllipse(circle.expanded(2.0f));
+			g.setColour(isButtonDown ? fill.darker(0.15f)
+			           : isMouseOverButton ? fill.brighter(0.10f) : fill);
+			g.fillEllipse(circle);
+		}
+		else if (isButtonDown)
+		{
+			g.setColour(juce::Colours::white.withAlpha(0.15f));
+			g.fillEllipse(circle);
+		}
+		else if (isMouseOverButton)
+		{
+			g.setColour(juce::Colours::white.withAlpha(0.08f));
+			g.fillEllipse(circle);
+		}
+
+		// Always-visible outline ring — this is what makes the 4 buttons look matched.
+		g.setColour(toggled ? backgroundColour.brighter(0.20f).withAlpha(0.85f)
+		                    : UI::borderStrong);
+		g.drawEllipse(circle, 1.4f);
+		return;
+	}
+
 	// DrawableButtons (Play, Load, Cue, FastSync, Library) pass their
 	// backgroundColourId or backgroundOnColourId as the backgroundColour
 	// parameter via JUCE's DrawableButton::paintButton. A near-transparent
