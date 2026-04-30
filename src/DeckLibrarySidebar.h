@@ -90,7 +90,7 @@ private:
 	// UI children
 
 	juce::Label   titleLabel;
-	juce::TextButton closeBtn { juce::CharPointer_UTF8("\xc3\x97") }; // multiplication sign
+	juce::DrawableButton closeBtn { "close", juce::DrawableButton::ImageFitted };
 
 	//==============================================================================
 	// Folder list — uses a private ListBoxModel because TableListBoxModel
@@ -107,18 +107,26 @@ private:
 	FolderListModel folderListModel { *this };
 
 	juce::ListBox folderList;
-	juce::TextButton addFolderBtn   { "+ Folder" };
-	juce::TextButton renameFolderBtn{ "Rename"   };
-	juce::TextButton removeFolderBtn{ juce::CharPointer_UTF8("\xe2\x88\x92") }; // minus sign
-	juce::TextButton importFolderBtn{ "Import Folder" };
+	juce::TextButton addFolderBtn   { "+" };
+	juce::TextButton renameFolderBtn{ juce::CharPointer_UTF8("\xe2\x9c\x8e") }; // ✎ pencil
+	juce::TextButton removeFolderBtn{ juce::CharPointer_UTF8("\xe2\x88\x92") }; // − minus
+	juce::TextButton importFolderBtn{ juce::CharPointer_UTF8("\xe2\xac\x87") }; // ⬇ download
 
 	juce::TextEditor searchEditor;
 	juce::TableListBox trackList;
-	juce::TextButton addFilesBtn   { "+ Files" };
-	juce::TextButton removeTrackBtn{ "- Track" };
+	juce::TextButton addFilesBtn   { "+" };
+	juce::TextButton removeTrackBtn{ juce::CharPointer_UTF8("\xe2\x88\x92") }; // − minus
 
 	juce::TextButton loadBtn { "LOAD" };
 	juce::TextButton queueBtn{ "ADD TO QUEUE" };
+
+	/// Track list row index currently hovered by the mouse (-1 = none).
+	int hoveredTrackRow = -1;
+
+	//==============================================================================
+
+	/// @return The content rectangle (full bounds minus rail-clearance on inner edge).
+	juce::Rectangle<int> contentBounds() const;
 
 	//==============================================================================
 

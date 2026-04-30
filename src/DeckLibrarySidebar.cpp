@@ -26,18 +26,28 @@ DeckLibrarySidebar::DeckLibrarySidebar(Library& libraryRef,
 	titleLabel.setFont(juce::Font(16.0f, juce::Font::bold));
 	addAndMakeVisible(titleLabel);
 
-	closeBtn.setColour(juce::TextButton::buttonColourId, UI::bgCard);
-	closeBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+	closeBtn.setImages(CustomLookAndFeel::loadIcon(BinaryData::iconClose_svg,
+	                                              juce::Colours::white).get());
+	closeBtn.setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
+	closeBtn.setColour(juce::DrawableButton::backgroundOnColourId, juce::Colours::transparentBlack);
 	closeBtn.addListener(this);
 	addAndMakeVisible(closeBtn);
 
 	// Folder list (top half of left pane on a vertical layout)
 	folderList.setModel(&folderListModel);
-	folderList.setRowHeight(22);
+	folderList.setRowHeight(28);
 	folderList.setColour(juce::ListBox::backgroundColourId, UI::bgRoot.darker(0.2f));
 	folderList.setColour(juce::ListBox::outlineColourId,    UI::bgCard);
 	folderList.setOutlineThickness(1);
 	addAndMakeVisible(folderList);
+
+	// Tooltips for compact tool buttons.
+	addFolderBtn   .setTooltip("Add folder");
+	renameFolderBtn.setTooltip("Rename folder");
+	removeFolderBtn.setTooltip("Remove folder");
+	importFolderBtn.setTooltip("Import folder from disk");
+	addFilesBtn    .setTooltip("Add files to folder");
+	removeTrackBtn .setTooltip("Remove selected track");
 
 	for (auto* b : { &addFolderBtn, &renameFolderBtn, &removeFolderBtn, &importFolderBtn,
 	                 &addFilesBtn, &removeTrackBtn, &loadBtn, &queueBtn })
@@ -48,9 +58,11 @@ DeckLibrarySidebar::DeckLibrarySidebar(Library& libraryRef,
 		addAndMakeVisible(*b);
 	}
 
+	// Primary / secondary action styling.
 	loadBtn.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.9f));
 	loadBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::black);
-	queueBtn.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.45f));
+	queueBtn.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+	queueBtn.setColour(juce::TextButton::textColourOffId, theme.brighter(0.2f));
 
 	// Search editor
 	searchEditor.setTextToShowWhenEmpty("Search...", juce::Colours::grey);
@@ -65,7 +77,7 @@ DeckLibrarySidebar::DeckLibrarySidebar(Library& libraryRef,
 	trackList.setColour(juce::ListBox::backgroundColourId, UI::bgRoot.darker(0.2f));
 	trackList.setColour(juce::ListBox::outlineColourId,    UI::bgCard);
 	trackList.setOutlineThickness(1);
-	trackList.setRowHeight(22);
+	trackList.setRowHeight(26);
 	trackList.getHeader().addColumn("Title",  1, 220, 60, -1, juce::TableHeaderComponent::defaultFlags);
 	trackList.getHeader().addColumn("Length", 2,  60, 40, 100, juce::TableHeaderComponent::defaultFlags);
 	trackList.getHeader().addColumn("BPM",    3,  50, 30, 80,  juce::TableHeaderComponent::defaultFlags);
@@ -89,31 +101,44 @@ DeckLibrarySidebar::~DeckLibrarySidebar()
 
 void DeckLibrarySidebar::paint(juce::Graphics& g)
 {
-	auto r = getLocalBounds().toFloat();
-	CustomLookAndFeel::paintPanelBackground(g, r, true, UI::kPanelRadius);
-	// Deck-coloured accent strip down the inner edge
+	auto content = contentBounds().toFloat();
+
+	// Panel background sits ONLY inside the content area so the deck's tab
+	// rail underneath remains visible.
+	CustomLookAndFeel::paintPanelBackground(g, content, true, UI::kPanelRadius);
+
+	// Single deck-coloured accent stripe on the inner edge.
+	const float stripW = 3.0f;
+	const float stripX = (deckIndex == 0) ? content.getX()
+	                                       : content.getRight() - stripW;
 	g.setColour(theme);
-	g.fillRoundedRectangle(r.getX(), r.getY(), 3.0f, r.getHeight(), 1.5f);
-	g.setColour(UI::borderSubtle);
-	g.drawRoundedRectangle(r.reduced(0.5f), UI::kPanelRadius, 1.0f);
+	g.fillRect(juce::Rectangle<float>(stripX, content.getY() + 6.0f,
+	                                  stripW, content.getHeight() - 12.0f));
+}
+
+juce::Rectangle<int> DeckLibrarySidebar::contentBounds() const
+{
+	auto r = getLocalBounds();
+	const int railClear = UI::kRailWidth + 4;
+	if (deckIndex == 0)
+		r.removeFromLeft(railClear);
+	else
+		r.removeFromRight(railClear);
+	return r;
 }
 
 void DeckLibrarySidebar::resized()
 {
-	auto r = getLocalBounds().reduced(8);
+	auto r = contentBounds().reduced(8);
 
-	// Reserve space for the tab rail on the deck panel that is visible beneath
-	// this sidebar: deck 0's rail is on its LEFT edge (sidebar opens on the
-	// right half of the screen, so the rail would bleed through on the LEFT
-	// side of the sidebar), deck 1's rail is on the RIGHT edge.
-	const int railClear = UI::kRailWidth + 4;
-	if (deckIndex == 0)
-		r.removeFromLeft(railClear);   // sidebar covers right half; clear the left where rail shows
-	else
-		r.removeFromRight(railClear);  // sidebar covers left half; clear the right where rail shows
+	// Extra inset on the inner edge so the accent stripe reads as accent
+	// rather than as a panel border.
+	if (deckIndex == 0) r.removeFromLeft(6);
+	else                r.removeFromRight(6);
 
 	auto header = r.removeFromTop(28);
 	closeBtn.setBounds(header.removeFromRight(28));
+	header.removeFromRight(4);
 	titleLabel.setBounds(header);
 
 	r.removeFromTop(6);
@@ -130,10 +155,13 @@ void DeckLibrarySidebar::resized()
 	auto folderArea = r.removeFromTop(folderHeight);
 
 	auto folderBtns = folderArea.removeFromBottom(28);
-	addFolderBtn   .setBounds(folderBtns.removeFromLeft(folderBtns.getWidth() / 4).reduced(2));
-	renameFolderBtn.setBounds(folderBtns.removeFromLeft(folderBtns.getWidth() / 3).reduced(2));
-	removeFolderBtn.setBounds(folderBtns.removeFromLeft(folderBtns.getWidth() / 2).reduced(2));
-	importFolderBtn.setBounds(folderBtns.reduced(2));
+	{
+		juce::FlexBox fb;
+		fb.flexDirection = juce::FlexBox::Direction::row;
+		for (auto* b : { &addFolderBtn, &renameFolderBtn, &removeFolderBtn, &importFolderBtn })
+			fb.items.add(juce::FlexItem(*b).withFlex(1.0f).withMargin({ 0, 2, 0, 2 }));
+		fb.performLayout(folderBtns.toFloat());
+	}
 	folderList.setBounds(folderArea);
 
 	r.removeFromTop(6);
@@ -144,8 +172,13 @@ void DeckLibrarySidebar::resized()
 
 	// Track buttons just below the table
 	auto trackBtns = r.removeFromBottom(28);
-	addFilesBtn   .setBounds(trackBtns.removeFromLeft(trackBtns.getWidth() / 2).reduced(2));
-	removeTrackBtn.setBounds(trackBtns.reduced(2));
+	{
+		juce::FlexBox fb;
+		fb.flexDirection = juce::FlexBox::Direction::row;
+		for (auto* b : { &addFilesBtn, &removeTrackBtn })
+			fb.items.add(juce::FlexItem(*b).withFlex(1.0f).withMargin({ 0, 2, 0, 2 }));
+		fb.performLayout(trackBtns.toFloat());
+	}
 
 	trackList.setBounds(r);
 }
@@ -171,15 +204,26 @@ void DeckLibrarySidebar::FolderListModel::paintListBoxItem(int rowNumber, juce::
 	else if (rowNumber == owner.selectedFolder)
 		g.fillAll(th.withAlpha(0.18f));
 
+	if (rowIsSelected || rowNumber == owner.selectedFolder) {
+		g.setColour(th);
+		g.fillRect(0, 4, 2, height - 8);
+	}
+
 	auto name  = lib.getFolderName(rowNumber);
 	auto count = lib.getNumTracksInFolder(rowNumber);
 
 	g.setColour(juce::Colours::white);
 	g.setFont(13.0f);
-	g.drawText(name, 8, 0, width - 50, height, juce::Justification::centredLeft, true);
-	g.setColour(juce::Colours::lightgrey);
+	g.drawText(name, 10, 0, width - 56, height, juce::Justification::centredLeft, true);
+
+	// Track-count pill on the right.
+	juce::String countStr(count);
+	juce::Rectangle<int> pill(width - 38, height / 2 - 9, 32, 18);
+	g.setColour(th.withAlpha(0.25f));
+	g.fillRoundedRectangle(pill.toFloat(), 9.0f);
+	g.setColour(th.brighter(0.3f));
 	g.setFont(11.0f);
-	g.drawText(juce::String(count), width - 40, 0, 32, height, juce::Justification::centredRight);
+	g.drawText(countStr, pill, juce::Justification::centred);
 }
 
 void DeckLibrarySidebar::FolderListModel::listBoxItemClicked(int row, const juce::MouseEvent&)
@@ -204,30 +248,40 @@ int DeckLibrarySidebar::getNumRows()
 void DeckLibrarySidebar::paintRowBackground(juce::Graphics& g, int rowNumber,
                                              int width, int height, bool rowIsSelected)
 {
-	if (rowIsSelected)
-		g.fillAll(theme.withAlpha(0.35f));
+	if (rowIsSelected) {
+		g.fillAll(theme.withAlpha(0.28f));
+		g.setColour(theme);
+		g.fillRect(0, 0, 2, height);
+	}
 	else if ((rowNumber & 1) == 0)
 		g.fillAll(UI::bgElevated);
 	else
-		g.fillAll(UI::bgRoot);
+		g.fillAll(juce::Colours::transparentBlack);
 }
 
 void DeckLibrarySidebar::paintCell(juce::Graphics& g, int rowNumber, int columnId,
                                     int width, int height, bool /*rowIsSelected*/)
 {
 	auto t = trackForRow(rowNumber);
-	g.setColour(juce::Colours::white);
 	g.setFont(12.0f);
 
 	juce::String text;
-	if (columnId == 1)
+	juce::Justification just = juce::Justification::centredLeft;
+	if (columnId == 1) {
 		text = t.title;
-	else if (columnId == 2)
+		g.setColour(juce::Colours::white);
+	}
+	else if (columnId == 2) {
 		text = juce::String(track::getLengthString(t.lengthInSeconds));
-	else if (columnId == 3)
-		text = t.bpm > 0.0 ? juce::String(t.bpm, 1) : juce::String("—");
+		g.setColour(juce::Colours::lightgrey);
+	}
+	else if (columnId == 3) {
+		text = t.bpm > 0.0 ? juce::String(t.bpm, 1) : juce::String("-");
+		g.setColour(t.bpm > 0.0 ? theme.withAlpha(0.85f) : juce::Colours::grey);
+		just = juce::Justification::centredRight;
+	}
 
-	g.drawText(text, 4, 0, width - 8, height, juce::Justification::centredLeft, true);
+	g.drawText(text, 4, 0, width - 8, height, just, true);
 }
 
 void DeckLibrarySidebar::cellClicked(int rowNumber, int /*columnId*/, const juce::MouseEvent& e)
