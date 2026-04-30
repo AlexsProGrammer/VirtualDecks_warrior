@@ -52,18 +52,18 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	jogWheelContainer.addAndMakeVisible(mbLabel);
 	jogWheelContainer.addAndMakeVisible(hbLabel);
 
-	// BPM value and percent labels
+	// BPM value and percent labels — live beside the jog wheel, not in the top header.
 	bpmValueLabel.setEditable(false);
 	bpmValueLabel.setJustificationType(juce::Justification::centred);
-	bpmValueLabel.setFont(juce::Font(juce::FontOptions(16.0f)).boldened());
+	bpmValueLabel.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
 	bpmValueLabel.setColour(juce::Label::textColourId, theme);
-	topHeaderContainer.addAndMakeVisible(bpmValueLabel);
+	jogWheelContainer.addAndMakeVisible(bpmValueLabel);
 
 	bpmPercentLabel.setEditable(false);
 	bpmPercentLabel.setJustificationType(juce::Justification::centred);
-	bpmPercentLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
+	bpmPercentLabel.setFont(juce::Font(juce::FontOptions(9.0f)));
 	bpmPercentLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-	topHeaderContainer.addAndMakeVisible(bpmPercentLabel);
+	jogWheelContainer.addAndMakeVisible(bpmPercentLabel);
 
 	jogWheelContainer.addAndMakeVisible(playButton);
 	jogWheelContainer.addAndMakeVisible(speedSlider);
@@ -488,8 +488,7 @@ void DeckGUI::resized()
 	// Phase 2 — Top-to-bottom stacking inside the remaining content column.
 	// Top header (BPM)  →  Waveform  →  Tab content  →  ... center ...  →  Queue
 	// =========================================================================
-	topHeaderContainer.setBounds(deckBounds.removeFromTop(UI::kHeaderHeight));
-	deckBounds.removeFromTop(2);
+	topHeaderContainer.setBounds(juce::Rectangle<int>()); // zero size — BPM moved to jogWheelContainer
 
 	waveformContainer.setBounds(deckBounds.removeFromTop(UI::kWaveformHeight + 30));
 	deckBounds.removeFromTop(gap);
@@ -533,15 +532,10 @@ void DeckGUI::resized()
 	}
 
 	// =========================================================================
-	// Sub-layout: topHeaderContainer (BPM block).
+	// Sub-layout: topHeaderContainer (BPM block moved to jogWheelContainer).
 	// =========================================================================
-	{
-		auto h = topHeaderContainer.getLocalBounds().reduced(gap, 2);
-		const int bpmW = juce::jmin(h.getWidth() / 2, 80);
-		auto bpmBlock  = isDeck2 ? h.removeFromLeft(bpmW) : h.removeFromRight(bpmW);
-		bpmValueLabel.setBounds(bpmBlock.removeFromTop(20));
-		bpmPercentLabel.setBounds(bpmBlock.removeFromTop(14));
-	}
+	// bpmValueLabel and bpmPercentLabel are now children of jogWheelContainer;
+	// their bounds are set inside the jogWheelContainer sub-layout below.
 
 	// =========================================================================
 	// Sub-layout: waveformContainer.
@@ -596,6 +590,17 @@ void DeckGUI::resized()
 		cueButton  .setBounds(jogRect.getRight() + gap,        jogRect.getY(),                       btnSz, btnSz);
 		playButton .setBounds(jogRect.getX() - btnSz - gap,    jogRect.getBottom() - btnSz,          btnSz, btnSz);
 		fastSyncBtn.setBounds(jogRect.getRight() + gap,        jogRect.getBottom() - btnSz,          btnSz, btnSz);
+
+		// BPM block: centred in the vertical strip between top and bottom corner
+		// buttons, on the outer column beside the jog wheel.
+		const int bpmH    = 13 + 10; // value (13 px) + percent (10 px)
+		const int bpmColX = isDeck2 ? cueButton.getX()     : loadButton.getX();
+		const int bpmColW = isDeck2 ? cueButton.getWidth()  : loadButton.getWidth();
+		const int midTop  = isDeck2 ? cueButton.getBottom() : loadButton.getBottom();
+		const int midBot  = isDeck2 ? fastSyncBtn.getY()    : playButton.getY();
+		const int bpmY    = midTop + (midBot - midTop - bpmH) / 2;
+		bpmValueLabel  .setBounds(bpmColX, bpmY,      bpmColW, 13);
+		bpmPercentLabel.setBounds(bpmColX, bpmY + 13, bpmColW, 10);
 
 		// Low / Mid / High knobs: 3 equal columns spanning the EQ row.
 		const int eqColW = eqRow.getWidth() / 3;
