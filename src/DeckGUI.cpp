@@ -75,7 +75,8 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	jogWheelContainer.addAndMakeVisible(highBandFilter);
 
 	cueButtonImage = juce::Drawable::createFromImageData(BinaryData::iconHeadphone_svg, (size_t)BinaryData::iconHeadphone_svgSize);
-	cueButton.setImages(cueButtonImage.get());
+	cueButtonImageActive = CustomLookAndFeel::loadIcon(BinaryData::iconHeadphone_svg, theme);
+	cueButton.setImages(cueButtonImage.get(), nullptr, nullptr, nullptr, cueButtonImageActive.get());
 	cueButton.setColour(juce::DrawableButton::backgroundColourId,   juce::Colours::transparentBlack);
 	cueButton.setColour(juce::DrawableButton::backgroundOnColourId, theme.withAlpha(0.85f));
 	cueButton.setClickingTogglesState(false);
@@ -194,7 +195,8 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 
 	// Fast-sync compact button (always visible near play/load).
 	fastSyncBtnImage = juce::Drawable::createFromImageData(BinaryData::iconSyncBolt_svg, (size_t)BinaryData::iconSyncBolt_svgSize);
-	fastSyncBtn.setImages(fastSyncBtnImage.get());
+	fastSyncBtnImageActive = CustomLookAndFeel::loadIcon(BinaryData::iconSyncBolt_svg, UI::accentPositive);
+	fastSyncBtn.setImages(fastSyncBtnImage.get(), nullptr, nullptr, nullptr, fastSyncBtnImageActive.get());
 	fastSyncBtn.setColour(juce::DrawableButton::backgroundColourId,   juce::Colours::transparentBlack);
 	fastSyncBtn.setColour(juce::DrawableButton::backgroundOnColourId, UI::accentPositive.withAlpha(0.85f));
 	fastSyncBtn.setClickingTogglesState(true);
@@ -1759,10 +1761,16 @@ void DeckGUI::syncStateChanged() {
 	if (isSynced && outOfRange)
 		offColour = UI::accentWarning.withAlpha(0.6f);
 	syncEngageBtn.setColour(juce::TextButton::buttonColourId, offColour);
-	// fastSyncBtn is an icon DrawableButton — keep transparent unless in warning state.
-	fastSyncBtn.setColour(juce::DrawableButton::backgroundColourId,
-	                      (isSynced && outOfRange) ? UI::accentWarning.withAlpha(0.6f)
-	                                               : juce::Colours::transparentBlack);
+	// fastSyncBtn is an icon DrawableButton — the normalImageOn (green bolt)
+	// is shown via toggle state. Also set backgroundColourId so any
+	// circularOutline LookAndFeel path reflects the active colour.
+	juce::Colour fastSyncBg = juce::Colours::transparentBlack;
+	if (isSynced && outOfRange)
+		fastSyncBg = UI::accentWarning.withAlpha(0.6f);
+	else if (isSynced)
+		fastSyncBg = UI::accentPositive.withAlpha(0.85f);
+	fastSyncBtn.setColour(juce::DrawableButton::backgroundColourId, fastSyncBg);
+	fastSyncBtn.repaint();
 
 	// Target BPM display.
 	double tgt = syncManager->getTargetBpm(deckIndex);
@@ -2323,6 +2331,11 @@ void DeckGUI::enqueueTrack(const track& t) {
  */
 void DeckGUI::setCueActive(bool active) noexcept
 {
+	// Drive the toggle state so DrawableButton switches to the theme-tinted
+	// normalImageOn (set in the constructor via setImages).
+	cueButton.setToggleState(active, juce::dontSendNotification);
+	// Belt-and-suspenders: also set the background colour so any
+	// circularOutline path in the LookAndFeel lights up correctly.
 	cueButton.setColour(juce::DrawableButton::backgroundColourId,
 	                    active ? theme.withAlpha(0.85f)
 	                           : juce::Colours::transparentBlack);

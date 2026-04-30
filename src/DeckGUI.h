@@ -227,6 +227,8 @@ private:
 
 	/// Unique pointer to juce::Drawable storing the cue (headphone) button image.
 	std::unique_ptr<juce::Drawable> cueButtonImage;
+	/// Active (cue-on) tinted version of the headphone icon.
+	std::unique_ptr<juce::Drawable> cueButtonImageActive;
 
 	/// DrawableButton that routes this deck's audio to the headphone (cue) output.
 	juce::DrawableButton cueButton{ "Cue (headphone)", juce::DrawableButton::ButtonStyle::ImageFitted };
@@ -501,6 +503,8 @@ private:
 
 	/// Unique pointer to juce::Drawable storing the fast-sync button image.
 	std::unique_ptr<juce::Drawable> fastSyncBtnImage;
+	/// Green-tinted version of the bolt icon shown while sync is engaged.
+	std::unique_ptr<juce::Drawable> fastSyncBtnImageActive;
 
 	/// DrawableButton for fast (one-click) sync, placed near play/load buttons.
 	juce::DrawableButton fastSyncBtn{ "Fast Sync", juce::DrawableButton::ButtonStyle::ImageFitted };
