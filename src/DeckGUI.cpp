@@ -88,6 +88,8 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 
 	speedSlider.setRange(0.5, 2.0);
 	speedSlider.setSkewFactorFromMidPoint(1.0); // 1.0 sits at the visual centre of a 50%–200% range
+	// Transparent track background so the deck panel shows through (no dark pill fill).
+	speedSlider.setColour(juce::Slider::backgroundColourId, juce::Colours::transparentBlack);
 	lowBandFilter.setRange(0.01, 2);
 	midBandFilter.setRange(0.01, 2);
 	highBandFilter.setRange(0.01, 2);

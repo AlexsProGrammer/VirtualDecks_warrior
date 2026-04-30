@@ -252,6 +252,17 @@ void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
 	g.drawRoundedRectangle(bounds, corner, 1.0f);
 }
 
+void CustomLookAndFeel::drawDrawableButton(juce::Graphics& g, juce::DrawableButton& button,
+	bool isMouseOverButton, bool isButtonDown)
+{
+	// Skip the default fillAll() rectangle — keep the button area fully
+	// transparent so the deck panel background shows through the icon corners.
+	// Interaction feedback (hover/press) is handled per-button via the
+	// circularOutline path in drawButtonBackground (ImageOnButtonBackground style)
+	// or by the Drawable image itself changing state.
+	juce::ignoreUnused(g, button, isMouseOverButton, isButtonDown);
+}
+
 //==============================================================================
 // Sliders
 

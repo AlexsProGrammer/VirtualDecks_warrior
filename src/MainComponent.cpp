@@ -120,6 +120,7 @@ MainComponent::MainComponent()
 	crossFader.setValue(0);
 	crossFader.addListener(this);
 	crossFader.addMouseListener(this, false);
+	crossFader.setColour(juce::Slider::backgroundColourId, juce::Colours::transparentBlack);
 
 	// ── Mixer column: volume faders ───────────────────────────────────────────
 	vol1Slider.setRange(0.0, 1.0);
@@ -280,10 +281,6 @@ void MainComponent::paint(juce::Graphics& g)
 		(float)kMixerW,
 		(float)(getHeight() - deckY));
 	CustomLookAndFeel::paintCardBackground(g, mixCard, UI::kCardRadius);
-
-	// Erase the card background behind the crossfader so it sits flush.
-	g.setColour(UI::bgRoot);
-	g.fillRect(crossFader.getBounds());
 
 	// ── Volume meters (drawn beside each fader, updated at 50 fps via timer) ──
 	auto drawMeter = [&](const juce::Slider& slider, DJAudioPlayer& player, bool rightSide)

@@ -47,6 +47,11 @@ public:
 		const juce::Colour& backgroundColour,
 		bool isMouseOverButton, bool isButtonDown) override;
 
+	/// Overrides LookAndFeel_V2::drawDrawableButton to suppress the default
+	/// fillAll() background rectangle for ImageFitted DrawableButtons.
+	void drawDrawableButton(juce::Graphics& g, juce::DrawableButton& button,
+		bool isMouseOverButton, bool isButtonDown) override;
+
 	juce::Font getTextButtonFont(juce::TextButton& button, int buttonHeight) override;
 	juce::Font getLabelFont(juce::Label&) override;
 	juce::Font getComboBoxFont(juce::ComboBox&) override;
