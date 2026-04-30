@@ -203,6 +203,30 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	fastSyncBtn.addListener(this);
 	jogWheelContainer.addAndMakeVisible(fastSyncBtn);
 
+	// Right-click guards: prevent right-click from triggering the 4 jog-wheel buttons.
+	// fastSyncGuard also shows a context menu for the sync-reset action.
+	playBtnGuard.init(playButton);
+	loadBtnGuard.init(loadButton);
+	cueBtnGuard .init(cueButton);
+	fastSyncGuard.init(fastSyncBtn, [this]()
+	{
+		if (syncManager == nullptr) return;
+		juce::PopupMenu menu;
+		menu.addItem(1, "Reset sync (disengage + restore speed)");
+		menu.showMenuAsync(juce::PopupMenu::Options{}.withTargetComponent(fastSyncBtn),
+			[this](int result)
+			{
+				if (result == 1)
+				{
+					syncManager->disengageSync(deckIndex);
+					if (syncManager->isMaster(deckIndex))
+						syncManager->setMaster(BeatSyncManager::MasterDeck::None);
+					syncManager->setSlaveMultiplier(deckIndex, 1.0);
+					speedSlider.setValue(1.0, juce::sendNotification);
+				}
+			});
+	});
+
 	// Snap-quantisation combo for sync (1 BAR / 1/2 / 1/4).
 	snapBox.addItem("1 BAR",   1);
 	snapBox.addItem("1/2 BAR", 2);

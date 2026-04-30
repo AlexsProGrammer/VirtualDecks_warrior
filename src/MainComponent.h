@@ -146,18 +146,23 @@ private:
 		void mouseDrag(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDrag(e); }
 	};
 
+	/// Vertical fader subclass that blocks right-click from moving the slider.
+	struct ResetableVerticalFader : public juce::Slider {
+		ResetableVerticalFader() : juce::Slider(juce::Slider::SliderStyle::LinearVertical, juce::Slider::TextEntryBoxPosition::NoTextBox) {}
+		void mouseDown(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDown(e); }
+		void mouseDrag(const juce::MouseEvent& e) override { if (!e.mods.isPopupMenu()) juce::Slider::mouseDrag(e); }
+	};
+
 	/// Instance of juce::Slider for cross fading functionality.
 	ResetableFader crossFader;
 
 	// ── Mixer column: per-deck volume faders and filter knobs ──────────────────
 
 	/// Volume fader for Deck 1 (linear vertical, range 0–1, log skew).
-	juce::Slider vol1Slider{ juce::Slider::SliderStyle::LinearVertical,
-	                         juce::Slider::TextEntryBoxPosition::NoTextBox };
+	ResetableVerticalFader vol1Slider;
 
 	/// Volume fader for Deck 2 (linear vertical, range 0–1, log skew).
-	juce::Slider vol2Slider{ juce::Slider::SliderStyle::LinearVertical,
-	                         juce::Slider::TextEntryBoxPosition::NoTextBox };
+	ResetableVerticalFader vol2Slider;
 
 	/// Filter sweep knob for Deck 1 (LP→HP, range −20000…20000).
 	juce::Slider filter1Slider{ juce::Slider::SliderStyle::RotaryVerticalDrag,

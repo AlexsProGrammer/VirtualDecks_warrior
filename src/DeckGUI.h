@@ -233,6 +233,44 @@ private:
 	/// DrawableButton that routes this deck's audio to the headphone (cue) output.
 	juce::DrawableButton cueButton{ "Cue (headphone)", juce::DrawableButton::ButtonStyle::ImageFitted };
 
+	/// Blocks right-click (popup-menu) presses from triggering a DrawableButton click.
+	/// Optionally runs an onRightClick callback (e.g. context menu) on mouse-up.
+	struct RightClickGuard : public juce::MouseListener
+	{
+		juce::Button* btn = nullptr;
+		std::function<void()> onRightClick;
+		bool blockActive = false;
+
+		~RightClickGuard() { if (btn) btn->removeMouseListener(this); }
+
+		void init(juce::Button& b, std::function<void()> cb = {})
+		{
+			btn = &b;
+			onRightClick = std::move(cb);
+			b.addMouseListener(this, false);
+		}
+
+		void mouseDown(const juce::MouseEvent& e) override
+		{
+			if (e.mods.isPopupMenu()) {
+				btn->setEnabled(false);
+				blockActive = true;
+			}
+		}
+
+		void mouseUp(const juce::MouseEvent& e) override
+		{
+			if (blockActive) {
+				btn->setEnabled(true);
+				blockActive = false;
+				if (onRightClick)
+					onRightClick();
+			}
+		}
+	};
+
+	RightClickGuard playBtnGuard, loadBtnGuard, cueBtnGuard, fastSyncGuard;
+
 	/// juce::Colour to define the theme of the DeckGUI
 	juce::Colour theme;
 
