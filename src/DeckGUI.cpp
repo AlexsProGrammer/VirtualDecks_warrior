@@ -59,14 +59,17 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	bpmValueLabel.setColour(juce::Label::textColourId, theme);
 	jogWheelContainer.addAndMakeVisible(bpmValueLabel);
 
-	bpmPercentLabel.setEditable(false);
-	bpmPercentLabel.setJustificationType(juce::Justification::centred);
-	bpmPercentLabel.setFont(juce::Font(juce::FontOptions(9.0f)));
-	bpmPercentLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-	jogWheelContainer.addAndMakeVisible(bpmPercentLabel);
-
 	jogWheelContainer.addAndMakeVisible(playButton);
 	jogWheelContainer.addAndMakeVisible(speedSlider);
+
+	// Speed deviation label — static strip above the speed slider.
+	bpmPercentLabel.setEditable(false);
+	bpmPercentLabel.setJustificationType(juce::Justification::centred);
+	bpmPercentLabel.setFont(juce::Font(juce::FontOptions(10.0f)).boldened());
+	bpmPercentLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+	bpmPercentLabel.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+	bpmPercentLabel.setVisible(false);
+	jogWheelContainer.addAndMakeVisible(bpmPercentLabel);
 	jogWheelContainer.addAndMakeVisible(loadButton);
 	waveformContainer.addAndMakeVisible(waveformDisplay);
 	jogWheelContainer.addAndMakeVisible(jogWheel);
@@ -638,6 +641,7 @@ void DeckGUI::resized()
 		auto speedCol = isDeck2 ? jb.removeFromLeft(speedColW)
 		                        : jb.removeFromRight(speedColW);
 		speedLabel.setBounds(speedCol.removeFromBottom(UI::kKnobLabelHeight + 2));
+		bpmPercentLabel.setBounds(speedCol.removeFromTop(14));
 		speedSlider.setBounds(speedCol);
 
 		// Centre the jog wheel as the largest square fitting the remaining area,
@@ -664,8 +668,8 @@ void DeckGUI::resized()
 		const int midTop  = isDeck2 ? cueButton.getBottom() : loadButton.getBottom();
 		const int midBot  = isDeck2 ? fastSyncBtn.getY()    : playButton.getY();
 		const int bpmY    = midTop + (midBot - midTop - bpmH) / 2;
-		bpmValueLabel  .setBounds(bpmColX, bpmY,      bpmColW, 13);
-		bpmPercentLabel.setBounds(bpmColX, bpmY + 13, bpmColW, 10);
+		bpmValueLabel.setBounds(bpmColX, bpmY, bpmColW, 13);
+		// bpmPercentLabel is positioned dynamically above the speed slider thumb.
 
 		// Low / Mid / High knobs: 3 equal columns spanning the EQ row.
 		const int eqColW = eqRow.getWidth() / 3;
@@ -1473,13 +1477,22 @@ void DeckGUI::timerCallback() {
 	}
 
 	double speedRatio = player->getSpeedRatio();
-	if (std::abs(speedRatio - 1.0) > 0.001 && currentBpm > 0.0) {
-		double pct = (speedRatio - 1.0) * 100.0;
-		juce::String sign = pct > 0 ? "+" : "";
-		bpmPercentLabel.setText(sign + juce::String(pct, 1) + "%", juce::dontSendNotification);
-	}
-	else {
-		bpmPercentLabel.setText("", juce::dontSendNotification);
+	{
+		const bool nonZero = std::abs(speedRatio - 1.0) > 0.001;
+		if (nonZero)
+		{
+			double pct = (speedRatio - 1.0) * 100.0;
+			juce::String sign = pct > 0.0 ? "+" : "";
+			bpmPercentLabel.setText(sign + juce::String(pct, 1) + "%", juce::dontSendNotification);
+			const auto textCol = pct > 0.0 ? juce::Colour(0x66, 0xff, 0x88)
+			                                : juce::Colour(0xff, 0x66, 0x66);
+			bpmPercentLabel.setColour(juce::Label::textColourId, textCol);
+			bpmPercentLabel.setVisible(true);
+		}
+		else
+		{
+			bpmPercentLabel.setVisible(false);
+		}
 	}
 
 	// Update beat grid data on waveform displays
