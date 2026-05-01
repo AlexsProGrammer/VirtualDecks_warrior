@@ -188,6 +188,14 @@ MainComponent::MainComponent()
 	filter1Slider.addMouseListener(this, false);
 	filter2Slider.addMouseListener(this, false);
 
+	// Tooltips for the central mixer column.
+	crossFader.setTooltip("Crossfader — left = Deck 1 only, centre = equal mix, right = Deck 2 only (right-click to reset)");
+	vol1Slider.setTooltip("Deck 1 volume (right-click to reset to full)");
+	vol2Slider.setTooltip("Deck 2 volume (right-click to reset to full)");
+	filter1Slider.setTooltip("Deck 1 filter sweep — turn left for low-pass, right for high-pass (right-click to reset)");
+	filter2Slider.setTooltip("Deck 2 filter sweep — turn left for low-pass, right for high-pass (right-click to reset)");
+	settingsButton.setTooltip("Audio settings — configure master and headphone output devices");
+
 	startTimer(33); // ~30 fps repaint for volume meters
 
 	formatManager.registerBasicFormats();

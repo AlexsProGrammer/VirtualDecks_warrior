@@ -414,6 +414,70 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 			s->setColour(juce::Slider::rotarySliderFillColourId, knobAccent);
 	}
 
+	// =========================================================================
+	// Tooltips — set on every interactive control so hovering shows a hint.
+	// =========================================================================
+
+	// Jog-wheel corner buttons
+	playButton  .setTooltip("Play / Pause");
+	loadButton  .setTooltip("Open library to load a track");
+	cueButton   .setTooltip("Headphone cue — monitor this deck through your cue output");
+	fastSyncBtn .setTooltip("Beat sync — left-click to engage, right-click to reset speed");
+
+	// EQ knobs and speed slider
+	speedSlider  .setTooltip("Speed — drag to adjust playback rate (right-click to reset to 1.0×)");
+	lowBandFilter.setTooltip("Low EQ — boost or cut bass frequencies (right-click to reset)");
+	midBandFilter.setTooltip("Mid EQ — boost or cut mid frequencies (right-click to reset)");
+	highBandFilter.setTooltip("High EQ — boost or cut treble frequencies (right-click to reset)");
+
+	// Tab rail
+	cueTabButton      .setTooltip("Hot Cues — set and jump to up to 6 cue points");
+	gridTabButton     .setTooltip("Beat Grid — edit BPM, tap tempo, nudge grid offset");
+	jumpTabButton     .setTooltip("Beat Jump — jump backward or forward by a fixed number of beats");
+	loopTabButton     .setTooltip("Loop — set in/out points and control loop length");
+	quantizeTabButton .setTooltip("Quantize — snap performance actions to the beat grid");
+	syncTabButton     .setTooltip("Sync — lock this deck's tempo to the master deck");
+	padFxTabButton    .setTooltip("Pad FX — momentary effects: hold to engage, release to disengage");
+	beatFxTabButton   .setTooltip("Beat FX — latched effects: click to toggle on or off");
+	releaseFxTabButton.setTooltip("Release FX — effects triggered on button release");
+
+	// Beat Grid tab
+	gridBpmEditor    .setTooltip("Type a BPM value and press Enter to override the detected tempo");
+	gridNudgeLeftBtn .setTooltip("Nudge beat grid earlier");
+	gridNudgeRightBtn.setTooltip("Nudge beat grid later");
+	tapTempoBtn      .setTooltip("Tap Tempo — tap repeatedly to set BPM");
+	gridResetBtn     .setTooltip("Reset beat grid to auto-detected values");
+
+	// Beat Jump tab
+	jumpBackward16Btn.setTooltip("Jump back 16 beats");
+	jumpBackward8Btn .setTooltip("Jump back 8 beats");
+	jumpBackward4Btn .setTooltip("Jump back 4 beats");
+	jumpBackward1Btn .setTooltip("Jump back 1 beat");
+	jumpForward1Btn  .setTooltip("Jump forward 1 beat");
+	jumpForward4Btn  .setTooltip("Jump forward 4 beats");
+	jumpForward8Btn  .setTooltip("Jump forward 8 beats");
+	jumpForward16Btn .setTooltip("Jump forward 16 beats");
+
+	// Loop tab
+	loopInBtn    .setTooltip("Set loop-in point at current playhead position");
+	loopOutBtn   .setTooltip("Set loop-out point at current playhead position");
+	reloopBtn    .setTooltip("Re-enable or disable the active loop");
+	loopHalveBtn .setTooltip("Halve loop length");
+	loopDoubleBtn.setTooltip("Double loop length");
+	loopClearBtn .setTooltip("Clear all loop points");
+
+	// Quantize tab
+	quantizeComboBox.setTooltip("Select the beat subdivision to snap actions to (None = off)");
+
+	// Sync tab
+	masterToggleBtn.setTooltip("Set this deck as the sync master");
+	syncEngageBtn  .setTooltip("Engage beat sync — lock this deck's tempo to the master");
+	multHalfBtn    .setTooltip("Play at half the master's tempo (×½)");
+	multOneBtn     .setTooltip("Match the master's tempo exactly (×1)");
+	multTwoBtn     .setTooltip("Play at double the master's tempo (×2)");
+	syncResetBtn   .setTooltip("Disengage sync, clear master, and restore speed to 1.0×");
+	snapBox        .setTooltip("Phase-snap granularity: how many beats to align on sync engage");
+
 	// Build Pad / Beat / Release FX panels (initially hidden — HotCues is the
 	// default tab). Must run after `player` is bound because tile callbacks
 	// post FxSelect / FxSetEngaged commands through `player->postCommand()`.

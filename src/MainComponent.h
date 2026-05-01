@@ -219,5 +219,8 @@ private:
 	/// Cached RMS level for deck 2.
 	float lastRms2 = -999.0f;
 
+	/// Application-wide tooltip window — must be owned by the top-level component.
+	juce::TooltipWindow tooltipWindow{ this, 600 };
+
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

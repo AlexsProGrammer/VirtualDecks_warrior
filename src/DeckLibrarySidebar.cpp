@@ -30,6 +30,7 @@ DeckLibrarySidebar::DeckLibrarySidebar(Library& libraryRef,
 	                                              juce::Colours::white).get());
 	closeBtn.setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
 	closeBtn.setColour(juce::DrawableButton::backgroundOnColourId, juce::Colours::transparentBlack);
+	closeBtn.setTooltip("Close library panel");
 	closeBtn.addListener(this);
 	addAndMakeVisible(closeBtn);
 
@@ -61,8 +62,10 @@ DeckLibrarySidebar::DeckLibrarySidebar(Library& libraryRef,
 	// Primary / secondary action styling.
 	loadBtn.setColour(juce::TextButton::buttonColourId, theme.withAlpha(0.9f));
 	loadBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::black);
+	loadBtn.setTooltip("Load selected track into the deck");
 	queueBtn.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
 	queueBtn.setColour(juce::TextButton::textColourOffId, theme.brighter(0.2f));
+	queueBtn.setTooltip("Add selected track to the deck's play queue");
 
 	// Search editor
 	searchEditor.setTextToShowWhenEmpty("Search...", juce::Colours::grey);
