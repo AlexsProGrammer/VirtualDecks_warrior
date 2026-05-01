@@ -16,27 +16,29 @@ MainComponent::MainComponent()
 {
 	setSize(800, 600);
 
+	auto initAudio = [this]() {
+		// Try to initialize carefully so we can log safely instead of jasserting.
+		// AudioAppComponent requires us to call setAudioChannels to link its internal player.
+		// We'll call setAudioChannels(0, 0) which is almost guaranteed to succeed without opening a device,
+		// and then we will manually initialize the deviceManager (which we have protected access to).
+		try { setAudioChannels(0, 0); }
+		catch (const std::exception& e) { DBG("Audio bind error: " << e.what()); }
+
+		juce::String err = deviceManager.initialise(0, 2, nullptr, true);
+		if (err.isNotEmpty())
+			DBG("Warning: Failed to open 2 output channels: " << err);
+	};
+
 	// Some platforms require permissions to open input channels so request that here
 	if (juce::RuntimePermissions::isRequired(juce::RuntimePermissions::recordAudio)
 		&& !juce::RuntimePermissions::isGranted(juce::RuntimePermissions::recordAudio))
 	{
 		juce::RuntimePermissions::request(juce::RuntimePermissions::recordAudio,
-			[&](bool granted) { 
-				try { setAudioChannels(0, 2); }
-				catch (const std::exception& e) { DBG("Audio init error: " << e.what()); }
-			});
+			[&](bool granted) { initAudio(); });
 	}
 	else
 	{
-		// Specify the number of input and output channels that we want to open
-		try
-		{
-			setAudioChannels(0, 2);
-		}
-		catch (const std::exception& e)
-		{
-			DBG("Warning: Failed to set audio channels: " << e.what());
-		}
+		initAudio();
 	}
 
 

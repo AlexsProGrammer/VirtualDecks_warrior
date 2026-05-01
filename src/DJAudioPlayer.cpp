@@ -27,7 +27,7 @@ DJAudioPlayer::~DJAudioPlayer()
 {
 	const int64_t worst = worstCaseCallbackMicros.load(std::memory_order_relaxed);
 	if (worst > 0)
-		DBG("[DJAudioPlayer] worst-case getNextAudioBlock: " << worst << " µs");
+		DBG("[DJAudioPlayer] worst-case getNextAudioBlock: " << worst << " us");
 }
 
 //==============================================================================

@@ -92,7 +92,7 @@ else()
     juce_add_gui_app(JUCELoopStation
         PRODUCT_NAME "VirtualLooper"
         COMPANY_NAME "Pro-Grammer"
-        COMPANY_COPYRIGHT "Copyright © 2025 Pro-Grammer"
+        COMPANY_COPYRIGHT "Copyright (c) 2025 Pro-Grammer"
         COMPANY_WEBSITE "https://pro-grammer.de"
         COMPANY_EMAIL "info@pro-grammer.de"
         VERSION "0.9.5"

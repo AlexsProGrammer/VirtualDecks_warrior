@@ -475,10 +475,10 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	// Sync tab
 	masterToggleBtn.setTooltip("Set this deck as the sync master");
 	syncEngageBtn  .setTooltip("Engage beat sync - lock this deck's tempo to the master");
-	multHalfBtn    .setTooltip("Play at half the master's tempo (×½)");
-	multOneBtn     .setTooltip("Match the master's tempo exactly (×1)");
-	multTwoBtn     .setTooltip("Play at double the master's tempo (×2)");
-	syncResetBtn   .setTooltip("Disengage sync, clear master, and restore speed to 1.0×");
+	multHalfBtn    .setTooltip("Play at half the master's tempo (x 0.5)");
+	multOneBtn     .setTooltip("Match the master's tempo exactly (x 1)");
+	multTwoBtn     .setTooltip("Play at double the master's tempo (x 2)");
+	syncResetBtn   .setTooltip("Disengage sync, clear master, and restore speed to 1.0x");
 	snapBox        .setTooltip("Phase-snap granularity: how many beats to align on sync engage");
 
 	// Build Pad / Beat / Release FX panels (initially hidden - HotCues is the
