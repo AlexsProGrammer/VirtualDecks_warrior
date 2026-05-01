@@ -30,7 +30,7 @@ using BandDataPtr = std::shared_ptr<const BandData>;
  * Offline 3-band RMS/peak analyzer for waveform colouring.
  *
  * Reads an audio file off-thread, runs three IIR-filter chains
- * (low <500 Hz, mid 500-5000 Hz, high >5000 Hz — matching DJAudioPlayer's
+ * (low <500 Hz, mid 500-5000 Hz, high >5000 Hz - matching DJAudioPlayer's
  * EQ crossovers), accumulates per-frame RMS energies + peak amplitude,
  * normalises to 0..255, and delivers the result to the message thread.
  *
@@ -54,7 +54,7 @@ public:
 	 * @param fileHash Content hash for cache keying (may be empty to skip caching)
 	 * @param formatManager Audio format manager (used to create a reader)
 	 * @param onReady  Invoked on the message thread; receives the band data
-	 *                 (never null — empty vector on failure).
+	 *                 (never null - empty vector on failure).
 	 */
 	static void analyzeAsync(juce::File file,
 	                         juce::String fileHash,

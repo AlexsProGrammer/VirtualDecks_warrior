@@ -59,7 +59,7 @@ Always validate gain is in [0, 1] before calling `transportSource.setGain()`.
 ## Adding New Audio Effects
 
 1. Declare the new `juce::IIRFilterAudioSource` (or other AudioSource wrapper) as a member.
-2. Insert it in the chain at the correct position — chain it from the previous source.
+2. Insert it in the chain at the correct position - chain it from the previous source.
 3. Update every downstream source to take the new one as input.
 4. Call `prepareToPlay()` on the new source in `DJAudioPlayer::prepareToPlay()`.
 5. Add a public setter method following the pattern of `setLBFilter()` / `setHBFilter()`.

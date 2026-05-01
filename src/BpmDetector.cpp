@@ -340,7 +340,7 @@ BpmResult BpmDetector::analyze(juce::AudioFormatReader* reader)
 
 	if (safeEnd <= safeStart)
 	{
-		// Track too short for multi-segment — use entire track
+		// Track too short for multi-segment - use entire track
 		safeStart = 0;
 		safeEnd = 0;
 		segmentSamples = static_cast<int>(totalSamples);

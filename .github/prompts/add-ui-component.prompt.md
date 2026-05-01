@@ -11,9 +11,9 @@ You are adding a new visual component to DJDecks.
 
 Before proceeding, read these files:
 1. The parent component where the new component will be placed (likely `src/DeckGUI.*` or `src/MainComponent.*`)
-2. `src/CustomLookAndFeel.h` — for consistent appearance
-3. `.github/instructions/ui-components.instructions.md` — layout model and patterns
-4. `.github/instructions/general-instructions.md` — class hierarchy and style rules
+2. `src/CustomLookAndFeel.h` - for consistent appearance
+3. `.github/instructions/ui-components.instructions.md` - layout model and patterns
+4. `.github/instructions/general-instructions.md` - class hierarchy and style rules
 
 ## Implementation Steps
 

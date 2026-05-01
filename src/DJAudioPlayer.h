@@ -400,7 +400,7 @@ public:
 	/// command drain writes it (via SetSpeed) while UI getters read it.
 	std::atomic<double> currentSpeedRatio { 1.0 };
 
-	/// Beat grid for the loaded track (UI thread only — not read by audio thread).
+	/// Beat grid for the loaded track (UI thread only - not read by audio thread).
 	BeatGrid beatGrid;
 
 	/// Loop-in position in seconds (-1.0 = not set). Atomic for audio-thread reads.

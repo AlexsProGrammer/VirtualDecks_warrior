@@ -125,7 +125,7 @@ juce::ThreadPoolJob::JobStatus BpmAnalysisManager::AnalysisJob::runJob()
 	data.beatGrid.bpm = bpmResult.bpm;
 	TrackDataCache::save(fileHash, data);
 
-	// Notify on message thread — capture by value since the job
+	// Notify on message thread - capture by value since the job
 	// is deleted by the pool after runJob() returns.
 	double detectedBpm = bpmResult.bpm;
 	auto* mgr = &owner;

@@ -38,7 +38,7 @@ public:
 	 */
 	BpmAnalysisManager(juce::AudioFormatManager& formatManager, int numThreads = 2);
 
-	/** Destructor — waits for pending jobs to complete. */
+	/** Destructor - waits for pending jobs to complete. */
 	~BpmAnalysisManager();
 
 	/**

@@ -21,12 +21,22 @@ MainComponent::MainComponent()
 		&& !juce::RuntimePermissions::isGranted(juce::RuntimePermissions::recordAudio))
 	{
 		juce::RuntimePermissions::request(juce::RuntimePermissions::recordAudio,
-			[&](bool granted) { setAudioChannels(granted ? 2 : 0, 2); });
+			[&](bool granted) { 
+				try { setAudioChannels(0, 2); }
+				catch (const std::exception& e) { DBG("Audio init error: " << e.what()); }
+			});
 	}
 	else
 	{
 		// Specify the number of input and output channels that we want to open
-		setAudioChannels(2, 2);
+		try
+		{
+			setAudioChannels(0, 2);
+		}
+		catch (const std::exception& e)
+		{
+			DBG("Warning: Failed to set audio channels: " << e.what());
+		}
 	}
 
 
@@ -82,7 +92,14 @@ MainComponent::MainComponent()
 	cueCallback.setEngine(&audioEngine);
 	{
 		auto savedState = AppSettings::loadHeadphoneDeviceState();
-		cueDeviceManager.initialise(0, 2, savedState.get(), false);
+		try
+		{
+			cueDeviceManager.initialise(0, 2, savedState.get(), false);
+		}
+		catch (const std::exception& e)
+		{
+			DBG("Warning: Failed to initialize cue device manager: " << e.what());
+		}
 	}
 
 	cueDeviceManager.addAudioCallback(&cueCallback);
@@ -94,13 +111,13 @@ MainComponent::MainComponent()
 		[this]() { closeSettings(); });
 	addChildComponent(*settingsPanel);
 
-	// Settings gear — DrawableButton with SVG icons (normal + hover).
+	// Settings gear - DrawableButton with SVG icons (normal + hover).
 	{
 		auto normalImg = juce::Drawable::createFromImageData(BinaryData::iconSettings_svg, BinaryData::iconSettings_svgSize);
 		auto overImg   = juce::Drawable::createFromImageData(BinaryData::iconSettingsHover_svg, BinaryData::iconSettingsHover_svgSize);
 		if (normalImg != nullptr)
 			normalImg->replaceColour(juce::Colours::white, juce::Colour::fromRGB(200, 200, 200));
-		// Hover variant ships in white — keep it for the brighter hover state.
+		// Hover variant ships in white - keep it for the brighter hover state.
 		settingsButton.setImages(normalImg.get(), overImg.get(), overImg.get(), nullptr,
 		                         normalImg.get(), overImg.get(), overImg.get(), nullptr);
 		settingsButton.setEdgeIndent(2);
@@ -189,12 +206,12 @@ MainComponent::MainComponent()
 	filter2Slider.addMouseListener(this, false);
 
 	// Tooltips for the central mixer column.
-	crossFader.setTooltip("Crossfader — left = Deck 1 only, centre = equal mix, right = Deck 2 only (right-click to reset)");
+	crossFader.setTooltip("Crossfader - left = Deck 1 only, centre = equal mix, right = Deck 2 only (right-click to reset)");
 	vol1Slider.setTooltip("Deck 1 volume (right-click to reset to full)");
 	vol2Slider.setTooltip("Deck 2 volume (right-click to reset to full)");
-	filter1Slider.setTooltip("Deck 1 filter sweep — turn left for low-pass, right for high-pass (right-click to reset)");
-	filter2Slider.setTooltip("Deck 2 filter sweep — turn left for low-pass, right for high-pass (right-click to reset)");
-	settingsButton.setTooltip("Audio settings — configure master and headphone output devices");
+	filter1Slider.setTooltip("Deck 1 filter sweep - turn left for low-pass, right for high-pass (right-click to reset)");
+	filter2Slider.setTooltip("Deck 2 filter sweep - turn left for low-pass, right for high-pass (right-click to reset)");
+	settingsButton.setTooltip("Audio settings - configure master and headphone output devices");
 
 	startTimer(33); // ~30 fps repaint for volume meters
 
@@ -235,7 +252,7 @@ void MainComponent::prepareToPlay(int samplesPerBlockExpected, double sampleRate
 	audioEngine.prepareToPlay(samplesPerBlockExpected, sampleRate);
 
 	// Restore persisted FX settings once both decks' FxChains are prepared.
-	// Subsequent prepareToPlay calls (device changes) won't re-load — guarded
+	// Subsequent prepareToPlay calls (device changes) won't re-load - guarded
 	// by a static flag.
 	static bool fxSettingsLoaded = false;
 	if (! fxSettingsLoaded) {
@@ -348,25 +365,25 @@ void MainComponent::resized()
 	const int deckY = kDeckBaseY + getHeight() / kDeckGrowDivisor;
 	const int deckH = getHeight() - deckY;
 
-	// ── Waveform strips — full width ──────────────────────────────────────────
+	// ── Waveform strips - full width ──────────────────────────────────────────
 	zoomedDisplay1.setBounds(0, 0,     getWidth(), zoomH);
 	zoomedDisplay2.setBounds(0, zoomH, getWidth(), zoomH);
 
-	// ── Deck panels — carve out the centre mixer column ───────────────────────
+	// ── Deck panels - carve out the centre mixer column ───────────────────────
 	const int deckW = (getWidth() - kMixerW) / 2;
 	deckGUI1.setBounds(0,              deckY, deckW, deckH);
 	deckGUI2.setBounds(deckW + kMixerW, deckY, deckW, deckH);
 
 	// ── Mixer column layout ───────────────────────────────────────────────────
 	const int mixX    = getWidth() / 2 - kMixerW / 2;
-	const int halfCol = kMixerW / 2;   // 100 px — left = Deck 1, right = Deck 2
+	const int halfCol = kMixerW / 2;   // 100 px - left = Deck 1, right = Deck 2
 
-	// Settings gear — centred at top of mixer column.
+	// Settings gear - centred at top of mixer column.
 	settingsButton.setBounds(mixX + halfCol - kSettingsBtnSize / 2,
 	                         deckY + 10,
 	                         kSettingsBtnSize, kSettingsBtnSize);
 
-	// Crossfader — bottom-anchored with generous gap above.
+	// Crossfader - bottom-anchored with generous gap above.
 	const int kCrossFaderY = deckY + deckH - kCrossFaderH - 20;
 	crossFader.setBounds(getWidth() / 2 - kCrossFaderW / 2, kCrossFaderY,
 	                     kCrossFaderW, kCrossFaderH);
@@ -384,14 +401,14 @@ void MainComponent::resized()
 	const int filterKnobY  = volLabelY + kLabelH + 8;
 	const int filterLabelY = filterKnobY + kKnobSize + 4;
 
-	// Deck 1 — left half of mixer (centre at mixX + halfCol/2).
+	// Deck 1 - left half of mixer (centre at mixX + halfCol/2).
 	const int col1 = mixX + halfCol / 2;
 	vol1Slider.setBounds   (col1 - kSliderW / 2,  volSliderTop, kSliderW,  volSliderH);
 	vol1Label.setBounds    (col1 - 20,             volLabelY,    40,        kLabelH);
 	filter1Slider.setBounds(col1 - kKnobSize / 2,  filterKnobY,  kKnobSize, kKnobSize);
 	filter1Label.setBounds (col1 - kKnobSize / 2,  filterLabelY, kKnobSize, kLabelH);
 
-	// Deck 2 — right half of mixer (centre at mixX + halfCol + halfCol/2).
+	// Deck 2 - right half of mixer (centre at mixX + halfCol + halfCol/2).
 	const int col2 = mixX + halfCol + halfCol / 2;
 	vol2Slider.setBounds   (col2 - kSliderW / 2,  volSliderTop, kSliderW,  volSliderH);
 	vol2Label.setBounds    (col2 - 20,             volLabelY,    40,        kLabelH);

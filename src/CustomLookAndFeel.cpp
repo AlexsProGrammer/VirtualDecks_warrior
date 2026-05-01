@@ -19,7 +19,7 @@ CustomLookAndFeel::CustomLookAndFeel()
 	// Window background.
 	setColour(ResizableWindow::backgroundColourId, UI::bgRoot);
 
-	// Sliders — defaults; deck-specific accents override per-component.
+	// Sliders - defaults; deck-specific accents override per-component.
 	setColour(Slider::backgroundColourId,           UI::bgCard);
 	setColour(Slider::trackColourId,                UI::borderStrong);
 	setColour(Slider::thumbColourId,                UI::textPrimary);
@@ -172,7 +172,7 @@ void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
 	const float corner = UI::kButtonRadius;
 	auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
 
-	// Phase 4 — Buttons tagged with the "circularOutline" property render as a
+	// Phase 4 - Buttons tagged with the "circularOutline" property render as a
 	// matched set: identical circular outline, fill on hover/press/active.
 	// This is used for the 4 buttons surrounding the jog wheel (Load, Play,
 	// Cue, FastSync) so they look like a unified group.
@@ -206,7 +206,7 @@ void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
 			g.fillEllipse(circle);
 		}
 
-		// Always-visible outline ring — this is what makes the 4 buttons look matched.
+		// Always-visible outline ring - this is what makes the 4 buttons look matched.
 		g.setColour(toggled ? backgroundColour.brighter(0.20f).withAlpha(0.85f)
 		                    : UI::borderStrong);
 		g.drawEllipse(circle, 1.4f);
@@ -216,7 +216,7 @@ void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
 	// DrawableButtons (Play, Load, Cue, FastSync, Library) pass their
 	// backgroundColourId or backgroundOnColourId as the backgroundColour
 	// parameter via JUCE's DrawableButton::paintButton. A near-transparent
-	// colour signals an icon-only button — render interaction overlays only
+	// colour signals an icon-only button - render interaction overlays only
 	// and skip the solid card fill.
 	const bool hasVisibleBg = (backgroundColour.getAlpha() > 10);
 
@@ -261,7 +261,7 @@ void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
 void CustomLookAndFeel::drawDrawableButton(juce::Graphics& g, juce::DrawableButton& button,
 	bool isMouseOverButton, bool isButtonDown)
 {
-	// Skip the default fillAll() rectangle — keep the button area fully
+	// Skip the default fillAll() rectangle - keep the button area fully
 	// transparent so the deck panel background shows through the icon corners.
 	// Interaction feedback (hover/press) is handled per-button via the
 	// circularOutline path in drawButtonBackground (ImageOnButtonBackground style)

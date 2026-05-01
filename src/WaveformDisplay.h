@@ -246,7 +246,7 @@ protected:
 
 	/// Pre-built filled paths (one per band) in normalised coords:
 	///   x ∈ [0, numFrames], y ∈ [-1, +1]. Built once in setBandData() and
-	///   reused via AffineTransform on every paint — keeps draw cost O(3 fillPaths).
+	///   reused via AffineTransform on every paint - keeps draw cost O(3 fillPaths).
 	juce::Path bandPathLow, bandPathMid, bandPathHigh;
 
 	/**

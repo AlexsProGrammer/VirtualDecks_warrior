@@ -16,7 +16,7 @@ DeckLibrarySidebar::DeckLibrarySidebar(Library& libraryRef,
 	  onLoad(std::move(onLoadIn)),
 	  onAddToQueue(std::move(onAddToQueueIn)),
 	  onClose(std::move(onCloseIn)),
-	  titleLabel("title", "Deck " + juce::String(deckIndexIn + 1) + " — Library")
+	  titleLabel("title", "Deck " + juce::String(deckIndexIn + 1) + " - Library")
 {
 	setOpaque(false);
 
@@ -329,7 +329,7 @@ juce::var DeckLibrarySidebar::getDragSourceDescription(const juce::SparseSet<int
 	if (row < 0 || row >= getNumRows())
 		return {};
 	auto t = trackForRow(row);
-	// Encode as "folderIdx|absoluteTrackIdx|identity" — sidebar always wraps
+	// Encode as "folderIdx|absoluteTrackIdx|identity" - sidebar always wraps
 	// the source identity so receivers can re-fetch the live track from
 	// Library if needed.
 	return juce::String(selectedFolder) + "|" + juce::String(absoluteTrackIndex(row)) + "|" + t.identity;

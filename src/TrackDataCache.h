@@ -59,7 +59,7 @@ public:
 	static bool exists(const juce::String& fileHash);
 
 	//==============================================================================
-	// Async API — use these from the message thread to avoid blocking on disk I/O.
+	// Async API - use these from the message thread to avoid blocking on disk I/O.
 
 	/**
 	 * Asynchronously load track data on a background worker. The callback is
@@ -75,7 +75,7 @@ public:
 	 * Asynchronously read-modify-write track data on a background worker.
 	 * The mutator runs on the worker thread (after the existing data has been
 	 * loaded) and may freely mutate the TrackData; the worker writes the
-	 * result back to disk. Fire-and-forget — no completion callback.
+	 * result back to disk. Fire-and-forget - no completion callback.
 	 *
 	 * Sequential calls for the same hash are serialized by the single-worker
 	 * pool, so concurrent updates from rapid slider movement are safe.
@@ -87,7 +87,7 @@ public:
 	                        std::function<void(TrackData&)> mutator);
 
 	//==============================================================================
-	// Waveform band data (3-band RGB per-frame) — stored as a separate binary
+	// Waveform band data (3-band RGB per-frame) - stored as a separate binary
 	// blob next to the JSON track data, keyed by the same content hash.
 
 	/**

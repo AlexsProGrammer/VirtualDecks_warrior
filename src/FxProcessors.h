@@ -8,7 +8,7 @@
  *
  * All effects share a small set of conventions:
  *   - Parameter 0 of every effect is the wet/dry mix in [0, 1].
- *     FxChain does NOT mix dry+wet for the processor — each process()
+ *     FxChain does NOT mix dry+wet for the processor - each process()
  *     implementation handles its own dry/wet blend using getWet().
  *   - Beat-synced effects expose a "Time" parameter that is interpreted as
  *     a beat-division code when getBpm() > 0, else as milliseconds.
@@ -647,7 +647,7 @@ private:
 };
 
 //==============================================================================
-// R.Echo (Record/Reverse Echo) — simple variant: feedback echo with reverse
+// R.Echo (Record/Reverse Echo) - simple variant: feedback echo with reverse
 // of the captured tail. Implemented as feedback delay reusing EchoFxBase
 // behaviour for now; flagged for richer DSP later.
 //==============================================================================

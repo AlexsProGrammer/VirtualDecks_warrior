@@ -28,7 +28,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 
 	formatManager = &formatManagerToUse;
 
-	// Phase 2 — Register structural layout containers. Bounds are set in Phase 3 (resized()).
+	// Phase 2 - Register structural layout containers. Bounds are set in Phase 3 (resized()).
 	addAndMakeVisible(topHeaderContainer);
 	addAndMakeVisible(waveformContainer);
 	addAndMakeVisible(jogWheelContainer);
@@ -36,7 +36,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	addAndMakeVisible(mixerContainer);
 	addAndMakeVisible(sidebarContainer);
 
-	// "Loading…" overlay (centred over the waveform area, hidden by default).
+	// "Loading..." overlay (centred over the waveform area, hidden by default).
 	loadingLabel.setJustificationType(juce::Justification::centred);
 	loadingLabel.setFont(juce::Font(juce::FontOptions(18.0f)).boldened());
 	loadingLabel.setColour(juce::Label::textColourId, theme);
@@ -52,7 +52,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	jogWheelContainer.addAndMakeVisible(mbLabel);
 	jogWheelContainer.addAndMakeVisible(hbLabel);
 
-	// BPM value and percent labels — live beside the jog wheel, not in the top header.
+	// BPM value and percent labels - live beside the jog wheel, not in the top header.
 	bpmValueLabel.setEditable(false);
 	bpmValueLabel.setJustificationType(juce::Justification::centred);
 	bpmValueLabel.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
@@ -62,7 +62,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	jogWheelContainer.addAndMakeVisible(playButton);
 	jogWheelContainer.addAndMakeVisible(speedSlider);
 
-	// Speed deviation label — static strip above the speed slider.
+	// Speed deviation label - static strip above the speed slider.
 	bpmPercentLabel.setEditable(false);
 	bpmPercentLabel.setJustificationType(juce::Justification::centred);
 	bpmPercentLabel.setFont(juce::Font(juce::FontOptions(10.0f)).boldened());
@@ -130,7 +130,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 		cue->setLookAndFeel(&customLookAndFeel);
 	}
 
-	// Tab buttons for cue/grid/jump/loop/sync switching — these live in the
+	// Tab buttons for cue/grid/jump/loop/sync switching - these live in the
 	// full-height sidebar rail, NOT in the transport content panel.
 	sidebarContainer.addAndMakeVisible(cueTabButton);
 	sidebarContainer.addAndMakeVisible(gridTabButton);
@@ -148,7 +148,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	loopTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 	syncTabButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 
-	// FX tab buttons (P.FX / B.FX / R.FX) — registered here so the row is built
+	// FX tab buttons (P.FX / B.FX / R.FX) - registered here so the row is built
 	// in tab-order. Their colour follows the same pattern as the other tabs.
 	sidebarContainer.addAndMakeVisible(padFxTabButton);
 	sidebarContainer.addAndMakeVisible(beatFxTabButton);
@@ -384,7 +384,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	loadButton.setColour(juce::DrawableButton::backgroundColourId,   juce::Colours::transparentBlack);
 	loadButton.setColour(juce::DrawableButton::backgroundOnColourId, juce::Colours::transparentBlack);
 
-	// Library button — placeholder icon (iconSync) until a dedicated asset is added in Phase 4.
+	// Library button - placeholder icon (iconSync) until a dedicated asset is added in Phase 4.
 	libraryButtonImage = juce::Drawable::createFromImageData(BinaryData::iconSync_svg, (size_t)BinaryData::iconSync_svgSize);
 	libraryButton.setImages(libraryButtonImage.get());
 	libraryButton.setColour(juce::DrawableButton::backgroundColourId,   juce::Colours::transparentBlack);
@@ -394,7 +394,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	jogWheelContainer.addAndMakeVisible(libraryButton);
 	libraryButton.setVisible(false); // redundant with loadButton in the new wireframe layout
 
-	// Phase 4 — Mark the four jog-wheel corner buttons so the LookAndFeel
+	// Phase 4 - Mark the four jog-wheel corner buttons so the LookAndFeel
 	// renders them as a unified set (matching circular outline + hover ring).
 	for (auto* b : { (juce::Button*) &loadButton, (juce::Button*) &playButton,
 	                 (juce::Button*) &cueButton,  (juce::Button*) &fastSyncBtn })
@@ -418,37 +418,37 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	}
 
 	// =========================================================================
-	// Tooltips — set on every interactive control so hovering shows a hint.
+	// Tooltips - set on every interactive control so hovering shows a hint.
 	// =========================================================================
 
 	// Jog-wheel corner buttons
 	playButton  .setTooltip("Play / Pause");
 	loadButton  .setTooltip("Open library to load a track");
-	cueButton   .setTooltip("Headphone cue — monitor this deck through your cue output");
-	fastSyncBtn .setTooltip("Beat sync — left-click to engage, right-click to reset speed");
+	cueButton   .setTooltip("Headphone cue - monitor this deck through your cue output");
+	fastSyncBtn .setTooltip("Beat sync - left-click to engage, right-click to reset speed");
 
 	// EQ knobs and speed slider
-	speedSlider  .setTooltip("Speed — drag to adjust playback rate (right-click to reset to 1.0×)");
-	lowBandFilter.setTooltip("Low EQ — boost or cut bass frequencies (right-click to reset)");
-	midBandFilter.setTooltip("Mid EQ — boost or cut mid frequencies (right-click to reset)");
-	highBandFilter.setTooltip("High EQ — boost or cut treble frequencies (right-click to reset)");
+	speedSlider  .setTooltip("Speed - drag to adjust playback rate (right-click to reset to 1.0x)");
+	lowBandFilter.setTooltip("Low EQ - boost or cut bass frequencies (right-click to reset)");
+	midBandFilter.setTooltip("Mid EQ - boost or cut mid frequencies (right-click to reset)");
+	highBandFilter.setTooltip("High EQ - boost or cut treble frequencies (right-click to reset)");
 
 	// Tab rail
-	cueTabButton      .setTooltip("Hot Cues — set and jump to up to 6 cue points");
-	gridTabButton     .setTooltip("Beat Grid — edit BPM, tap tempo, nudge grid offset");
-	jumpTabButton     .setTooltip("Beat Jump — jump backward or forward by a fixed number of beats");
-	loopTabButton     .setTooltip("Loop — set in/out points and control loop length");
-	quantizeTabButton .setTooltip("Quantize — snap performance actions to the beat grid");
-	syncTabButton     .setTooltip("Sync — lock this deck's tempo to the master deck");
-	padFxTabButton    .setTooltip("Pad FX — momentary effects: hold to engage, release to disengage");
-	beatFxTabButton   .setTooltip("Beat FX — latched effects: click to toggle on or off");
-	releaseFxTabButton.setTooltip("Release FX — effects triggered on button release");
+	cueTabButton      .setTooltip("Hot Cues - set and jump to up to 6 cue points");
+	gridTabButton     .setTooltip("Beat Grid - edit BPM, tap tempo, nudge grid offset");
+	jumpTabButton     .setTooltip("Beat Jump - jump backward or forward by a fixed number of beats");
+	loopTabButton     .setTooltip("Loop - set in/out points and control loop length");
+	quantizeTabButton .setTooltip("Quantize - snap performance actions to the beat grid");
+	syncTabButton     .setTooltip("Sync - lock this deck's tempo to the master deck");
+	padFxTabButton    .setTooltip("Pad FX - momentary effects: hold to engage, release to disengage");
+	beatFxTabButton   .setTooltip("Beat FX - latched effects: click to toggle on or off");
+	releaseFxTabButton.setTooltip("Release FX - effects triggered on button release");
 
 	// Beat Grid tab
 	gridBpmEditor    .setTooltip("Type a BPM value and press Enter to override the detected tempo");
 	gridNudgeLeftBtn .setTooltip("Nudge beat grid earlier");
 	gridNudgeRightBtn.setTooltip("Nudge beat grid later");
-	tapTempoBtn      .setTooltip("Tap Tempo — tap repeatedly to set BPM");
+	tapTempoBtn      .setTooltip("Tap Tempo - tap repeatedly to set BPM");
 	gridResetBtn     .setTooltip("Reset beat grid to auto-detected values");
 
 	// Beat Jump tab
@@ -474,14 +474,14 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 
 	// Sync tab
 	masterToggleBtn.setTooltip("Set this deck as the sync master");
-	syncEngageBtn  .setTooltip("Engage beat sync — lock this deck's tempo to the master");
+	syncEngageBtn  .setTooltip("Engage beat sync - lock this deck's tempo to the master");
 	multHalfBtn    .setTooltip("Play at half the master's tempo (×½)");
 	multOneBtn     .setTooltip("Match the master's tempo exactly (×1)");
 	multTwoBtn     .setTooltip("Play at double the master's tempo (×2)");
 	syncResetBtn   .setTooltip("Disengage sync, clear master, and restore speed to 1.0×");
 	snapBox        .setTooltip("Phase-snap granularity: how many beats to align on sync engage");
 
-	// Build Pad / Beat / Release FX panels (initially hidden — HotCues is the
+	// Build Pad / Beat / Release FX panels (initially hidden - HotCues is the
 	// default tab). Must run after `player` is bound because tile callbacks
 	// post FxSelect / FxSetEngaged commands through `player->postCommand()`.
 	buildFxPanels();
@@ -538,7 +538,7 @@ void DeckGUI::resized()
 	const int  gap     = UI::kComponentPadding; // 6 px
 
 	// =========================================================================
-	// Phase 1 — Slice the full-height sidebar (icon-tab rail) FIRST so it
+	// Phase 1 - Slice the full-height sidebar (icon-tab rail) FIRST so it
 	// reaches the absolute top and bottom edges of the deck panel.
 	// =========================================================================
 	auto deckBounds = getLocalBounds().reduced(UI::kDeckMargin);
@@ -553,10 +553,10 @@ void DeckGUI::resized()
 	else         deckBounds.removeFromLeft(gap);
 
 	// =========================================================================
-	// Phase 2 — Top-to-bottom stacking inside the remaining content column.
+	// Phase 2 - Top-to-bottom stacking inside the remaining content column.
 	// Top header (BPM)  →  Waveform  →  Tab content  →  ... center ...  →  Queue
 	// =========================================================================
-	topHeaderContainer.setBounds(juce::Rectangle<int>()); // zero size — BPM moved to jogWheelContainer
+	topHeaderContainer.setBounds(juce::Rectangle<int>()); // zero size - BPM moved to jogWheelContainer
 
 	waveformContainer.setBounds(deckBounds.removeFromTop(UI::kWaveformHeight + 30));
 	deckBounds.removeFromTop(gap);
@@ -564,19 +564,19 @@ void DeckGUI::resized()
 	transportContainer.setBounds(deckBounds.removeFromTop(80));
 	deckBounds.removeFromTop(gap);
 
-	// Queue at the bottom — noticeably taller than before.
+	// Queue at the bottom - noticeably taller than before.
 	const int queueH = 150;
 	mixerContainer.setBounds(deckBounds.removeFromBottom(queueH));
 	deckBounds.removeFromBottom(gap);
 
 	// =========================================================================
-	// Phase 3 — Central deck area: jog wheel, 4 corner buttons, BPM, speed
+	// Phase 3 - Central deck area: jog wheel, 4 corner buttons, BPM, speed
 	//           slider, and Low/Mid/High EQ knobs.
 	// =========================================================================
 	jogWheelContainer.setBounds(deckBounds);
 
 	// =========================================================================
-	// Sub-layout: sidebarContainer — 9 IconTabButtons stacked top-to-bottom.
+	// Sub-layout: sidebarContainer - 9 IconTabButtons stacked top-to-bottom.
 	// =========================================================================
 	{
 		auto sb = sidebarContainer.getLocalBounds();
@@ -653,7 +653,7 @@ void DeckGUI::resized()
 		auto jogRect = jb.withSizeKeepingCentre(jogSz, jogSz);
 		jogWheel.setBounds(jogRect);
 
-		// Phase 3 — Place the 4 corner buttons relative to the jog wheel.
+		// Phase 3 - Place the 4 corner buttons relative to the jog wheel.
 		// TL = load (+), TR = cue (headphones), BL = play, BR = fast-sync.
 		loadButton .setBounds(jogRect.getX() - btnSz - gap,    jogRect.getY(),                       btnSz, btnSz);
 		cueButton  .setBounds(jogRect.getRight() + gap,        jogRect.getY(),                       btnSz, btnSz);
@@ -685,7 +685,7 @@ void DeckGUI::resized()
 	}
 
 	// =========================================================================
-	// Sub-layout: transportContainer (tab CONTENT only — rail moved to sidebar).
+	// Sub-layout: transportContainer (tab CONTENT only - rail moved to sidebar).
 	// =========================================================================
 	{
 		auto tb = transportContainer.getLocalBounds();
@@ -844,7 +844,7 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 			pendingAction.srcButton = &playButton;
 			playButton.setColour(juce::DrawableButton::backgroundColourId,
 				UI::accentWarning.withAlpha(0.7f));
-			// Undo the auto-toggle — keep current state until fire
+			// Undo the auto-toggle - keep current state until fire
 			playButton.setToggleState(modeIsPlaying, juce::NotificationType::dontSendNotification);
 			return;
 		}
@@ -1211,7 +1211,7 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 						0, cueTargets[thisButton].first, -1.0, 0.0f, thisButton);
 				}
 				else {
-					// Set cue (quantized) — capture position now
+					// Set cue (quantized) - capture position now
 					float hue = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 					queueOrExecute(PendingQuantizeAction::Type::HotCueSet, thisButton,
 						0, -1.0, player->getPositionRelative(), hue, thisButton);
@@ -1328,7 +1328,7 @@ void DeckGUI::sliderValueChanged(juce::Slider* slider) {
 		DBG("MainComponent::sliderValueChanged: They change the speed slider " << slider->getValue());
 		// Capture the user's intended value before any side-effects can overwrite it.
 		double userSpeed = slider->getValue();
-		// User-initiated speed change while synced — break sync. (Programmatic
+		// User-initiated speed change while synced - break sync. (Programmatic
 		// updates from BeatSyncManager use dontSendNotification, so this path
 		// only triggers from real user input or the right-click reset.)
 		if (syncManager != nullptr && syncManager->isSynced(deckIndex)) {
@@ -1541,7 +1541,7 @@ void DeckGUI::updateCueButtons()
 		bool hasCue = cueTargets.find(thisButton) != cueTargets.end();
 
 		if (pendingAction.isValid() && pendingAction.srcButton == thisButton) {
-			// Keep orange — don't override
+			// Keep orange - don't override
 		}
 		else if (hasCue && flash) {
 			thisButton->setColour(juce::TextButton::ColourIds::buttonColourId,
@@ -1580,7 +1580,7 @@ void DeckGUI::loadDeck(track track) {
 	if (syncManager != nullptr)
 		syncManager->onTrackLoaded(deckIndex);
 
-	// Stash the track — finishLoadDeck() needs it once loading completes.
+	// Stash the track - finishLoadDeck() needs it once loading completes.
 	pendingTrack = track;
 
 	if (audioEngine != nullptr) {
@@ -1703,7 +1703,7 @@ void DeckGUI::deckLoadingStateChanged(int deckIdx, DJAudioPlayer::LoadingState n
 	if (newState == DJAudioPlayer::LoadingState::Failed)
 		loadingLabel.setText("Load failed", juce::dontSendNotification);
 	else if (busy)
-		loadingLabel.setText("Loading…", juce::dontSendNotification);
+		loadingLabel.setText("Loading...", juce::dontSendNotification);
 
 	repaint();
 }
@@ -1862,7 +1862,7 @@ void DeckGUI::syncStateChanged() {
 	if (isSynced && outOfRange)
 		offColour = UI::accentWarning.withAlpha(0.6f);
 	syncEngageBtn.setColour(juce::TextButton::buttonColourId, offColour);
-	// fastSyncBtn is an icon DrawableButton — the normalImageOn (green bolt)
+	// fastSyncBtn is an icon DrawableButton - the normalImageOn (green bolt)
 	// is shown via toggle state. Also set backgroundColourId so any
 	// circularOutline LookAndFeel path reflects the active colour.
 	juce::Colour fastSyncBg = juce::Colours::transparentBlack;
@@ -1885,11 +1885,11 @@ void DeckGUI::syncStateChanged() {
 
 	// Lock slave's speed slider while synced; master and disengaged decks
 	// retain manual control. The actual sync ratio may exceed the slider's
-	// visual range; we don't try to mirror it on the slider — targetBpmLabel
+	// visual range; we don't try to mirror it on the slider - targetBpmLabel
 	// shows the resolved BPM instead.
 	// Keep the slider enabled and mirror the engine ratio onto it (slider
 	// auto-clamps to its visual range). Any user interaction will fire
-	// sliderValueChanged, where we then disengage sync — so the slider acts
+	// sliderValueChanged, where we then disengage sync - so the slider acts
 	// as a quick-disengage handle while still showing the synced position.
 	if (!speedSlider.isEnabled())
 		speedSlider.setEnabled(true);
@@ -2141,7 +2141,7 @@ void DeckGUI::queueOrExecute(PendingQuantizeAction::Type type, juce::Button* btn
  * Beat FX : drop-down + division box + ON/OFF toggle + WET slider + EDIT button.
  * Release FX : 3 momentary tiles (V.Brake, R.Echo, Back Spin).
  *
- * Tiles are added as child components but kept hidden initially — the HotCues
+ * Tiles are added as child components but kept hidden initially - the HotCues
  * tab is the default selected tab.
  */
 void DeckGUI::buildFxPanels()
@@ -2151,14 +2151,14 @@ void DeckGUI::buildFxPanels()
 	// ---- Pad FX tiles --------------------------------------------------------
 	{
 		auto procs = FxFactory::buildCategory(FxCategory::Pad);
-		// Tile 0 of FxFactory output is "None" — we skip it for the display
+		// Tile 0 of FxFactory output is "None" - we skip it for the display
 		// grid but keep its index inside the chain.
 		const int kTiles = 8;
 		padFxTiles.reserve(kTiles);
 		for (int slot = 0; slot < kTiles; ++slot) {
 			auto tile = std::make_unique<MomentaryFxTile>();
 			int procIdx = slot + 1; // skip None at index 0
-			juce::String label = "—";
+			juce::String label = "-";
 			if (procIdx < (int) procs.size()) {
 				label = procs[procIdx]->getName();
 			}
@@ -2218,7 +2218,7 @@ void DeckGUI::buildFxPanels()
 		beatFxDivisionBox.setColour(juce::ComboBox::textColourId, juce::Colours::white);
 		beatFxDivisionBox.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
 		beatFxDivisionBox.onChange = [this]() {
-			// Atomic parameter write — bypass FIFO.
+			// Atomic parameter write - bypass FIFO.
 			auto& chain = player->getFxChain();
 			if (auto* fx = chain.getActiveProcessor(FxCategory::Beat)) {
 				for (auto& p : fx->getParameters()) {
@@ -2276,7 +2276,7 @@ void DeckGUI::buildFxPanels()
 		for (int slot = 0; slot < kTiles; ++slot) {
 			auto tile = std::make_unique<MomentaryFxTile>();
 			int procIdx = slot + 1;
-			juce::String label = "—";
+			juce::String label = "-";
 			if (procIdx < (int) procs.size()) label = procs[procIdx]->getName();
 			tile->setButtonText(label);
 			tile->setColour(juce::TextButton::buttonColourId, themeMid);
@@ -2412,7 +2412,7 @@ void DeckGUI::showFxParameterModal(FxCategory cat, juce::Component* anchor)
 //==============================================================================
 
 /**
- * Public wrapper for loadDeck — used by external library sidebars.
+ * Public wrapper for loadDeck - used by external library sidebars.
  */
 void DeckGUI::loadTrack(const track& t) {
 	loadDeck(t);

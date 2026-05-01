@@ -1,7 +1,7 @@
 #include "AudioEngine.h"
 
 //==============================================================================
-// LoadJob — runs on a worker thread of loadPool. Reads file headers, builds an
+// LoadJob - runs on a worker thread of loadPool. Reads file headers, builds an
 // AudioFormatReaderSource, then marshalls the result back to the message
 // thread via MessageManager::callAsync.
 //==============================================================================
@@ -25,7 +25,7 @@ public:
 	JobStatus runJob() override
 	{
 		// If a newer load was queued for this deck while we were waiting in the
-		// pool, abandon early — the newer job will overwrite anyway.
+		// pool, abandon early - the newer job will overwrite anyway.
 		if (generation != engine.loadGeneration[deck].load(std::memory_order_acquire))
 			return JobStatus::jobHasFinished;
 

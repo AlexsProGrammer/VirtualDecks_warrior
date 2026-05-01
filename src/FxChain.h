@@ -82,7 +82,7 @@ public:
 	}
 
 	//==============================================================================
-	// Selection / state (audio-thread safe — atomic store on the active index)
+	// Selection / state (audio-thread safe - atomic store on the active index)
 
 	/// Activate a processor by index within the slot's list. 0 = None.
 	void setActiveIndex(FxCategory cat, int index) noexcept

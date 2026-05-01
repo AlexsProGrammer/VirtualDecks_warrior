@@ -52,7 +52,7 @@ void JogWheel::paint(juce::Graphics& g)
 		bgCache = juce::Image(juce::Image::ARGB, getWidth(), getHeight(), true);
 		juce::Graphics cg(bgCache);
 
-		// Outer rim — vertical gradient from elevated to root
+		// Outer rim - vertical gradient from elevated to root
 		const float bw = (float) getWidth();
 		const float bh = (float) getHeight();
 		const float bcx = bw * 0.5f;
@@ -62,7 +62,7 @@ void JogWheel::paint(juce::Graphics& g)
 		cg.setGradientFill(rimGrad);
 		cg.fillEllipse(bcx - outerR, bcy - outerR, outerR * 2, outerR * 2);
 
-		// Theme-tinted rim stroke drawn by caller using live `theme` — skip here
+		// Theme-tinted rim stroke drawn by caller using live `theme` - skip here
 		// (colour not available in static cache). Use subtle border instead.
 		cg.setColour(UI::borderSubtle);
 		cg.drawEllipse(bcx - outerR, bcy - outerR, outerR * 2, outerR * 2, 1.5f);

@@ -166,7 +166,7 @@ void TrackDataCache::updateAsync(const juce::String& fileHash,
 }
 
 //==============================================================================
-// Waveform band data — binary on-disk format:
+// Waveform band data - binary on-disk format:
 //   [4 bytes] magic 'B','N','D','1'
 //   [4 bytes] little-endian uint32 frame count
 //   [4*N    ] BandFrame { low, mid, high, amp } as raw uint8 quadruplets

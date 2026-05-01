@@ -171,7 +171,7 @@ void BeatSyncManager::onTrackLoaded(int deckIdx) {
 	if (syncEngaged[deckIdx])
 		disengageSync(deckIdx);
 
-	// If this deck is the master, the other deck's sync target changed —
+	// If this deck is the master, the other deck's sync target changed -
 	// disengage to avoid stale lock at the wrong BPM.
 	if (isMaster(deckIdx)) {
 		int slave = otherIndex(deckIdx);
@@ -238,7 +238,7 @@ void BeatSyncManager::applySlaveSpeed(int slaveDeckIdx) {
 	if (ratio <= 0.0) return;
 
 	if (ratio < kSyncMinSpeed - 1e-9 || ratio > kSyncMaxSpeed + 1e-9) {
-		// Stay engaged but flag — don't push out-of-range ratio to the audio engine.
+		// Stay engaged but flag - don't push out-of-range ratio to the audio engine.
 		if (statusText[slaveDeckIdx] != "OUT OF RANGE") {
 			statusText[slaveDeckIdx] = "OUT OF RANGE";
 			refreshDeckUIs();

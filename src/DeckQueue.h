@@ -56,7 +56,7 @@ public:
 	void listBoxItemClicked(int row, const juce::MouseEvent& e) override;
 
 	//==============================================================================
-	// juce::DragAndDropTarget — accepts drops from DeckLibrarySidebar.
+	// juce::DragAndDropTarget - accepts drops from DeckLibrarySidebar.
 	bool isInterestedInDragSource(const SourceDetails& details) override;
 	void itemDropped(const SourceDetails& details) override;
 

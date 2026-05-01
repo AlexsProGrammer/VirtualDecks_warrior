@@ -60,7 +60,7 @@ Key sub-components:
 ### Adding a New Slider
 
 ```cpp
-// In header — declare with inline initialization:
+// In header - declare with inline initialization:
 juce::Slider mySlider{ juce::Slider::SliderStyle::RotaryVerticalDrag,
                         juce::Slider::TextEntryBoxPosition::NoTextBox };
 juce::Label myLabel{ "LABEL", "LABEL" };
@@ -105,8 +105,8 @@ Use `juce::DrawableButton` with SVG images from BinaryData. Follow the pattern i
 ## CustomLookAndFeel
 
 The `CustomLookAndFeel` class overrides:
-- `drawLinearSlider()` — custom knob images from SVG, tick marks on slider tracks
-- `drawRotarySlider()` — circular knob with angle markers
-- `drawTableHeaderBackground()` — custom table header painting
+- `drawLinearSlider()` - custom knob images from SVG, tick marks on slider tracks
+- `drawRotarySlider()` - circular knob with angle markers
+- `drawTableHeaderBackground()` - custom table header painting
 
 Read `src/CustomLookAndFeel.h` and `src/CustomLookAndFeel.cpp` before adding new LookAndFeel overrides. Extend the existing class rather than creating a new one.

@@ -338,7 +338,7 @@ void DJAudioPlayer::start() {
  * Implementation of stop method for DJAudioPlayer
  *
  * Called from the message thread. Calls stop() directly on the transport
- * source — AudioTransportSource::stop() is designed for the message thread
+ * source - AudioTransportSource::stop() is designed for the message thread
  * and must NOT be dispatched through the FIFO, because it blocks until the
  * audio thread acknowledges the stop, which would deadlock if the audio
  * thread were the one calling stop().

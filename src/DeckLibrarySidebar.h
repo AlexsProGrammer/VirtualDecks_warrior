@@ -93,7 +93,7 @@ private:
 	juce::DrawableButton closeBtn { "close", juce::DrawableButton::ImageFitted };
 
 	//==============================================================================
-	// Folder list — uses a private ListBoxModel because TableListBoxModel
+	// Folder list - uses a private ListBoxModel because TableListBoxModel
 	// already provides the only getNumRows() in this class.
 	struct FolderListModel : public juce::ListBoxModel
 	{

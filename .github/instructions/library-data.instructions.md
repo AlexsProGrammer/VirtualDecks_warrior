@@ -25,8 +25,8 @@ track {
 ```
 
 If adding new fields to `track`, you **must** also update:
-1. Library constructor — where tracks are deserialized from `juce::ValueTree`
-2. Library destructor — where tracks are serialized to `juce::ValueTree`
+1. Library constructor - where tracks are deserialized from `juce::ValueTree`
+2. Library destructor - where tracks are serialized to `juce::ValueTree`
 3. Any place that constructs `track` objects (Library `filesDropped`, etc.)
 
 ### Storage Structure
@@ -45,8 +45,8 @@ If adding new fields to `track`, you **must** also update:
 ## Component Relationships
 
 ```
-Library (TableListBoxModel — displays folders)
-  └─ PlaylistComponent (TableListBoxModel — displays tracks in selected folder)
+Library (TableListBoxModel - displays folders)
+  └─ PlaylistComponent (TableListBoxModel - displays tracks in selected folder)
        └─ TextEditor search box (filters displayed tracks)
 ```
 
@@ -62,7 +62,7 @@ Library (TableListBoxModel — displays folders)
 
 ## Rules
 
-- Never store raw `juce::File` objects in the track model — use `juce::URL` for portability.
+- Never store raw `juce::File` objects in the track model - use `juce::URL` for portability.
 - Track identity hashes must remain unique within a folder.
 - When deleting tracks, compare by `identity` string, not by index.
 - Always call `playlist.setTrackTitles()` after modifying `trackFolders` to refresh the UI.

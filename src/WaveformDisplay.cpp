@@ -165,7 +165,7 @@ void WaveformDisplay::rebuildBandPaths() {
 	const int n = (int)frames.size();
 	constexpr float invByte = 1.0f / 255.0f;
 
-	// 3-tap [0.25, 0.5, 0.25] smoothing kernel applied at path-build time —
+	// 3-tap [0.25, 0.5, 0.25] smoothing kernel applied at path-build time -
 	// removes the visible 50 ms steps and produces fluent rounded shapes
 	// without costing anything at paint time.
 	auto smoothed = [&](int i, auto raw) {
@@ -194,7 +194,7 @@ void WaveformDisplay::rebuildBandPaths() {
  *
  * Renders the cached band paths into `bounds`, mapping the time window
  * [t0Sec, t1Sec] of the loaded track to the rectangle's full width via a
- * single AffineTransform per band — three fillPath calls total regardless
+ * single AffineTransform per band - three fillPath calls total regardless
  * of frame count or zoom level.
  *
  * Colour palette mirrors Pioneer rekordbox:

@@ -85,7 +85,7 @@ void FxParameterModal::buildControls()
 		auto* paramPtr = &p;
 		r.slider->onValueChange = [paramPtr, lbl, this]
 		{
-			// rows[i].slider is the source — find it via the lambda capture chain.
+			// rows[i].slider is the source - find it via the lambda capture chain.
 			// Easier: use the captured paramPtr directly.
 			// Walk our rows to find the matching slider for the value text update.
 			for (auto& row : rows)

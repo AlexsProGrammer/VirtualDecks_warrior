@@ -73,7 +73,7 @@ namespace {
 			filters[c].midLp.setCoefficients(midLpCoeffs);
 		}
 
-		// Working buffers — one for the source read, three for filtered output per band.
+		// Working buffers - one for the source read, three for filtered output per band.
 		juce::AudioBuffer<float> sourceBuf(numChannels, kReadBlockSize);
 		juce::AudioBuffer<float> lowBuf   (numChannels, kReadBlockSize);
 		juce::AudioBuffer<float> highBuf  (numChannels, kReadBlockSize);

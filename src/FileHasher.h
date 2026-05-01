@@ -16,7 +16,7 @@ public:
 	 * Compute a partial-content hash of the given file (synchronous).
 	 *
 	 * Uses FNV-1a (64-bit) over the first+last 64 KB and file size.
-	 * Performs blocking disk I/O — only call from a background thread.
+	 * Performs blocking disk I/O - only call from a background thread.
 	 *
 	 * @param file The audio file to hash
 	 * @return Hex string of the hash, or empty string on failure

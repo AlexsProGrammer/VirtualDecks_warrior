@@ -10,8 +10,8 @@
  * existing per-tab colour state machine keeps working unchanged.
  *
  * The icon is loaded once at construction from raw BinaryData SVG bytes.
- * Two tints are stored — a translucent "inactive" tint for unselected tabs
- * and an opaque white "active" tint for the currently selected tab — so
+ * Two tints are stored - a translucent "inactive" tint for unselected tabs
+ * and an opaque white "active" tint for the currently selected tab - so
  * paint() can pick between them based on getToggleState().
  */
 class IconTabButton : public juce::TextButton {
@@ -35,7 +35,7 @@ public:
 			// SVGs ship as white; replaceColour swaps for the desired tint.
 			if (iconInactive)
 				iconInactive->replaceColour(juce::Colours::white, juce::Colour::fromRGB(180, 180, 180));
-			// Active stays white — it pops against the theme-coloured background.
+			// Active stays white - it pops against the theme-coloured background.
 		}
 	}
 

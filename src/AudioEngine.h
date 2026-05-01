@@ -5,7 +5,7 @@
 #include "DJAudioPlayer.h"
 
 /**
- * AudioEngine — facade that owns the two DJAudioPlayers and the MixerAudioSource,
+ * AudioEngine - facade that owns the two DJAudioPlayers and the MixerAudioSource,
  * coordinates audio rendering on the audio thread, and dispatches off-thread
  * track loading on a dedicated ThreadPool.
  *
@@ -149,7 +149,7 @@ public:
 	/// Mixes both players.
 	juce::MixerAudioSource mixerSource;
 
-	/// Load pool — single worker so reader creation is serialised through one
+	/// Load pool - single worker so reader creation is serialised through one
 	/// AudioFormatManager. Two decks loading in rapid succession will queue.
 	juce::ThreadPool loadPool { 1 };
 

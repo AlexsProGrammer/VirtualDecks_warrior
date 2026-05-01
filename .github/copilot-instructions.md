@@ -1,6 +1,6 @@
-# DJDecks — General Project Instructions
+# DJDecks - General Project Instructions
 
-> These instructions define the project context, architecture, and rules for any AI assistant working on this codebase. The AI should read the relevant source files to gather specifics — these instructions tell it **where to look** and **what rules to follow**, not duplicate the code.
+> These instructions define the project context, architecture, and rules for any AI assistant working on this codebase. The AI should read the relevant source files to gather specifics - these instructions tell it **where to look** and **what rules to follow**, not duplicate the code.
 
 ---
 
@@ -28,16 +28,16 @@ Main.cpp
  └─ OtoDecksApplication (juce::JUCEApplication)
      └─ MainWindow (juce::DocumentWindow)
          └─ MainComponent (juce::AudioAppComponent)
-              ├─ DJAudioPlayer × 2      — Audio engine (AudioSource chain)
-              ├─ DeckGUI × 2            — Per-deck controls & visuals
-              │    ├─ WaveformDisplay    — Full waveform + playhead
-              │    ├─ JogWheel           — Circular jog display (inherits ZoomedWaveform)
-              │    └─ Cue buttons × 6   — Dynamic cue point system
-              ├─ ZoomedWaveform × 2     — Top-level zoomed waveform bands
-              ├─ Library                 — Folder/playlist manager with XML persistence
-              │    └─ PlaylistComponent  — Track list within a folder
-              ├─ MixerAudioSource       — Mixes both players
-              └─ CrossFader slider      — Cross-fade between decks
+              ├─ DJAudioPlayer × 2      - Audio engine (AudioSource chain)
+              ├─ DeckGUI × 2            - Per-deck controls & visuals
+              │    ├─ WaveformDisplay    - Full waveform + playhead
+              │    ├─ JogWheel           - Circular jog display (inherits ZoomedWaveform)
+              │    └─ Cue buttons × 6   - Dynamic cue point system
+              ├─ ZoomedWaveform × 2     - Top-level zoomed waveform bands
+              ├─ Library                 - Folder/playlist manager with XML persistence
+              │    └─ PlaylistComponent  - Track list within a folder
+              ├─ MixerAudioSource       - Mixes both players
+              └─ CrossFader slider      - Cross-fade between decks
 ```
 
 ### Inheritance Chain (Waveform)
@@ -65,8 +65,8 @@ The `Library` class persists track folders to `~/.otodecks/Resource.xml` using `
 ## Key Data Structures
 
 - **`track` struct** (`src/Track.h`): POD-like struct with `title`, `lengthInSeconds`, `url`, `identity` fields. Contains a static `getLengthString()` utility.
-- **`Library::trackFolders`**: `std::vector<std::pair<juce::String, std::vector<track>>>` — folders of tracks.
-- **`DeckGUI::cueTargets`**: `std::map<juce::TextButton*, std::pair<double, float>>` — cue point positions + color hue.
+- **`Library::trackFolders`**: `std::vector<std::pair<juce::String, std::vector<track>>>` - folders of tracks.
+- **`DeckGUI::cueTargets`**: `std::map<juce::TextButton*, std::pair<double, float>>` - cue point positions + color hue.
 
 ---
 
@@ -76,7 +76,7 @@ When you need context on a component, read the corresponding files:
 
 | Concern | Header | Implementation |
 |---------|--------|----------------|
-| App entry point | — | `src/Main.cpp` |
+| App entry point | - | `src/Main.cpp` |
 | Root component, mixing, crossfade | `src/MainComponent.h` | `src/MainComponent.cpp` |
 | Per-deck UI (buttons, sliders, cues) | `src/DeckGUI.h` | `src/DeckGUI.cpp` |
 | Audio engine (playback, filters, gain) | `src/DJAudioPlayer.h` | `src/DJAudioPlayer.cpp` |
@@ -85,7 +85,7 @@ When you need context on a component, read the corresponding files:
 | Jog wheel display | `src/JogWheel.h` | `src/JogWheel.cpp` |
 | Track library & folders | `src/Library.h` | `src/Library.cpp` |
 | Playlist within folder | `src/PlaylistComponent.h` | `src/PlaylistComponent.cpp` |
-| Track data model | `src/Track.h` | — (header-only) |
+| Track data model | `src/Track.h` | - (header-only) |
 | Custom slider/table rendering | `src/CustomLookAndFeel.h` | `src/CustomLookAndFeel.cpp` |
 | Build config | `CMakeLists.txt` | `src/CMakeLists.txt` |
 
@@ -112,14 +112,14 @@ The build fetches JUCE, TagLib, and xwax via `FetchContent`. First build will be
 
 ### Before Writing Any Code
 
-1. **Read the relevant source files first.** Never guess at implementation details — the file reference table above tells you exactly where to look.
+1. **Read the relevant source files first.** Never guess at implementation details - the file reference table above tells you exactly where to look.
 2. **Understand the inheritance chain** before modifying waveform-related classes. Changes to `WaveformDisplay` protected members affect `ZoomedWaveform` and `JogWheel`.
 3. **Check the audio signal chain order** before modifying `DJAudioPlayer`. The IIR filter chain order matters.
 
 ### Code Style & Conventions
 
 4. Use **tab indentation** (the codebase uses tabs, not spaces).
-5. Use `juce::` **explicit namespace prefix** everywhere — never use `using namespace juce`.
+5. Use `juce::` **explicit namespace prefix** everywhere - never use `using namespace juce`.
 6. Use `#pragma once` for header guards (no `#ifndef` guards).
 7. Include `<JuceHeader.h>` as the first include in every file.
 8. Use **Doxygen-style `/** */` block comments** for all class and method documentation.
@@ -134,14 +134,14 @@ The build fetches JUCE, TagLib, and xwax via `FetchContent`. First build will be
 14. **Never call `delete` on JUCE components** that are managed by `std::unique_ptr` or parent ownership. Use `reset()` or let RAII handle it.
 15. New UI components must implement `paint()` and `resized()` and be added via `addAndMakeVisible()`.
 16. Timer-based components must call `stopTimer()` in the destructor.
-17. Binary assets (images, SVGs) are accessed via the `BinaryData::` namespace — check `assets/` for available files.
+17. Binary assets (images, SVGs) are accessed via the `BinaryData::` namespace - check `assets/` for available files.
 18. Use `juce::Colour::fromRGBA()` or named `juce::Colours::` for color values. The dark theme uses `RGBA(25, 25, 25, 255)` as the primary background and `RGBA(50, 50, 50, 255)` as the secondary.
 19. Deck 1 uses `juce::Colours::aqua` as its theme color. Deck 2 uses `juce::Colours::hotpink`.
 
 ### Architecture Rules
 
-20. **All audio processing stays in `DJAudioPlayer`** — DeckGUI delegates to the player, never processes audio directly.
-21. **DeckGUI communicates with Library by pointer reference** — do not create new coupling patterns.
+20. **All audio processing stays in `DJAudioPlayer`** - DeckGUI delegates to the player, never processes audio directly.
+21. **DeckGUI communicates with Library by pointer reference** - do not create new coupling patterns.
 22. **Do not add new global state.** Each deck is independent; shared state goes through `MainComponent`.
 23. When adding a new source file, add it to the `SOURCE_FILES` list in `src/CMakeLists.txt`.
 24. New binary assets go in `assets/` and must be registered in both `CMakeLists.txt` and `src/CMakeLists.txt` binary data sections.

@@ -6,7 +6,7 @@ namespace
 {
 	using Owned = FxFactory::Owned;
 
-	// "None" passthrough — selected by default in every slot.
+	// "None" passthrough - selected by default in every slot.
 	class NoneFx : public FxProcessor
 	{
 	public:

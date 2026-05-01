@@ -291,7 +291,7 @@ private:
   /// Number of in-flight ingest jobs (used to flip ingestActive correctly).
   std::atomic<int> ingestInFlight { 0 };
 
-  /// Latest progress text ("Importing N / M — filename"), guarded by lock.
+  /// Latest progress text ("Importing N / M - filename"), guarded by lock.
   juce::String ingestProgressText;
 
   /// CriticalSection guarding ingestProgressText (touched from message thread

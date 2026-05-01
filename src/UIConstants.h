@@ -7,15 +7,15 @@
  * layout dimensions used across MainComponent, DeckGUI, sidebars and the
  * custom LookAndFeel.
  *
- * Keep this header lean — only `constexpr` / `inline` values, no behaviour.
+ * Keep this header lean - only `constexpr` / `inline` values, no behaviour.
  */
 namespace UI
 {
 	// =========================================================================
-	// Colour palette — premium black with vibrant neon-leaning accents.
+	// Colour palette - premium black with vibrant neon-leaning accents.
 	// =========================================================================
 
-	/// Window background — premium near-black.
+	/// Window background - premium near-black.
 	inline const juce::Colour bgRoot       = juce::Colour::fromRGB(0x0A, 0x0A, 0x0D);
 
 	/// Primary surface colour for deck panels and the mixer body.
@@ -33,19 +33,19 @@ namespace UI
 	/// 1px outline for elevated cards.
 	inline const juce::Colour borderStrong = juce::Colour::fromRGB(0x3A, 0x3A, 0x45);
 
-	/// Primary (high-contrast) text — soft white, easier on the eye than pure white.
+	/// Primary (high-contrast) text - soft white, easier on the eye than pure white.
 	inline const juce::Colour textPrimary   = juce::Colour::fromRGB(0xF5, 0xF5, 0xF7);
 
-	/// Secondary text — labels, placeholders, units.
+	/// Secondary text - labels, placeholders, units.
 	inline const juce::Colour textSecondary = juce::Colour::fromRGB(0x9A, 0x9A, 0xA5);
 
 	/// Disabled text.
 	inline const juce::Colour textDisabled  = juce::Colour::fromRGB(0x5A, 0x5A, 0x65);
 
-	/// Deck 1 accent — vibrant neon-leaning sky blue (slightly darker than aqua).
+	/// Deck 1 accent - vibrant neon-leaning sky blue (slightly darker than aqua).
 	inline const juce::Colour deck1Accent  = juce::Colour::fromRGB(0x1F, 0xB8, 0xFF);
 
-	/// Deck 2 accent — pink/red hybrid (crimson-coral, neon).
+	/// Deck 2 accent - pink/red hybrid (crimson-coral, neon).
 	inline const juce::Colour deck2Accent  = juce::Colour::fromRGB(0xFF, 0x3D, 0x5C);
 
 	/// Confirm / sync-on accent (replaces the old dodgerblue toggle).
@@ -55,7 +55,7 @@ namespace UI
 	inline const juce::Colour accentWarning  = juce::Colour::fromRGB(0xFF, 0xB0, 0x20);
 
 	// =========================================================================
-	// Layout — corner radii.
+	// Layout - corner radii.
 	// =========================================================================
 
 	inline constexpr float kPanelRadius  = 10.0f; ///< Outer panels (sidebars, mixer, deck cards).
@@ -64,7 +64,7 @@ namespace UI
 	inline constexpr float kPillRadius   = 14.0f; ///< Pill-shaped (search, filter chips).
 
 	// =========================================================================
-	// Layout — sizes.
+	// Layout - sizes.
 	// =========================================================================
 
 	inline constexpr int kRailWidth        = 44;  ///< Width of vertical icon-tab rails.
@@ -80,7 +80,7 @@ namespace UI
 	inline constexpr int kButtonHeight     = 28;  ///< Standard rounded button height.
 
 	// =========================================================================
-	// Layout — responsive deck architecture metrics.
+	// Layout - responsive deck architecture metrics.
 	// =========================================================================
 
 	inline constexpr int kDeckMargin       =  8;  ///< Outer margin around the deck panel content area.

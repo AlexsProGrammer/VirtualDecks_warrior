@@ -91,7 +91,7 @@ Library::Library(juce::AudioFormatManager &_formatManager)
   addAndMakeVisible(importFolderBtn);
   importFolderBtn.setColour(juce::TextButton::buttonColourId, buttonColour);
 
-  // Progress strip — hidden until an ingest job is running.
+  // Progress strip - hidden until an ingest job is running.
   addAndMakeVisible(ingestProgressBar);
   ingestProgressBar.setJustificationType(juce::Justification::centredLeft);
   ingestProgressBar.setColour(juce::Label::backgroundColourId,
@@ -678,7 +678,7 @@ void Library::bpmAnalysisComplete(const juce::String& fileHash, double bpm)
 }
 
 //==============================================================================
-// Phase 2 — Off-thread library ingestion
+// Phase 2 - Off-thread library ingestion
 
 /**
  * Background ingest job. Builds completed track records (probing duration via
@@ -921,7 +921,7 @@ void Library::refreshIngestProgressUI()
 }
 
 //==============================================================================
-// Phase 2.5 — Async XML persistence
+// Phase 2.5 - Async XML persistence
 
 void Library::scheduleAsyncSave()
 {

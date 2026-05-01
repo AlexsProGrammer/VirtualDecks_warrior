@@ -13,7 +13,7 @@ void CueAudioCallback::audioDeviceIOCallbackWithContext(
 
 	if (cuedPlayer == nullptr)
 	{
-		// No deck is currently cued — output silence.
+		// No deck is currently cued - output silence.
 		for (int ch = 0; ch < numOutputChannels; ++ch)
 			juce::FloatVectorOperations::clear(outputChannelData[ch], numSamples);
 		return;

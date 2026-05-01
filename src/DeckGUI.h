@@ -192,11 +192,11 @@ private:
 	/// Optional pointer to the shared AudioEngine for asynchronous track loading.
 	AudioEngine* audioEngine = nullptr;
 
-	/// Track currently being loaded asynchronously — deferred post-load step.
+	/// Track currently being loaded asynchronously - deferred post-load step.
 	track pendingTrack;
 
-	/// "Loading…" overlay label shown while a track loads off-thread.
-	juce::Label loadingLabel { "LOADING", "Loading…" };
+	/// "Loading..." overlay label shown while a track loads off-thread.
+	juce::Label loadingLabel { "LOADING", "Loading..." };
 
 	/// Instance of CustomLookAndFeel class.
 	CustomLookAndFeel customLookAndFeel;
@@ -268,8 +268,6 @@ private:
 			}
 		}
 	};
-
-	RightClickGuard playBtnGuard, loadBtnGuard, cueBtnGuard, fastSyncGuard;
 
 	/// juce::Colour to define the theme of the DeckGUI
 	juce::Colour theme;
@@ -534,7 +532,7 @@ private:
 	juce::TextButton multTwoBtn{ juce::CharPointer_UTF8("\xc3\x97\x32") };
 
 	/// Displays the resolved target BPM the slave is locked to.
-	juce::Label targetBpmLabel{ "TGT_BPM", juce::CharPointer_UTF8("\xe2\x86\x92 ---") };
+	juce::Label targetBpmLabel{ "TGT_BPM", "-> ---" };
 
 	/// Displays human-readable sync status ("SYNCED", "OUT OF RANGE", etc.).
 	juce::Label syncStatusLabel{ "SYNC_ST", "" };
@@ -546,6 +544,8 @@ private:
 
 	/// DrawableButton for fast (one-click) sync, placed near play/load buttons.
 	juce::DrawableButton fastSyncBtn{ "Fast Sync", juce::DrawableButton::ButtonStyle::ImageFitted };
+
+	RightClickGuard playBtnGuard, loadBtnGuard, cueBtnGuard, fastSyncGuard;
 
 	/// Resets sync + master + speed back to defaults (track plays normally).
 	juce::TextButton syncResetBtn{ "RESET" };
@@ -606,7 +606,7 @@ private:
 		}
 	};
 
-	/// Pad FX tiles (4×2 grid, 8 slots — 7 effects + 1 spare).
+	/// Pad FX tiles (4×2 grid, 8 slots - 7 effects + 1 spare).
 	std::vector<std::unique_ptr<MomentaryFxTile>> padFxTiles;
 
 	/// Release FX tiles (3 slots: V.Brake, R.Echo, Back Spin).
@@ -665,7 +665,7 @@ private:
 	std::unique_ptr<DeckQueue> queueWidget;
 
 	//==============================================================================
-	// Phase 1 — Structural layout containers (Phase 2 will re-parent children).
+	// Phase 1 - Structural layout containers (Phase 2 will re-parent children).
 
 	/// Top header area: track title, BPM display and utility controls.
 	juce::Component topHeaderContainer;
@@ -688,7 +688,7 @@ private:
 	juce::Component sidebarContainer;
 
 	//==============================================================================
-	// Phase 1 — New utility button declarations.
+	// Phase 1 - New utility button declarations.
 
 	/// Unique pointer to juce::Drawable for the library button icon.
 	std::unique_ptr<juce::Drawable> libraryButtonImage;
