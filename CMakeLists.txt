@@ -58,7 +58,16 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(JUCE taglib xwax)
 
-juce_add_gui_app(juceDjApp)
+juce_add_gui_app(juceDjApp
+    PRODUCT_NAME "VirtualDecks"
+    COMPANY_NAME "Pro-Grammer"
+    COMPANY_COPYRIGHT "Copyright (c) 2025 Pro-Grammer"
+    COMPANY_WEBSITE "https://pro-grammer.de"
+    COMPANY_EMAIL "info@pro-grammer.de"
+    VERSION "0.9.5"
+    ICON_BIG "${CMAKE_SOURCE_DIR}/assets/logo.png"
+    MICROPHONE_PERMISSION_ENABLED TRUE
+    MICROPHONE_PERMISSION_TEXT "VirtualDecks requires microphone access for audio.")
 
 # Generate the JUCE aggregated header for the top-level app target so
 # `#include <JuceHeader.h>` resolves from sources under `src/`
@@ -256,4 +265,24 @@ if(WIN32)
     set(CPACK_COMPONENTS_ALL applications assets)
     
     include(CPack)
+elseif(UNIX AND NOT APPLE)
+    # Linux-specific icon installation for desktop integration
+    # Install icon to standard freedesktop.org location
+    install(FILES "${CMAKE_SOURCE_DIR}/assets/logo.png"
+        DESTINATION share/icons/hicolor/512x512/apps/
+        RENAME VirtualDecks.png
+        COMPONENT applications)
+    
+    # Also install a smaller version for the taskbar
+    install(FILES "${CMAKE_SOURCE_DIR}/assets/logo.png"
+        DESTINATION share/icons/hicolor/256x256/apps/
+        RENAME VirtualDecks.png
+        COMPONENT applications)
+    
+    # Update icon cache (if available)
+    install(CODE "execute_process(COMMAND gtk-update-icon-cache /usr/share/icons/hicolor RESULT_VARIABLE result ERROR_QUIET)")
+    
+    install(TARGETS juceDjApp
+        RUNTIME DESTINATION bin
+        COMPONENT applications)
 endif()

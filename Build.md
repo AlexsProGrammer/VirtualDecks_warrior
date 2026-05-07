@@ -152,9 +152,9 @@ The executable will be at: `build/juceDjApp_artefacts/juceDjApp` (or `build/juce
 #### Verify the Build
 
 ```bash
-file build/juceDjApp_artefacts/juceDjApp
-ldd build/juceDjApp_artefacts/juceDjApp  # Check runtime dependencies
-./build/juceDjApp_artefacts/juceDjApp    # Test run
+file build/juceDjApp_artefacts/Release/VirtualDecks
+ldd build/juceDjApp_artefacts/Release/VirtualDecks  # Check runtime dependencies
+./build/juceDjApp_artefacts/Release/VirtualDecks    # Test run
 ```
 
 ---
@@ -175,7 +175,7 @@ package/
 └── linux/
     ├── VirtualDecks-0.9.5-x86_64/             (AppImage bundle)
     │   ├── VirtualDecks-0.9.5-x86_64.AppImage
-    │   ├── virtualdecks.png
+    │   ├── logo.png
     │   └── virtualdecks.desktop
     ├── virtualdecks_0.9.5_amd64.deb           (Debian package)
     └── virtualdecks-0.9.5-1.el8.x86_64.rpm    (RPM package)
@@ -308,43 +308,50 @@ cmake --build build -- -j$(nproc)
 ```bash
 mkdir -p package/linux/AppDir/usr/bin
 mkdir -p package/linux/AppDir/usr/share/applications
-mkdir -p package/linux/AppDir/usr/share/icons/hicolor/256x256/apps
+mkdir -p package/linux/AppDir/usr/share/icons
 mkdir -p package/linux/VirtualDecks-0.9.5-x86_64
 
 # Copy executable (Check exact path depending on Ninja/Make)
-cp build/juceDjApp_artefacts/juceDjApp package/linux/AppDir/usr/bin/
+cp build/juceDjApp_artefacts/Release/VirtualDecks package/linux/AppDir/usr/bin/
 
 # Copy icon
-cp assets/logo.png package/linux/AppDir/usr/share/icons/hicolor/256x256/apps/virtualdecks.png
+cp assets/logo.png package/linux/AppDir/usr/share/icons/virtualdecks.png
 ```
 
 **Step 3: Create .desktop File**
 
 Create `virtualdecks.desktop` (or copy if exists) to `package/linux/AppDir/usr/share/applications/`:
 
-```ini
-[Desktop Entry]
-Name=VirtualDecks
-Exec=juceDjApp
-Icon=virtualdecks
-Type=Application
-Categories=Audio;AudioVideo;
+```bash
+cp virtualdecks.desktop package/linux/AppDir/usr/share/applications/virtualdecks.desktop
 ```
 
 **Step 4: Download & Run AppImage Tools**
 
 ```bash
 mkdir -p package/linux/tools
-wget [https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage](https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage)
+wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
 chmod +x linuxdeploy-x86_64.AppImage
+mv linuxdeploy-x86_64.AppImage package/linux/tools/
 
-./linuxdeploy-x86_64.AppImage \
+./package/linux/tools/linuxdeploy-x86_64.AppImage \
   --appdir package/linux/AppDir \
   --desktop-file package/linux/AppDir/usr/share/applications/virtualdecks.desktop \
-  --icon-file package/linux/AppDir/usr/share/icons/hicolor/256x256/apps/virtualdecks.png \
+  --icon-file package/linux/AppDir/usr/share/icons/virtualdecks.png \
   --output appimage
+```
 
-mv VirtualDecks-*-x86_64.AppImage package/linux/VirtualDecks-0.9.5-x86_64/
+**Step 4: Move to Package Folder**
+
+```bash
+# Move AppImage and supporting files to release package folder
+mv VirtualDecks-x86_64.AppImage package/linux/VirtualDecks-0.9.5-x86_64/
+cp assets/logo.png package/linux/VirtualDecks-0.9.5-x86_64/virtualdecks.png
+cp package/linux/AppDir/usr/share/applications/virtualdecks.desktop package/linux/VirtualDecks-0.9.5-x86_64/
+
+# Zip the AppImage release folder
+cd package/linux
+zip -r VirtualDecks-0.9.5-x86_64-AppImage.zip VirtualDecks-0.9.5-x86_64
 ```
 
 ---
@@ -358,8 +365,8 @@ mkdir -p /tmp/virtualdecks-deb-stage/usr/share/applications
 mkdir -p /tmp/virtualdecks-deb-stage/usr/share/icons
 
 # Copy files
-cp build/juceDjApp_artefacts/juceDjApp /tmp/virtualdecks-deb-stage/usr/local/bin/
-cp virtualdecks.desktop /tmp/virtualdecks-deb-stage/usr/share/applications/
+cp build/juceDjApp_artefacts/Release/VirtualDecks /tmp/virtualdecks-deb-stage/usr/local/bin/
+cp virtualdecks.desktop /tmp/virtualdecks-deb-stage/usr/share/applications/virtualdecks.desktop
 cp assets/logo.png /tmp/virtualdecks-deb-stage/usr/share/icons/virtualdecks.png
 
 # Create DEB
@@ -372,7 +379,7 @@ fpm -s dir -t deb \
   --url "[https://github.com/AlexsdeG/virtualdecks_warrior](https://github.com/AlexsdeG/virtualdecks_warrior)" \
   --license MIT \
   -C /tmp/virtualdecks-deb-stage \
-  usr/local/bin/juceDjApp \
+  usr/local/bin/VirtualDecks \
   usr/share/applications/virtualdecks.desktop \
   usr/share/icons/virtualdecks.png
 
@@ -390,7 +397,7 @@ mkdir -p /tmp/virtualdecks-rpm-stage/usr/local/bin
 mkdir -p /tmp/virtualdecks-rpm-stage/usr/share/icons
 
 # Copy files
-cp build/juceDjApp_artefacts/juceDjApp /tmp/virtualdecks-rpm-stage/usr/local/bin/
+cp build/juceDjApp_artefacts/Release/VirtualDecks /tmp/virtualdecks-rpm-stage/usr/local/bin/VirtualDecks
 cp assets/logo.png /tmp/virtualdecks-rpm-stage/usr/share/icons/virtualdecks.png
 
 # Create RPM
@@ -403,7 +410,7 @@ fpm -s dir -t rpm \
   --url "[https://github.com/AlexsdeG/virtualdecks_warrior](https://github.com/AlexsdeG/virtualdecks_warrior)" \
   --license MIT \
   -C /tmp/virtualdecks-rpm-stage \
-  usr/local/bin/juceDjApp \
+  usr/local/bin/VirtualDecks \
   usr/share/icons/virtualdecks.png
 
 mv virtualdecks-0.9.5-1.x86_64.rpm package/linux/
