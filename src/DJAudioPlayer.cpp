@@ -91,8 +91,22 @@ void DJAudioPlayer::getNextAudioBlock(const juce::AudioSourceChannelInfo& buffer
 	}
 
 	// 4) Update RMS for UI meters.
-	const float rmsLevelLeft  = juce::Decibels::gainToDecibels(bufferToFill.buffer->getRMSLevel(0, 0, bufferToFill.buffer->getNumSamples()));
-	const float rmsLevelRight = juce::Decibels::gainToDecibels(bufferToFill.buffer->getRMSLevel(1, 0, bufferToFill.buffer->getNumSamples()));
+	const int numChannels = bufferToFill.buffer->getNumChannels();
+	float rmsLevelLeft  = -100.0f;
+	float rmsLevelRight = -100.0f;
+
+	if (numChannels > 0)
+	{
+		rmsLevelLeft = juce::Decibels::gainToDecibels(
+			bufferToFill.buffer->getRMSLevel(0, bufferToFill.startSample, bufferToFill.numSamples));
+		
+		if (numChannels > 1)
+			rmsLevelRight = juce::Decibels::gainToDecibels(
+				bufferToFill.buffer->getRMSLevel(1, bufferToFill.startSample, bufferToFill.numSamples));
+		else
+			rmsLevelRight = rmsLevelLeft;
+	}
+
 	level.store((rmsLevelLeft + rmsLevelRight) / 2.0f, std::memory_order_release);
 
 	// 5) Track worst-case callback duration for profiling (printed on shutdown).
@@ -148,6 +162,9 @@ int DJAudioPlayer::readCueTap(float* const* destChannels, int numChannels, int n
 
 	for (int ch = 0; ch < numChannels; ++ch)
 	{
+		if (destChannels[ch] == nullptr)
+			continue;
+
 		const int srcCh = juce::jmin(ch, cueBuffer.getNumChannels() - 1);
 		if (size1 > 0)
 			juce::FloatVectorOperations::copy(destChannels[ch],

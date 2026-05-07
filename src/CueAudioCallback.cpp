@@ -15,7 +15,10 @@ void CueAudioCallback::audioDeviceIOCallbackWithContext(
 	{
 		// No deck is currently cued - output silence.
 		for (int ch = 0; ch < numOutputChannels; ++ch)
-			juce::FloatVectorOperations::clear(outputChannelData[ch], numSamples);
+		{
+			if (outputChannelData[ch] != nullptr)
+				juce::FloatVectorOperations::clear(outputChannelData[ch], numSamples);
+		}
 		return;
 	}
 
@@ -25,6 +28,9 @@ void CueAudioCallback::audioDeviceIOCallbackWithContext(
 	if (read < numSamples)
 	{
 		for (int ch = 0; ch < numOutputChannels; ++ch)
-			juce::FloatVectorOperations::clear(outputChannelData[ch] + read, numSamples - read);
+		{
+			if (outputChannelData[ch] != nullptr)
+				juce::FloatVectorOperations::clear(outputChannelData[ch] + read, numSamples - read);
+		}
 	}
 }

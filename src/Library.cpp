@@ -110,47 +110,48 @@ Library::Library(juce::AudioFormatManager &_formatManager)
 
   bpmAnalysisManager.addListener(this);
 
-  // Defer hashing + BPM dispatch for legacy tracks (those persisted before
-  // fileHash was a field) onto a background thread so the constructor
-  // returns immediately and the UI can paint.
-  juce::Thread::launch([this]() {
-    // Build a snapshot of (identity, file) pairs that need hashing.
-    struct Pending { juce::String identity; juce::File file; };
-    std::vector<Pending> pending;
-
-    {
-      // Read trackFolders on a brief message-thread hop to capture a snapshot.
-      juce::WaitableEvent done;
-      juce::MessageManager::callAsync([this, &pending, &done]() {
-        for (auto& folder : trackFolders)
-          for (auto& t : folder.second)
-            if (t.fileHash.isEmpty())
-              pending.push_back({ t.identity, t.url.getLocalFile() });
-        done.signal();
-      });
-      done.wait(2000);
+  // 1. Build the snapshot synchronously (we are already on the Message Thread!)
+  struct Pending { juce::String identity; juce::File file; };
+  std::vector<Pending> pending;
+  
+  for (auto& folder : trackFolders) {
+    for (auto& t : folder.second) {
+      if (t.fileHash.isEmpty()) {
+        pending.push_back({ t.identity, t.url.getLocalFile() });
+      }
     }
+  }
 
+  // 2. Defer hashing + BPM dispatch onto a background thread
+  // Pass the 'pending' vector into the lambda by value using std::move
+  juce::Thread::launch([this, pending = std::move(pending)]() {
+    
     // Hash off-thread.
     for (auto& p : pending) {
       if (! p.file.existsAsFile())
         continue;
+        
       auto hash = FileHasher::computeHash(p.file);
       if (hash.isEmpty())
         continue;
+        
       auto identity = p.identity;
       juce::MessageManager::callAsync([this, identity, hash]() {
-        for (auto& folder : trackFolders)
-          for (auto& t : folder.second)
-            if (t.identity == identity && t.fileHash.isEmpty())
+        for (auto& folder : trackFolders) {
+          for (auto& t : folder.second) {
+            if (t.identity == identity && t.fileHash.isEmpty()) {
               t.fileHash = hash;
+            }
+          }
+        }
       });
     }
 
     // Dispatch BPM analysis once hashing is broadly settled.
     juce::MessageManager::callAsync([this]() {
-      for (auto& folder : trackFolders)
+      for (auto& folder : trackFolders) {
         queueBpmAnalysis(folder.second);
+      }
     });
   });
 }
