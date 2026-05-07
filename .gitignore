@@ -15,3 +15,5 @@ lib/xwax/
 
 build/
 build-tsan/
+
+package/

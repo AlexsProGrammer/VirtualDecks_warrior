@@ -121,6 +121,9 @@ file(GLOB_RECURSE SourceFiles CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src
 # No, we don't want our source buried in extra nested folders
 set_target_properties("${PROJECT_NAME}" PROPERTIES FOLDER "")
 
+# Benennt die physische Datei in 'VirtualDecks.exe' um
+set_target_properties(juceDjApp PROPERTIES OUTPUT_NAME "VirtualDecks")
+
 # The IDE/source tree should look like the source tree
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source" FILES ${SourceFiles})
 target_sources("${PROJECT_NAME}" PRIVATE ${SourceFiles})
@@ -210,4 +213,47 @@ if(JACK_FOUND)
     target_link_libraries(juceDjApp PRIVATE ${JACK_LIBRARIES})
 else()
     message(STATUS "JACK not found; headphone output will use ALSA only")
+endif()
+
+# ============================================================================
+# Install and Packaging Configuration
+# ============================================================================
+
+if(WIN32)
+    # Windows NSIS installer configuration
+    set(CPACK_GENERATOR "NSIS")
+    set(CPACK_PACKAGE_NAME "VirtualDecks")
+    set(CPACK_PACKAGE_VERSION "0.9.5")
+    set(CPACK_PACKAGE_VENDOR "Pro-Grammer")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "VirtualDecks - Cross-platform DJ application")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "VirtualDecks")
+    
+    # NSIS specific settings
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    set(CPACK_NSIS_CREATE_ICONS_EXTRA "CreateDirectory '$SMPROGRAMS\\\\$STARTMENU_FOLDER'\nCreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\VirtualDecks.lnk' '$INSTDIR\\\\bin\\\\VirtualDecks.exe'")
+    set(CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\VirtualDecks.lnk'")
+    
+    # Ändere diese Zeilen in deiner CPack-Konfiguration:
+    set(CPACK_NSIS_EXECUTABLE_NAME "VirtualDecks")
+    set(CPACK_PACKAGE_EXECUTABLE "VirtualDecks;VirtualDecks Warrior")
+
+    # Install target
+    install(TARGETS juceDjApp
+        RUNTIME DESTINATION bin
+        COMPONENT applications
+    )
+    
+    # Install assets
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/
+        DESTINATION assets
+        COMPONENT assets
+        PATTERN "*.json"
+        PATTERN "*.png"
+        PATTERN "*.svg"
+    )
+    
+    # Only package the things we actually want!
+    set(CPACK_COMPONENTS_ALL applications assets)
+    
+    include(CPack)
 endif()
