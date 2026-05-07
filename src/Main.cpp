@@ -8,7 +8,7 @@
 
 #include <JuceHeader.h>
 #include "MainComponent.h"
-#include "UIConstants.h"
+#include "utilities/UIConstants.h"
 
 //==============================================================================
 class OtoDecksApplication : public juce::JUCEApplication

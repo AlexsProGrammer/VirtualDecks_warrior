@@ -3,36 +3,36 @@
 # Attach sources to the top-level `juceDjApp` target if it exists, otherwise
 # create a local `JUCELoopStation` JUCE app target and configure it.
 
+# Add subdirectories for modular organization
+add_subdirectory(core)
+add_subdirectory(ui)
+add_subdirectory(utilities)
+
+# Collect all sources from subdomains
 set(SOURCE_FILES
     Main.cpp
     MainComponent.cpp
-    DeckGUI.cpp
-    DJAudioPlayer.cpp
-    JogWheel.cpp
-    PlaylistComponent.cpp
-    WaveformDisplay.cpp
-    ZoomedWaveform.cpp
-    WaveformBandAnalyzer.cpp
-    BeatGridConfig.cpp
-    TrackDataCache.cpp
-    BpmDetector.cpp
-    BpmAnalysisManager.cpp
-    BeatSyncManager.cpp
-    FileHasher.cpp
-    FxFactory.cpp
-    FxSettings.cpp
-    FxParameterModal.cpp
-    DeckLibrarySidebar.cpp
-    DeckQueue.cpp
-    CueAudioCallback.cpp
-    AppSettings.cpp
-    SettingsPanel.cpp
+    ${CORE_SOURCES}
+    ${UI_SOURCES}
+    ${UTILITIES_SOURCES}
 )
 
 if(TARGET juceDjApp)
-    target_sources(juceDjApp PRIVATE ${SOURCE_FILES}
-        FxParameterModal.cpp)
-    target_include_directories(juceDjApp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_sources(juceDjApp PRIVATE ${SOURCE_FILES})
+    target_include_directories(juceDjApp PRIVATE 
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/audio
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/data
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/analysis
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/effects
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui/decks
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui/waveforms
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui/library
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui/settings
+        ${CMAKE_CURRENT_SOURCE_DIR}/utilities
+    )
     # (JUCE header generation moved after binary-data setup below)
     # Ensure binary data used by the sources is bundled and linked into the top-level app
     set(LoopStationBinaryData_SOURCES)
@@ -171,7 +171,20 @@ else()
     juce_generate_juce_header(JUCELoopStation)
 
     target_sources(JUCELoopStation PRIVATE ${SOURCE_FILES})
-    target_include_directories(JUCELoopStation PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(JUCELoopStation PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/audio
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/data
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/analysis
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/effects
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui/decks
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui/waveforms
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui/library
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui/settings
+        ${CMAKE_CURRENT_SOURCE_DIR}/utilities
+    )
 
     target_link_libraries(JUCELoopStation
         PRIVATE

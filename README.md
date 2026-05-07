@@ -2,7 +2,7 @@
 
 <img src="assets/logo.png" width="120" alt="OtoDecks Logo" />
 
-# OtoDecks
+# VirtualDecks
 
 **Professional dual-deck DJ application built with C++17 and the JUCE framework.**
 
@@ -16,6 +16,12 @@
 </p>
 
 </div>
+
+
+<center>
+  <img src="./VirtualDecks.png" alt="App Screenshot">
+</center>
+
 
 ---
 
@@ -201,9 +207,9 @@ Each deck has an independent track queue (`DeckQueue`):
 ## Architecture
 
 ```
-OtoDecksApplication  (juce::JUCEApplication)
-└── MainWindow        (juce::DocumentWindow)
-    └── MainComponent (juce::AudioAppComponent)
+VirtualDecksApplication  (juce::JUCEApplication)
+└── MainWindow           (juce::DocumentWindow)
+    └── MainComponent    (juce::AudioAppComponent)
          ├── AudioEngine
          │    ├── DJAudioPlayer × 2       - per-deck signal chain + FxChain
          │    └── MixerAudioSource        - mixes both players

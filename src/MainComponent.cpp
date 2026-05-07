@@ -1,5 +1,5 @@
 #include "MainComponent.h"
-#include "FxSettings.h"
+#include "core/effects/FxSettings.h"
 
 //==============================================================================
 

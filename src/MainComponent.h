@@ -1,16 +1,16 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "DJAudioPlayer.h"
-#include "AudioEngine.h"
-#include "DeckGUI.h"
-#include "Library.h"
-#include "CustomLookAndFeel.h"
-#include "BeatSyncManager.h"
-#include "DeckLibrarySidebar.h"
-#include "CueAudioCallback.h"
-#include "AppSettings.h"
-#include "SettingsPanel.h"
+#include "core/audio/DJAudioPlayer.h"
+#include "core/audio/AudioEngine.h"
+#include "ui/decks/DeckGUI.h"
+#include "core/data/Library.h"
+#include "ui/settings/CustomLookAndFeel.h"
+#include "core/analysis/BeatSyncManager.h"
+#include "ui/decks/DeckLibrarySidebar.h"
+#include "utilities/CueAudioCallback.h"
+#include "core/data/AppSettings.h"
+#include "ui/settings/SettingsPanel.h"
 
 //==============================================================================
 /*
