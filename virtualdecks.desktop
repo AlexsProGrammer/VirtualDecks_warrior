@@ -1,6 +1,8 @@
 [Desktop Entry]
 Name=VirtualDecks
+Comment=VirtualDecks DJ Application
 Exec=VirtualDecks
 Icon=virtualdecks
 Type=Application
+Terminal=false
 Categories=Audio;AudioVideo;

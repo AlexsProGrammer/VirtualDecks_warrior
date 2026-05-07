@@ -267,21 +267,22 @@ if(WIN32)
     include(CPack)
 elseif(UNIX AND NOT APPLE)
     # Linux-specific icon installation for desktop integration
-    # Install icon to standard freedesktop.org location
+    # Install icon to standard freedesktop.org hicolor locations (lowercase name matches Icon= key)
     install(FILES "${CMAKE_SOURCE_DIR}/assets/logo.png"
         DESTINATION share/icons/hicolor/512x512/apps/
-        RENAME VirtualDecks.png
+        RENAME virtualdecks.png
         COMPONENT applications)
-    
-    # Also install a smaller version for the taskbar
+
     install(FILES "${CMAKE_SOURCE_DIR}/assets/logo.png"
         DESTINATION share/icons/hicolor/256x256/apps/
-        RENAME VirtualDecks.png
+        RENAME virtualdecks.png
         COMPONENT applications)
-    
-    # Update icon cache (if available)
-    install(CODE "execute_process(COMMAND gtk-update-icon-cache /usr/share/icons/hicolor RESULT_VARIABLE result ERROR_QUIET)")
-    
+
+    # Install .desktop file for start menu / application launcher
+    install(FILES "${CMAKE_SOURCE_DIR}/virtualdecks.desktop"
+        DESTINATION share/applications/
+        COMPONENT applications)
+
     install(TARGETS juceDjApp
         RUNTIME DESTINATION bin
         COMPONENT applications)

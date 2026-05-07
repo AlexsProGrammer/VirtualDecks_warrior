@@ -308,14 +308,14 @@ cmake --build build -- -j$(nproc)
 ```bash
 mkdir -p package/linux/AppDir/usr/bin
 mkdir -p package/linux/AppDir/usr/share/applications
-mkdir -p package/linux/AppDir/usr/share/icons
+mkdir -p package/linux/AppDir/usr/share/icons/hicolor/256x256/apps
 mkdir -p package/linux/VirtualDecks-0.9.5-x86_64
 
 # Copy executable (Check exact path depending on Ninja/Make)
 cp build/juceDjApp_artefacts/Release/VirtualDecks package/linux/AppDir/usr/bin/
 
-# Copy icon
-cp assets/logo.png package/linux/AppDir/usr/share/icons/virtualdecks.png
+# Copy icon into hicolor theme structure
+cp assets/logo.png package/linux/AppDir/usr/share/icons/hicolor/256x256/apps/virtualdecks.png
 ```
 
 **Step 3: Create .desktop File**
@@ -337,11 +337,11 @@ mv linuxdeploy-x86_64.AppImage package/linux/tools/
 ./package/linux/tools/linuxdeploy-x86_64.AppImage \
   --appdir package/linux/AppDir \
   --desktop-file package/linux/AppDir/usr/share/applications/virtualdecks.desktop \
-  --icon-file package/linux/AppDir/usr/share/icons/virtualdecks.png \
+  --icon-file package/linux/AppDir/usr/share/icons/hicolor/256x256/apps/virtualdecks.png \
   --output appimage
 ```
 
-**Step 4: Move to Package Folder**
+**Step 5: Move to Package Folder**
 
 ```bash
 # Move AppImage and supporting files to release package folder
@@ -394,10 +394,12 @@ rm -rf /tmp/virtualdecks-deb-stage
 ```bash
 # Create staging directory
 mkdir -p /tmp/virtualdecks-rpm-stage/usr/local/bin
+mkdir -p /tmp/virtualdecks-rpm-stage/usr/share/applications
 mkdir -p /tmp/virtualdecks-rpm-stage/usr/share/icons
 
 # Copy files
 cp build/juceDjApp_artefacts/Release/VirtualDecks /tmp/virtualdecks-rpm-stage/usr/local/bin/VirtualDecks
+cp virtualdecks.desktop /tmp/virtualdecks-rpm-stage/usr/share/applications/virtualdecks.desktop
 cp assets/logo.png /tmp/virtualdecks-rpm-stage/usr/share/icons/virtualdecks.png
 
 # Create RPM
@@ -411,6 +413,7 @@ fpm -s dir -t rpm \
   --license MIT \
   -C /tmp/virtualdecks-rpm-stage \
   usr/local/bin/VirtualDecks \
+  usr/share/applications/virtualdecks.desktop \
   usr/share/icons/virtualdecks.png
 
 mv virtualdecks-0.9.5-1.x86_64.rpm package/linux/
