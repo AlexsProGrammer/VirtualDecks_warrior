@@ -269,6 +269,15 @@ private:
 		}
 	};
 
+	/// Mouse listener for the transport CUE button (hold-to-preview behavior).
+	struct CuePointGuard : public juce::MouseListener
+	{
+		DeckGUI* owner = nullptr;
+
+		void mouseDown(const juce::MouseEvent& e) override;
+		void mouseUp(const juce::MouseEvent& e) override;
+	};
+
 	/// juce::Colour to define the theme of the DeckGUI
 	juce::Colour theme;
 
@@ -544,6 +553,21 @@ private:
 
 	/// DrawableButton for fast (one-click) sync, placed near play/load buttons.
 	juce::DrawableButton fastSyncBtn{ "Fast Sync", juce::DrawableButton::ButtonStyle::ImageFitted };
+
+	/// Transport CUE button - stores and recalls a single cue point for hold-to-preview.
+	juce::TextButton cuePointBtn{ "CUE" };
+
+	/// Transport cue position (0..1 relative), -1.0 = unset
+	double transportCuePos { -1.0 };
+
+	/// True while holding the cue button for hold-to-preview behavior
+	bool transportCuePreviewing { false };
+
+	/// Guard to capture mouseDown/mouseUp on cuePointBtn for hold-to-preview
+	CuePointGuard cuePointGuard;
+
+	/// Update visual state of the cue point button (glow when cue is set)
+	void updateCuePointBtn();
 
 	RightClickGuard playBtnGuard, loadBtnGuard, cueBtnGuard, fastSyncGuard;
 

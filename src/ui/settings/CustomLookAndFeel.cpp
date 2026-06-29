@@ -131,7 +131,8 @@ std::unique_ptr<juce::Drawable> CustomLookAndFeel::loadIcon(const char* svgData,
 juce::Font CustomLookAndFeel::getTextButtonFont(juce::TextButton& button, int buttonHeight)
 {
 	const float size = juce::jlimit(10.0f, 14.0f, buttonHeight * 0.42f);
-	return juce::Font(juce::FontOptions(size).withStyle(button.getToggleState() ? "Bold" : "Plain"));
+	const bool forceBold = (bool) button.getProperties().getWithDefault("forceBoldText", false);
+	return juce::Font(juce::FontOptions(size).withStyle(forceBold || button.getToggleState() ? "Bold" : "Plain"));
 }
 
 juce::Font CustomLookAndFeel::getLabelFont(juce::Label& label)

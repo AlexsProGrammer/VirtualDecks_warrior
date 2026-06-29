@@ -86,6 +86,20 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	cueButton.addListener(this);
 	jogWheelContainer.addAndMakeVisible(cueButton);
 
+	// Transport CUE button - holds to preview from cue point
+	cuePointBtn.setColour(juce::TextButton::buttonColourId, juce::Colours::white);
+	cuePointBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colours::white.darker(0.2f));
+	cuePointBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::black);
+	cuePointBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
+	cuePointBtn.setClickingTogglesState(false);
+	cuePointBtn.getProperties().set("circularOutline", true);
+	cuePointBtn.getProperties().set("forceBoldText", true);
+	cuePointBtn.setLookAndFeel(&customLookAndFeel);
+	cuePointBtn.setTooltip("CUE - press to set/recall cue point; hold to preview from cue");
+	cuePointGuard.owner = this;
+	cuePointBtn.addMouseListener(&cuePointGuard, false);
+	jogWheelContainer.addAndMakeVisible(cuePointBtn);
+
 	// Per-deck queue widget. Click a row to jump to that track.
 	queueWidget = std::make_unique<DeckQueue>(theme, [this](const track& t) { loadDeck(t); });
 	mixerContainer.addAndMakeVisible(*queueWidget);
@@ -119,6 +133,9 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	highBandFilter.addMouseListener(this, false);
 
 	startTimer(33); // 30 fps is imperceptible for waveform updates; halving from 50 Hz reduces render work
+
+	// Initialize transport CUE button visual state (cue is unset at startup)
+	updateCuePointBtn();
 
 	for (auto i = 0; i < 6; ++i) {
 		cues.push_back(new juce::TextButton());
@@ -681,13 +698,18 @@ void DeckGUI::resized()
 		playButton .setBounds(jogRect.getX() - btnSz - gap,    jogRect.getBottom() - btnSz,          btnSz, btnSz);
 		fastSyncBtn.setBounds(jogRect.getRight() + gap,        jogRect.getBottom() - btnSz,          btnSz, btnSz);
 
+		// Transport CUE button: centre it vertically on the left column between load/play
+		const int verticalGap = playButton.getY() - loadButton.getBottom() - gap * 2 - btnSz;
+		const int cuePtY      = loadButton.getBottom() + gap + verticalGap / 2;
+		cuePointBtn.setBounds(jogRect.getX() - btnSz - gap,    cuePtY,                               btnSz, btnSz);
+
 		// BPM block: centred in the vertical strip between top and bottom corner
-		// buttons, on the outer column beside the jog wheel.
+		// buttons, always on the right-side jog wheel column.
 		const int bpmH    = 13 + 10; // value (13 px) + percent (10 px)
-		const int bpmColX = isDeck2 ? cueButton.getX()     : loadButton.getX();
-		const int bpmColW = isDeck2 ? cueButton.getWidth()  : loadButton.getWidth();
-		const int midTop  = isDeck2 ? cueButton.getBottom() : loadButton.getBottom();
-		const int midBot  = isDeck2 ? fastSyncBtn.getY()    : playButton.getY();
+		const int bpmColX = cueButton.getX();
+		const int bpmColW = cueButton.getWidth();
+		const int midTop  = cueButton.getBottom();
+		const int midBot  = fastSyncBtn.getY();
 		const int bpmY    = midTop + (midBot - midTop - bpmH) / 2;
 		bpmValueLabel.setBounds(bpmColX, bpmY, bpmColW, 13);
 		// bpmPercentLabel is positioned dynamically above the speed slider thumb.
@@ -1532,6 +1554,9 @@ void DeckGUI::timerCallback() {
 	reloopBtn.setColour(juce::TextButton::buttonColourId,
 		loopOn ? juce::Colours::limegreen.withAlpha(0.6f) : UI::bgRoot);
 
+	// Keep cue point button state in sync
+	updateCuePointBtn();
+
 	// Fire pending quantize action if its time has arrived
 	if (pendingAction.isValid()) {
 		double now = juce::Time::getMillisecondCounterHiRes() / 1000.0;
@@ -1644,6 +1669,11 @@ void DeckGUI::finishLoadDeck() {
 
 	player->setGain(1.0, true);
 	cueTargets.clear();
+
+	// Reset transport CUE point when a new track loads
+	transportCuePos = -1.0;
+	transportCuePreviewing = false;
+	updateCuePointBtn();
 
 	// Update current track identity early so async callbacks below can stale-guard against it.
 	currentTrackIdentity = t.identity;
@@ -2468,6 +2498,79 @@ void DeckGUI::setCueActive(bool active) noexcept
 	                    active ? theme.withAlpha(0.85f)
 	                           : juce::Colours::transparentBlack);
 	cueButton.repaint();
+}
+
+//==============================================================================
+
+/**
+ * CuePointGuard::mouseDown - Handle the initial press of the transport CUE button.
+ * - If no cue is set: store current playback position as the cue point.
+ * - If cue is set and stopped: jump to cue position and start preview.
+ * - If cue is set and playing: jump to cue and stop.
+ */
+void DeckGUI::CuePointGuard::mouseDown(const juce::MouseEvent& /* e */)
+{
+	if (owner == nullptr || owner->player == nullptr) return;
+
+	// Case 1: No cue set yet - store current position and start preview on hold.
+	if (owner->transportCuePos < 0.0) {
+		owner->transportCuePos = owner->player->getPositionRelative();
+		owner->updateCuePointBtn();
+		if (! owner->player->isPlaying()) {
+			owner->player->setPositionRelative(owner->transportCuePos);
+			owner->player->start();
+			owner->transportCuePreviewing = true;
+		}
+		return;
+	}
+
+	// Case 2: Cue is set - handle preview logic based on playback state
+	if (owner->player->isPlaying()) {
+		// Playing: jump to cue and stop
+		owner->player->setPositionRelative(owner->transportCuePos);
+		owner->player->stop();
+	} else {
+		// Stopped: jump to cue and start preview
+		owner->player->setPositionRelative(owner->transportCuePos);
+		owner->player->start();
+		owner->transportCuePreviewing = true;
+	}
+}
+
+/**
+ * CuePointGuard::mouseUp - Handle release of the transport CUE button.
+ * If we were in preview mode (hold-to-preview), stop playback and return to cue position.
+ */
+void DeckGUI::CuePointGuard::mouseUp(const juce::MouseEvent& /* e */)
+{
+	if (owner == nullptr || owner->player == nullptr) return;
+
+	// If we started a preview on mouseDown, now stop it
+	if (owner->transportCuePreviewing) {
+		owner->player->stop();
+		owner->player->setPositionRelative(owner->transportCuePos);
+		owner->transportCuePreviewing = false;
+	}
+
+	owner->updateCuePointBtn();
+}
+
+//==============================================================================
+
+/**
+ * Update the visual state of the transport CUE button.
+ * When a cue is set (transportCuePos >= 0), the button background darkens slightly.
+ * When no cue is set, the button stays white.
+ */
+void DeckGUI::updateCuePointBtn()
+{
+	const bool hasCue = transportCuePos >= 0.0;
+	cuePointBtn.setToggleState(hasCue, juce::dontSendNotification);
+	// Darken the button slightly when a cue is set
+	cuePointBtn.setColour(juce::TextButton::buttonColourId,
+	                       hasCue ? juce::Colours::white.darker(0.15f)
+	                               : juce::Colours::white);
+	cuePointBtn.repaint();
 }
 
 //==============================================================================
