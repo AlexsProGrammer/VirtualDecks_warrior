@@ -82,6 +82,12 @@ void DJAudioPlayer::getNextAudioBlock(const juce::AudioSourceChannelInfo& buffer
 		}
 		cueFifo.finishedWrite(toCopy);
 	}
+
+	// 2c) If master output mute is active, silence the buffer (CUE monitoring).
+	if (cueMuted.load(std::memory_order_acquire))
+	{
+		bufferToFill.buffer->clear(bufferToFill.startSample, bufferToFill.numSamples);
+	}
 	const bool   activeNow = loopActive.load(std::memory_order_acquire);
 	const double inSecs    = loopInSecs.load(std::memory_order_acquire);
 	const double outSecs   = loopOutSecs.load(std::memory_order_acquire);
@@ -148,6 +154,16 @@ void DJAudioPlayer::enableCueTap(bool enable) noexcept
 	{
 		cueTapEnabled.store(true, std::memory_order_release);
 	}
+}
+
+/**
+ * Mute this deck on the master output. When true, the buffer is zeroed after
+ * audio processing so headphones hear the audio (via cue ring buffer) but
+ * speakers do not.
+ */
+void DJAudioPlayer::setMasterMuted(bool mute) noexcept
+{
+	cueMuted.store(mute, std::memory_order_release);
 }
 
 /**

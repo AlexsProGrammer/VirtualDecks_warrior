@@ -319,6 +319,14 @@ public:
 	void enableCueTap(bool enable) noexcept;
 
 	/**
+	 * Mute this deck on the master output. When true, the processed audio is still
+	 * copied to the cue ring buffer (headphones hear the audio) but the master output
+	 * is zeroed. Used to implement the DJ monitor behavior where CUE routes a deck's
+	 * audio to headphones only. Safe to call from the message thread at any time.
+	 */
+	void setMasterMuted(bool mute) noexcept;
+
+	/**
 	 * Read up to numSamples frames from the cue ring buffer into destChannels.
 	 * Returns the number of frames actually read (may be less if buffer is
 	 * starved). Remaining output frames are zeroed by the caller.
@@ -377,6 +385,11 @@ public:
 
 	/// Atomic loading-state for UI feedback (Idle/Loading/Loaded/Failed).
 	std::atomic<LoadingState> loadingState { LoadingState::Idle };
+
+	/// Atomic flag: when true, the master output buffer is zeroed after fxChain
+	/// processing so audio plays on headphones only (CUE monitoring). The cue tap
+	/// ring buffer still receives the unzeroed audio.
+	std::atomic<bool> cueMuted { false };
 
 	/// double to store the DeckGUI player volume (UI thread only).
 	double playerVol = 1;

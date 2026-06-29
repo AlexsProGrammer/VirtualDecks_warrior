@@ -124,6 +124,19 @@ void AudioEngine::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
 void AudioEngine::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill)
 {
 	mixerSource.getNextAudioBlock(bufferToFill);
+
+	// Apply master output gain post-mixer.
+	const float gain = masterOutputGain.load(std::memory_order_acquire);
+	if (std::abs(gain - 1.0f) > 0.001f) // Skip if gain ≈ 1.0 (common case)
+	{
+		for (int ch = 0; ch < bufferToFill.buffer->getNumChannels(); ++ch)
+		{
+			juce::FloatVectorOperations::multiply(
+				bufferToFill.buffer->getWritePointer(ch, bufferToFill.startSample),
+				gain,
+				bufferToFill.numSamples);
+		}
+	}
 }
 
 void AudioEngine::releaseResources()
@@ -152,10 +165,20 @@ const DJAudioPlayer& AudioEngine::getPlayer(int deckIndex) const noexcept
 void AudioEngine::setCueDeck(int deckIndex) noexcept
 {
 	const int old = cueDeckIndex.exchange(deckIndex, std::memory_order_acq_rel);
+	
+	// Disable cue tap and unmute master on the old deck (if any).
 	if (old == 0 || old == 1)
+	{
 		getPlayer(old).enableCueTap(false);
+		getPlayer(old).setMasterMuted(false);
+	}
+	
+	// Enable cue tap and mute master on the new deck.
 	if ((deckIndex == 0 || deckIndex == 1) && deckIndex != old)
+	{
 		getPlayer(deckIndex).enableCueTap(true);
+		getPlayer(deckIndex).setMasterMuted(true);
+	}
 }
 
 int AudioEngine::getCuedDeckIndex() const noexcept

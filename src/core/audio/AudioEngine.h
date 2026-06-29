@@ -164,5 +164,42 @@ public:
 	/// -1 means no deck is cued. Written on message thread, read on headphone thread.
 	std::atomic<int> cueDeckIndex { -1 };
 
+	/// Master output gain (applied post-mixer). Range 0–1. Loaded from / saved to AppSettings.
+	std::atomic<float> masterOutputGain { 1.0f };
+
+	/// Headphone output gain (applied in cue callback). Range 0–1. Loaded from / saved to AppSettings.
+	std::atomic<float> headphoneOutputGain { 1.0f };
+
+	/**
+	 * Set the master output gain. Safe to call from message thread.
+	 * Typically called from SettingsPanel slider callback or on app startup
+	 * to restore a persisted value.
+	 */
+	void setMasterOutputGain(float gain) noexcept
+	{
+		masterOutputGain.store(juce::jlimit(0.0f, 1.0f, gain), std::memory_order_release);
+	}
+
+	/// Get the current master output gain.
+	float getMasterOutputGain() const noexcept
+	{
+		return masterOutputGain.load(std::memory_order_acquire);
+	}
+
+	/**
+	 * Set the headphone output gain. Safe to call from message thread.
+	 * Typically called from SettingsPanel slider callback or on app startup.
+	 */
+	void setHeadphoneOutputGain(float gain) noexcept
+	{
+		headphoneOutputGain.store(juce::jlimit(0.0f, 1.0f, gain), std::memory_order_release);
+	}
+
+	/// Get the current headphone output gain.
+	float getHeadphoneOutputGain() const noexcept
+	{
+		return headphoneOutputGain.load(std::memory_order_acquire);
+	}
+
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioEngine)
 };

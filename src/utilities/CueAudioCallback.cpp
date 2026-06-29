@@ -33,4 +33,15 @@ void CueAudioCallback::audioDeviceIOCallbackWithContext(
 				juce::FloatVectorOperations::clear(outputChannelData[ch] + read, numSamples - read);
 		}
 	}
+
+	// Apply headphone output gain.
+	const float gain = audioEngine->getHeadphoneOutputGain();
+	if (std::abs(gain - 1.0f) > 0.001f) // Skip if gain ≈ 1.0 (common case)
+	{
+		for (int ch = 0; ch < numOutputChannels; ++ch)
+		{
+			if (outputChannelData[ch] != nullptr)
+				juce::FloatVectorOperations::multiply(outputChannelData[ch], gain, numSamples);
+		}
+	}
 }

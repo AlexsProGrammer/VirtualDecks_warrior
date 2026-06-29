@@ -106,11 +106,22 @@ MainComponent::MainComponent()
 
 	cueDeviceManager.addAudioCallback(&cueCallback);
 
+	// Load persisted output gains.
+	const float savedMasterGain = AppSettings::loadMasterGain();
+	const float savedHeadphoneGain = AppSettings::loadHeadphoneGain();
+	audioEngine.setMasterOutputGain(savedMasterGain);
+	audioEngine.setHeadphoneOutputGain(savedHeadphoneGain);
+
 	// Settings panel (hidden off-screen until the gear button is pressed).
+	// Provides callbacks for when the user adjusts the volume sliders.
 	settingsPanel = std::make_unique<SettingsPanel>(
 		deviceManager,
 		cueDeviceManager,
-		[this]() { closeSettings(); });
+		[this]() { closeSettings(); },
+		[this](float gain) { audioEngine.setMasterOutputGain(gain); },
+		[this](float gain) { audioEngine.setHeadphoneOutputGain(gain); },
+		savedMasterGain,
+		savedHeadphoneGain);
 	addChildComponent(*settingsPanel);
 
 	// Settings gear - DrawableButton with SVG icons (normal + hover).

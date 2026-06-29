@@ -6,8 +6,14 @@
 
 SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
                              juce::AudioDeviceManager& headphoneManager,
-                             std::function<void()>     onClose)
+                             std::function<void()>     onClose,
+                             std::function<void(float)> masterGainSetter,
+                             std::function<void(float)> headphoneGainSetter,
+                             float                      initialMasterGain,
+                             float                      initialHeadphoneGain)
 	: closeCallback(std::move(onClose)),
+	  masterGainCallback(std::move(masterGainSetter)),
+	  headphoneGainCallback(std::move(headphoneGainSetter)),
 	  headphoneManager(headphoneManager),
 	  masterSelector   (masterManager,    0, 0, 2, 2, false, false, true, false),
 	  headphoneSelector(headphoneManager, 0, 0, 2, 2, false, false, true, false)
@@ -24,6 +30,44 @@ SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
 
 	addAndMakeVisible(masterSelector);
 	addAndMakeVisible(headphoneSelector);
+
+	// Configure master volume slider
+	masterVolLabel.setFont(juce::Font(11.0f));
+	masterVolLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+	addAndMakeVisible(masterVolLabel);
+
+	masterVolSlider.setRange(0.0, 1.0, 0.01);
+	masterVolSlider.setSkewFactor(0.25);
+	masterVolSlider.setValue(initialMasterGain, juce::dontSendNotification);
+	masterVolSlider.setColour(juce::Slider::trackColourId, juce::Colours::grey);
+	masterVolSlider.setColour(juce::Slider::thumbColourId, juce::Colours::aqua);
+	masterVolSlider.onValueChange = [this]
+	{
+		const float gain = static_cast<float>(masterVolSlider.getValue());
+		if (masterGainCallback)
+			masterGainCallback(gain);
+		AppSettings::saveMasterGain(gain);
+	};
+	addAndMakeVisible(masterVolSlider);
+
+	// Configure headphone volume slider
+	headphoneVolLabel.setFont(juce::Font(11.0f));
+	headphoneVolLabel.setColour(juce::Label::textColourId, UI::deck2Accent);
+	addAndMakeVisible(headphoneVolLabel);
+
+	headphoneVolSlider.setRange(0.0, 1.0, 0.01);
+	headphoneVolSlider.setSkewFactor(0.25);
+	headphoneVolSlider.setValue(initialHeadphoneGain, juce::dontSendNotification);
+	headphoneVolSlider.setColour(juce::Slider::trackColourId, juce::Colours::grey);
+	headphoneVolSlider.setColour(juce::Slider::thumbColourId, UI::deck2Accent);
+	headphoneVolSlider.onValueChange = [this]
+	{
+		const float gain = static_cast<float>(headphoneVolSlider.getValue());
+		if (headphoneGainCallback)
+			headphoneGainCallback(gain);
+		AppSettings::saveHeadphoneGain(gain);
+	};
+	addAndMakeVisible(headphoneVolSlider);
 
 	closeButton.setColour(juce::TextButton::buttonColourId,
 	                      juce::Colour::fromRGBA(80, 80, 80, 200));
@@ -59,13 +103,28 @@ void SettingsPanel::resized()
 
 	const int half       = (area.getWidth() - 8) / 2;
 	const int labelH     = 22;
+	const int sliderH    = 80;
 
 	auto leftCol  = area.removeFromLeft(half);
 	auto rightCol = area.withTrimmedLeft(8);
 
+	// Master side: device selector then volume slider
 	masterLabel.setBounds(leftCol.removeFromTop(labelH));
-	masterSelector.setBounds(leftCol);
+	auto masterSelectorArea = leftCol;
+	masterSelectorArea.removeFromBottom(sliderH);
+	masterSelector.setBounds(masterSelectorArea);
 
+	auto masterVolArea = leftCol.removeFromBottom(sliderH).reduced(0, 4);
+	masterVolLabel.setBounds(masterVolArea.removeFromTop(16));
+	masterVolSlider.setBounds(masterVolArea);
+
+	// Headphone side: device selector then volume slider
 	headphoneLabel.setBounds(rightCol.removeFromTop(labelH));
-	headphoneSelector.setBounds(rightCol);
+	auto headphoneSelectorArea = rightCol;
+	headphoneSelectorArea.removeFromBottom(sliderH);
+	headphoneSelector.setBounds(headphoneSelectorArea);
+
+	auto headphoneVolArea = rightCol.removeFromBottom(sliderH).reduced(0, 4);
+	headphoneVolLabel.setBounds(headphoneVolArea.removeFromTop(16));
+	headphoneVolSlider.setBounds(headphoneVolArea);
 }

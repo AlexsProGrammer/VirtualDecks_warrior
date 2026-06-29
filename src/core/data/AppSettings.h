@@ -22,4 +22,26 @@ namespace AppSettings
 	 * any previously stored state.
 	 */
 	void saveHeadphoneDeviceState(const juce::XmlElement* state);
+
+	/**
+	 * Load the master output gain from persisted settings.
+	 * Returns 1.0f if not found or invalid.
+	 */
+	float loadMasterGain();
+
+	/**
+	 * Save the master output gain to persisted settings.
+	 */
+	void saveMasterGain(float gain);
+
+	/**
+	 * Load the headphone output gain from persisted settings.
+	 * Returns 1.0f if not found or invalid.
+	 */
+	float loadHeadphoneGain();
+
+	/**
+	 * Save the headphone output gain to persisted settings.
+	 */
+	void saveHeadphoneGain(float gain);
 } // namespace AppSettings
