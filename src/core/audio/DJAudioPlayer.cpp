@@ -83,20 +83,8 @@ void DJAudioPlayer::getNextAudioBlock(const juce::AudioSourceChannelInfo& buffer
 		cueFifo.finishedWrite(toCopy);
 	}
 
-	// 2c) If master output mute is active, silence the buffer (CUE monitoring).
-	if (cueMuted.load(std::memory_order_acquire))
-	{
-		bufferToFill.buffer->clear(bufferToFill.startSample, bufferToFill.numSamples);
-	}
-	const bool   activeNow = loopActive.load(std::memory_order_acquire);
-	const double inSecs    = loopInSecs.load(std::memory_order_acquire);
-	const double outSecs   = loopOutSecs.load(std::memory_order_acquire);
-	if (activeNow && inSecs >= 0.0 && outSecs > inSecs) {
-		if (transportSource.getCurrentPosition() >= outSecs)
-			transportSource.setPosition(inSecs);
-	}
-
-	// 4) Update RMS for UI meters.
+	// 3) Update RMS for UI meters BEFORE master mute (so visualization shows correct
+	//    levels even when headphone CUE monitoring is active and master output is muted).
 	const int numChannels = bufferToFill.buffer->getNumChannels();
 	float rmsLevelLeft  = -100.0f;
 	float rmsLevelRight = -100.0f;
@@ -114,6 +102,12 @@ void DJAudioPlayer::getNextAudioBlock(const juce::AudioSourceChannelInfo& buffer
 	}
 
 	level.store((rmsLevelLeft + rmsLevelRight) / 2.0f, std::memory_order_release);
+
+	// 2c) If master output mute is active, silence the buffer (CUE monitoring).
+	if (cueMuted.load(std::memory_order_acquire))
+	{
+		bufferToFill.buffer->clear(bufferToFill.startSample, bufferToFill.numSamples);
+	}
 
 	// 5) Track worst-case callback duration for profiling (printed on shutdown).
 	const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(

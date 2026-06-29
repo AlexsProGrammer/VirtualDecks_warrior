@@ -33,11 +33,31 @@ public:
 		int                                          numSamples,
 		const juce::AudioIODeviceCallbackContext&    context) override;
 
-	void audioDeviceAboutToStart(juce::AudioIODevice* /*device*/) override {}
+	void audioDeviceAboutToStart(juce::AudioIODevice* device) override;
 	void audioDeviceStopped() override {}
+
+	//==============================================================================
+	// Test tone
+
+	/**
+	 * Activate or deactivate the 1 kHz test tone on the headphone output.
+	 * When active, replaces ring-buffer audio with a sine wave so the user
+	 * can verify headphone output and adjust the gain slider in real-time.
+	 * Safe to call from the message thread.
+	 */
+	void setTestToneActive(bool active) noexcept;
 
 private:
 	AudioEngine* audioEngine = nullptr;
+
+	/// Atomic flag written from message thread, read from audio callback thread.
+	std::atomic<bool> testToneActive { false };
+
+	/// Sample rate captured in audioDeviceAboutToStart; audio-thread-only.
+	float testToneSampleRate { 44100.0f };
+
+	/// Accumulated phase for the sine generator; audio-thread-only.
+	float testTonePhase { 0.0f };
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CueAudioCallback)
 };

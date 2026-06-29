@@ -52,6 +52,10 @@ private:
 	juce::Slider masterVolSlider;
 	juce::Slider headphoneVolSlider;
 
+	/// Display labels for slider values (updated in real-time, formatted to 2 decimals).
+	juce::Label masterVolDisplayLabel;
+	juce::Label headphoneVolDisplayLabel;
+
 	juce::TextButton closeButton{ "X" };
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SettingsPanel)

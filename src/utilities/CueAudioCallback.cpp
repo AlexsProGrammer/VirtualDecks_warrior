@@ -1,6 +1,18 @@
 #include <JuceHeader.h>
 #include "CueAudioCallback.h"
 
+void CueAudioCallback::setTestToneActive(bool active) noexcept
+{
+	testToneActive.store(active, std::memory_order_release);
+}
+
+void CueAudioCallback::audioDeviceAboutToStart(juce::AudioIODevice* device)
+{
+	if (device != nullptr)
+		testToneSampleRate = static_cast<float>(device->getCurrentSampleRate());
+	testTonePhase = 0.0f;
+}
+
 void CueAudioCallback::audioDeviceIOCallbackWithContext(
 	const float* const* /*inputChannelData*/,
 	int                 /*numInputChannels*/,
@@ -9,6 +21,28 @@ void CueAudioCallback::audioDeviceIOCallbackWithContext(
 	int                 numSamples,
 	const juce::AudioIODeviceCallbackContext& /*context*/)
 {
+	// Test tone: plays a 1 kHz sine wave at the current headphone gain so the
+	// user can verify and fine-tune the volume slider. Takes full priority over
+	// any ring-buffer audio.
+	if (testToneActive.load(std::memory_order_acquire))
+	{
+		const float twoPi = juce::MathConstants<float>::twoPi;
+		const float inc   = twoPi * 1000.0f / testToneSampleRate;
+		const float gain  = audioEngine ? audioEngine->getHeadphoneOutputGain() : 1.0f;
+
+		for (int i = 0; i < numSamples; ++i)
+		{
+			const float sample = 0.2f * std::sin(testTonePhase) * gain;
+			testTonePhase += inc;
+			for (int ch = 0; ch < numOutputChannels; ++ch)
+				if (outputChannelData[ch] != nullptr)
+					outputChannelData[ch][i] = sample;
+		}
+		// Keep phase in [0, 2π) to prevent floating-point drift.
+		while (testTonePhase >= twoPi) testTonePhase -= twoPi;
+		return;
+	}
+
 	DJAudioPlayer* const cuedPlayer = audioEngine ? audioEngine->getCuedPlayer() : nullptr;
 
 	if (cuedPlayer == nullptr)
