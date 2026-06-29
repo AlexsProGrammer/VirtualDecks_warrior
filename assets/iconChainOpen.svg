@@ -1,0 +1,17 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="white">
+  <!-- Broken/open chain icon: two independent links with a gap -->
+  <!-- Top-left link -->
+  <ellipse cx="6" cy="6" rx="2.5" ry="3.5" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Top-left vertical segment -->
+  <line x1="6" y1="9.5" x2="6" y2="11" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Bottom-right link -->
+  <ellipse cx="18" cy="18" rx="2.5" ry="3.5" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Bottom-right vertical segment -->
+  <line x1="18" y1="14.5" x2="18" y2="13" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Break symbol: diagonal slash across the gap -->
+  <g opacity="0.8">
+    <line x1="9" y1="10" x2="15" y2="16" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+</svg>

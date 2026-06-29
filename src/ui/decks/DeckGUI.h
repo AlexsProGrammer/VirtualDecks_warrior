@@ -80,8 +80,27 @@ public:
 	/// MainComponent wires this to toggle headphone cue routing via AudioEngine.
 	std::function<void(int deckIndex)> onCueButtonClicked;
 
+	/// Optional callback fired when an EQ filter knob value changes (band 0-2, value 0.01-2.0).
+	/// MainComponent uses this to mirror the other deck's knob when a band is locked.
+	std::function<void(int band, double value)> onFilterValueChanged;
+
+	/// Optional callback fired when the user clicks a chain lock button (band 0-2).
+	/// MainComponent uses this to toggle the shared lock state and update both decks' button visuals.
+	std::function<void(int band)> onChainButtonClicked;
+
 	/// Update the visual state of the CUE button (lit = active, unlit = inactive).
 	void setCueActive(bool active) noexcept;
+
+	/// Set a filter knob's value from external code (e.g., MainComponent mirroring).
+	/// Suppresses onFilterValueChanged callback to prevent recursion.
+	void setFilterValue(int band, double value);
+
+	/// Get the current filter knob value (band 0=Low, 1=Mid, 2=High; range 0.01-2.0).
+	double getFilterValue(int band) const;
+
+	/// Update a chain button's visual state (locked = closed chain, unlocked = open chain).
+	/// Safe to call from any thread; button visual updates on message thread.
+	void setChainButtonState(int band, bool locked);
 
 	//==============================================================================
 
@@ -232,6 +251,22 @@ private:
 
 	/// DrawableButton that routes this deck's audio to the headphone (cue) output.
 	juce::DrawableButton cueButton{ "Cue (headphone)", juce::DrawableButton::ButtonStyle::ImageFitted };
+
+	/// Unique pointer to juce::Drawable storing the open/unlocked chain icon.
+	std::unique_ptr<juce::Drawable> chainOpenImage;
+	/// Unique pointer to juce::Drawable storing the closed/locked chain icon.
+	std::unique_ptr<juce::Drawable> chainClosedImage;
+
+	/// DrawableButton for locking the Low EQ band across both decks.
+	juce::DrawableButton lowChainBtn{ "Low Chain Lock", juce::DrawableButton::ButtonStyle::ImageFitted };
+	/// DrawableButton for locking the Mid EQ band across both decks.
+	juce::DrawableButton midChainBtn{ "Mid Chain Lock", juce::DrawableButton::ButtonStyle::ImageFitted };
+	/// DrawableButton for locking the High EQ band across both decks.
+	juce::DrawableButton highChainBtn{ "High Chain Lock", juce::DrawableButton::ButtonStyle::ImageFitted };
+
+	/// Suppresses onFilterValueChanged callback during external setFilterValue() calls.
+	/// Suppresses onFilterValueChanged callback during external setFilterValue() calls.
+	bool suppressChainCallback = false;
 
 	/// Blocks right-click (popup-menu) presses from triggering a DrawableButton click.
 	/// Optionally runs an onRightClick callback (e.g. context menu) on mouse-up.

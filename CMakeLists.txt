@@ -112,6 +112,8 @@ foreach(_svg IN ITEMS
     iconNudgeLeft.svg
     iconNudgeRight.svg
     iconClose.svg
+    iconChainOpen.svg
+    iconChainClosed.svg
 )
     if(EXISTS "${CMAKE_SOURCE_DIR}/assets/${_svg}")
         list(APPEND LoopStationBinaryData_SOURCES "${CMAKE_SOURCE_DIR}/assets/${_svg}")

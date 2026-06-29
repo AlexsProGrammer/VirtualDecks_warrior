@@ -132,6 +132,15 @@ private:
 	/// Cross-deck beat-sync manager (master/slave coordinator).
 	BeatSyncManager beatSyncManager;
 
+	/// EQ filter chain lock state per band (0=Low, 1=Mid, 2=High).
+	/// When locked, moving one deck's knob mirrors the other with inverted movement.
+	bool filterChainLocked[3] = { false, false, false };
+
+	/// Baseline filter values captured when chain lock is engaged, per deck per band.
+	/// Used for delta-based mirroring: when knob moves, calculate delta from baseline
+	/// and apply the inverse delta to the other deck's baseline.
+	double chainBaseline[2][3] = { { 1.0, 1.0, 1.0 }, { 1.0, 1.0, 1.0 } };
+
 	/// Instance of DeckGUI class for the left DJ Deck.
 	DeckGUI deckGUI1{ &audioEngine.getPlayer(0), formatManager, thumbCache,&zoomedDisplay1 , library, UI::deck1Accent, &beatSyncManager, 0, &audioEngine };
 

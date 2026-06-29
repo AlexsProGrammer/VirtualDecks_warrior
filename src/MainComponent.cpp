@@ -146,6 +146,49 @@ MainComponent::MainComponent()
 	beatSyncManager.setDeck(0, &audioEngine.getPlayer(0), &deckGUI1);
 	beatSyncManager.setDeck(1, &audioEngine.getPlayer(1), &deckGUI2);
 
+	// Wire EQ filter chain lock callbacks: when one deck's knob changes and a band
+	// is locked, mirror the value to the other deck using delta-based movement.
+	// When chain is locked, moving one knob by a delta from its baseline causes the
+	// other knob to move by the same delta (in opposite direction) from its baseline.
+	// This preserves the relative offset between knobs regardless of their absolute values.
+	auto filterChangedCb = [this](int deckIdx, int band, double value) {
+		if (band < 0 || band > 2 || !filterChainLocked[band]) return;
+		
+		// Calculate delta from baseline for the moving deck
+		double delta = value - chainBaseline[deckIdx][band];
+		
+		// Apply inverse delta to the other deck
+		int otherIdx = deckIdx == 0 ? 1 : 0;
+		double mirrorVal = chainBaseline[otherIdx][band] - delta;
+		
+		// Clamp to valid range and apply
+		mirrorVal = juce::jlimit(0.01, 2.0, mirrorVal);
+		(deckIdx == 0 ? deckGUI2 : deckGUI1).setFilterValue(band, mirrorVal);
+	};
+	deckGUI1.onFilterValueChanged = [filterChangedCb](int b, double v) { filterChangedCb(0, b, v); };
+	deckGUI2.onFilterValueChanged = [filterChangedCb](int b, double v) { filterChangedCb(1, b, v); };
+
+	// Wire chain lock button clicks: toggle the shared lock state, capture baselines, and update visuals.
+	// When a chain is locked, store the current position of both knobs so delta-based mirroring works correctly.
+	auto chainClickCb = [this](int band) {
+		if (band < 0 || band > 2) return;
+		
+		// Toggle lock state
+		filterChainLocked[band] = !filterChainLocked[band];
+		
+		// If just locked, capture current baseline values from both decks
+		if (filterChainLocked[band]) {
+			chainBaseline[0][band] = deckGUI1.getFilterValue(band);
+			chainBaseline[1][band] = deckGUI2.getFilterValue(band);
+		}
+		
+		// Update both decks' button visuals
+		deckGUI1.setChainButtonState(band, filterChainLocked[band]);
+		deckGUI2.setChainButtonState(band, filterChainLocked[band]);
+	};
+	deckGUI1.onChainButtonClicked = chainClickCb;
+	deckGUI2.onChainButtonClicked = chainClickCb;
+
 	crossFader.setRange(-1, 1);
 	crossFader.setValue(0);
 	crossFader.addListener(this);

@@ -456,6 +456,28 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	}
 
 	// =========================================================================
+	// Chain lock buttons for EQ filter bands
+	// =========================================================================
+	
+	// Load chain icon SVGs
+	chainOpenImage = juce::Drawable::createFromImageData(BinaryData::iconChainOpen_svg, (size_t)BinaryData::iconChainOpen_svgSize);
+	chainClosedImage = juce::Drawable::createFromImageData(BinaryData::iconChainClosed_svg, (size_t)BinaryData::iconChainClosed_svgSize);
+
+	// Configure chain buttons: open = normal state, closed = toggled/on state
+	for (auto* btn : { &lowChainBtn, &midChainBtn, &highChainBtn })
+	{
+		btn->setImages(chainOpenImage.get(), nullptr, nullptr, nullptr, chainClosedImage.get());
+		// Normal state: transparent background (icon shows white)
+		btn->setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
+		// Active/locked state: themed highlight with icon tinted to theme
+		btn->setColour(juce::DrawableButton::backgroundOnColourId, theme.withAlpha(0.75f));
+		btn->setClickingTogglesState(false); // Toggle state managed externally by MainComponent
+		btn->addListener(this);
+		btn->setLookAndFeel(&customLookAndFeel);
+		jogWheelContainer.addAndMakeVisible(*btn);
+	}
+
+	// =========================================================================
 	// Tooltips - set on every interactive control so hovering shows a hint.
 	// =========================================================================
 
@@ -465,11 +487,14 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	cueButton   .setTooltip("Headphone cue - monitor this deck through your cue output");
 	fastSyncBtn .setTooltip("Beat sync - left-click to engage, right-click to reset speed");
 
-	// EQ knobs and speed slider
+	// EQ knobs and chain buttons
 	speedSlider  .setTooltip("Speed - drag to adjust playback rate (right-click to reset to 1.0x)");
-	lowBandFilter.setTooltip("Low EQ - boost or cut bass frequencies (right-click to reset)");
-	midBandFilter.setTooltip("Mid EQ - boost or cut mid frequencies (right-click to reset)");
+	lowBandFilter .setTooltip("Low EQ - boost or cut bass frequencies (right-click to reset)");
+	lowChainBtn    .setTooltip("Lock Low EQ across both decks - mirrored movement");
+	midBandFilter .setTooltip("Mid EQ - boost or cut mid frequencies (right-click to reset)");
+	midChainBtn    .setTooltip("Lock Mid EQ across both decks - mirrored movement");
 	highBandFilter.setTooltip("High EQ - boost or cut treble frequencies (right-click to reset)");
+	highChainBtn   .setTooltip("Lock High EQ across both decks - mirrored movement");
 
 	// Tab rail
 	cueTabButton      .setTooltip("Hot Cues - set and jump to up to 6 cue points");
@@ -725,6 +750,33 @@ void DeckGUI::resized()
 		placeKnob(lowBandFilter,  lbLabel, 0);
 		placeKnob(midBandFilter,  mbLabel, 1);
 		placeKnob(highBandFilter, hbLabel, 2);
+
+		// Chain lock buttons: positioned at the top-right corner of each EQ knob
+		// Buttons overlap slightly with the knob for a tight, integrated look
+		const int chainBtnSz = 18;
+		const int knobSize = UI::kKnobSize;  // 50px
+		
+		for (int col = 0; col < 3; ++col)
+		{
+			// Column bounds for this EQ section
+			auto colBounds = eqRow.withX(eqRow.getX() + col * eqColW).withWidth(eqColW);
+			
+			// Knob is centered in the column at the top
+			// Calculate knob bounds: centered horizontally in column, at top of row
+			int knobCentreX = colBounds.getCentreX();
+			int knobRight = knobCentreX + knobSize / 2;
+			int knobTop = colBounds.getY();
+			
+			// Position chain button at knob's top-right, with slight overlap for integration
+			int chainX = knobRight - chainBtnSz + 15;  // Overlap slightly with knob
+			int chainY = knobTop;
+			
+			auto chainBtnBounds = juce::Rectangle<int>(chainX, chainY, chainBtnSz, chainBtnSz);
+			
+			if (col == 0)      lowChainBtn .setBounds(chainBtnBounds);
+			else if (col == 1) midChainBtn .setBounds(chainBtnBounds);
+			else               highChainBtn.setBounds(chainBtnBounds);
+		}
 	}
 
 	// =========================================================================
@@ -856,6 +908,11 @@ void DeckGUI::resized()
  *
  */
 void DeckGUI::buttonClicked(juce::Button* button) {
+
+	// Chain lock button clicks - dispatch to MainComponent callback
+	if (button == &lowChainBtn  && onChainButtonClicked) { onChainButtonClicked(0); return; }
+	if (button == &midChainBtn  && onChainButtonClicked) { onChainButtonClicked(1); return; }
+	if (button == &highChainBtn && onChainButtonClicked) { onChainButtonClicked(2); return; }
 
 	if (button == &playButton) {
 		DBG("MainComponent::buttonClicked: They clicked the play button");
@@ -1391,16 +1448,22 @@ void DeckGUI::sliderValueChanged(juce::Slider* slider) {
 	if (slider == &lowBandFilter) {
 		DBG("MainComponent::sliderValueChanged: They change the LB slider " << slider->getValue());
 		player->setLBFilter(slider->getValue());
+		if (!suppressChainCallback && onFilterValueChanged)
+			onFilterValueChanged(0, slider->getValue());
 	}
 
 	if (slider == &midBandFilter) {
 		DBG("MainComponent::sliderValueChanged: They change the MB slider " << slider->getValue());
 		player->setMBFilter(slider->getValue());
+		if (!suppressChainCallback && onFilterValueChanged)
+			onFilterValueChanged(1, slider->getValue());
 	}
 
 	if (slider == &highBandFilter) {
 		DBG("MainComponent::sliderValueChanged: They change the HB slider " << slider->getValue());
 		player->setHBFilter(slider->getValue());
+		if (!suppressChainCallback && onFilterValueChanged)
+			onFilterValueChanged(2, slider->getValue());
 	}
 };
 
@@ -2571,6 +2634,92 @@ void DeckGUI::updateCuePointBtn()
 	                       hasCue ? juce::Colours::white.darker(0.15f)
 	                               : juce::Colours::white);
 	cuePointBtn.repaint();
+}
+
+//==============================================================================
+
+/**
+ * Set a filter knob's value from external code (e.g., MainComponent mirroring).
+ * Suppresses onFilterValueChanged callback to prevent recursion during mirror updates.
+ *
+ * @param band 0 = Low, 1 = Mid, 2 = High
+ * @param value the new filter value (0.01 to 2.0)
+ */
+void DeckGUI::setFilterValue(int band, double value)
+{
+	// Clamp value to valid range
+	value = juce::jlimit(0.01, 2.0, value);
+
+	// Get the appropriate slider and set its value without triggering the callback
+	juce::Slider* slider = nullptr;
+	if (band == 0)      slider = &lowBandFilter;
+	else if (band == 1) slider = &midBandFilter;
+	else if (band == 2) slider = &highBandFilter;
+
+	if (slider == nullptr) return;
+
+	// Suppress the callback so this external change doesn't trigger a mirrored update
+	suppressChainCallback = true;
+	slider->setValue(value, juce::sendNotificationSync);
+	suppressChainCallback = false;
+}
+
+/**
+ * Get the current filter knob value.
+ *
+ * @param band 0 = Low, 1 = Mid, 2 = High
+ * @return current filter value (0.01 to 2.0), or 1.0 if band is invalid
+ */
+double DeckGUI::getFilterValue(int band) const
+{
+	const juce::Slider* slider = nullptr;
+	if (band == 0)      slider = &lowBandFilter;
+	else if (band == 1) slider = &midBandFilter;
+	else if (band == 2) slider = &highBandFilter;
+
+	if (slider == nullptr) return 1.0;  // Default center value
+	return slider->getValue();
+}
+
+/**
+ * Update a chain button's visual state (locked = closed chain, unlocked = open chain).
+ * When locked, the icon is tinted with the deck's theme color.
+ * Safe to call from any thread; updates occur on the message thread.
+ *
+ * @param band 0 = Low, 1 = Mid, 2 = High
+ * @param locked true = closed chain (locked), false = open chain (unlocked)
+ */
+void DeckGUI::setChainButtonState(int band, bool locked)
+{
+	juce::DrawableButton* btn = nullptr;
+	if (band == 0)      btn = &lowChainBtn;
+	else if (band == 1) btn = &midChainBtn;
+	else if (band == 2) btn = &highChainBtn;
+
+	if (btn == nullptr) return;
+
+	btn->setToggleState(locked, juce::dontSendNotification);
+	
+	// When locked, swap the closed chain image with a tinted version using the deck theme color
+	if (locked && chainClosedImage != nullptr)
+	{
+		auto tintedClosed = chainClosedImage->createCopy();
+		if (tintedClosed != nullptr)
+		{
+			tintedClosed->replaceColour(juce::Colours::white, theme);
+			// Set button's on-state images to the tinted version
+			btn->setImages(chainOpenImage.get(), nullptr, nullptr, nullptr,
+			              tintedClosed.get(), nullptr, nullptr, nullptr);
+		}
+	}
+	else
+	{
+		// When unlocked, restore original white images
+		btn->setImages(chainOpenImage.get(), nullptr, nullptr, nullptr,
+		              chainClosedImage.get(), nullptr, nullptr, nullptr);
+	}
+	
+	btn->repaint();
 }
 
 //==============================================================================
