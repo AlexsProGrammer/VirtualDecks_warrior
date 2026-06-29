@@ -60,7 +60,7 @@ namespace UI
 
 	inline constexpr float kPanelRadius  = 10.0f; ///< Outer panels (sidebars, mixer, deck cards).
 	inline constexpr float kCardRadius   =  8.0f; ///< Inner cards (folder list, track table).
-	inline constexpr float kButtonRadius =  6.0f; ///< Default rounded-rect button radius.
+	inline constexpr float kButtonRadius =  5.0f; ///< Default rounded-rect button radius.
 	inline constexpr float kPillRadius   = 14.0f; ///< Pill-shaped (search, filter chips).
 
 	// =========================================================================

@@ -495,6 +495,9 @@ void CustomLookAndFeel::drawComboBox(juce::Graphics& g, int width, int height, b
 
 void CustomLookAndFeel::drawPopupMenuBackground(juce::Graphics& g, int width, int height)
 {
+	// Fill entire background with main deck background color to hide white corners at rounded edges.
+	g.fillAll(UI::bgRoot);
+	
 	auto bounds = juce::Rectangle<float>(0.0f, 0.0f, (float)width, (float)height).reduced(0.5f);
 	g.setColour(UI::bgElevated);
 	g.fillRoundedRectangle(bounds, UI::kCardRadius);

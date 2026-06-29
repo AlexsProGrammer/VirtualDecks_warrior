@@ -167,6 +167,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	masterToggleBtn.setColour(juce::TextButton::buttonOnColourId, UI::accentWarning.withAlpha(0.8f));
 	masterToggleBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 	masterToggleBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+	masterToggleBtn.setLookAndFeel(&customLookAndFeel);
 	transportContainer.addChildComponent(masterToggleBtn);
 
 	syncEngageBtn.setClickingTogglesState(true);
@@ -175,12 +176,14 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	syncEngageBtn.setColour(juce::TextButton::buttonOnColourId, UI::accentPositive.withAlpha(0.85f));
 	syncEngageBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 	syncEngageBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+	syncEngageBtn.setLookAndFeel(&customLookAndFeel);
 	transportContainer.addChildComponent(syncEngageBtn);
 
 	for (auto* btn : { &multHalfBtn, &multOneBtn, &multTwoBtn }) {
 		btn->addListener(this);
 		btn->setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+		btn->setLookAndFeel(&customLookAndFeel);
 		transportContainer.addChildComponent(*btn);
 	}
 
@@ -238,6 +241,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	snapBox.setColour(juce::ComboBox::backgroundColourId, UI::bgRoot);
 	snapBox.setColour(juce::ComboBox::textColourId, juce::Colours::white);
 	snapBox.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
+	snapBox.setLookAndFeel(&customLookAndFeel);
 	snapBox.onChange = [this]() {
 		if (syncManager == nullptr) return;
 		switch (snapBox.getSelectedId()) {
@@ -252,6 +256,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	syncResetBtn.addListener(this);
 	syncResetBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 	syncResetBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+	syncResetBtn.setLookAndFeel(&customLookAndFeel);
 	transportContainer.addChildComponent(syncResetBtn);
 
 	// Quantize tab button and controls
@@ -279,6 +284,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	quantizeComboBox.setColour(juce::ComboBox::backgroundColourId, UI::bgRoot);
 	quantizeComboBox.setColour(juce::ComboBox::textColourId, juce::Colours::white);
 	quantizeComboBox.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
+	quantizeComboBox.setLookAndFeel(&customLookAndFeel);
 	transportContainer.addChildComponent(quantizeComboBox);
 
 	// Beat grid controls
@@ -292,6 +298,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	gridBpmEditor.setColour(juce::TextEditor::backgroundColourId, UI::bgRoot);
 	gridBpmEditor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
 	gridBpmEditor.setColour(juce::TextEditor::outlineColourId, theme.withAlpha(0.5f));
+	gridBpmEditor.setLookAndFeel(&customLookAndFeel);
 	auto applyBpmFromEditor = [this]() {
 		double newBpm = gridBpmEditor.getText().getDoubleValue();
 		if (newBpm > 20.0 && newBpm < 300.0) {
@@ -311,9 +318,13 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	tapTempoBtn.addListener(this);
 	gridResetBtn.addListener(this);
 	gridNudgeLeftBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	gridNudgeLeftBtn.setLookAndFeel(&customLookAndFeel);
 	gridNudgeRightBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	gridNudgeRightBtn.setLookAndFeel(&customLookAndFeel);
 	tapTempoBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	tapTempoBtn.setLookAndFeel(&customLookAndFeel);
 	gridResetBtn.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
+	gridResetBtn.setLookAndFeel(&customLookAndFeel);
 	transportContainer.addChildComponent(gridNudgeLeftBtn);
 	transportContainer.addChildComponent(gridNudgeRightBtn);
 	transportContainer.addChildComponent(gridOffsetLabel);
@@ -334,6 +345,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 		btn->addListener(this);
 		btn->setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+		btn->setLookAndFeel(&customLookAndFeel);
 		transportContainer.addChildComponent(*btn);
 	}
 
@@ -351,6 +363,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 		btn->addListener(this);
 		btn->setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		btn->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+		btn->setLookAndFeel(&customLookAndFeel);
 		transportContainer.addChildComponent(*btn);
 	}
 
@@ -405,6 +418,14 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	cueButton.setLookAndFeel(&customLookAndFeel);
 	fastSyncBtn.setLookAndFeel(&customLookAndFeel);
 	libraryButton.setLookAndFeel(&customLookAndFeel);
+	cueTabButton.setLookAndFeel(&customLookAndFeel);
+	gridTabButton.setLookAndFeel(&customLookAndFeel);
+	jumpTabButton.setLookAndFeel(&customLookAndFeel);
+	loopTabButton.setLookAndFeel(&customLookAndFeel);
+	syncTabButton.setLookAndFeel(&customLookAndFeel);
+	padFxTabButton.setLookAndFeel(&customLookAndFeel);
+	beatFxTabButton.setLookAndFeel(&customLookAndFeel);
+	releaseFxTabButton.setLookAndFeel(&customLookAndFeel);
 	speedSlider.setLookAndFeel(&customLookAndFeel);
 	lowBandFilter.setLookAndFeel(&customLookAndFeel);
 	midBandFilter.setLookAndFeel(&customLookAndFeel);
@@ -2146,7 +2167,7 @@ void DeckGUI::queueOrExecute(PendingQuantizeAction::Type type, juce::Button* btn
  */
 void DeckGUI::buildFxPanels()
 {
-	const auto themeMid = juce::Colour::fromRGBA(40, 40, 40, 255);
+	const auto themeMid = juce::Colours::black;
 
 	// ---- Pad FX tiles --------------------------------------------------------
 	{
@@ -2167,6 +2188,7 @@ void DeckGUI::buildFxPanels()
 			tile->setColour(juce::TextButton::buttonOnColourId, theme.withAlpha(0.85f));
 			tile->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 			tile->setColour(juce::TextButton::textColourOnId,  juce::Colours::black);
+			tile->setLookAndFeel(&customLookAndFeel);
 
 			tile->onEngageChanged = [this, procIdx](bool engaged) {
 				if (procIdx >= 1) {
@@ -2202,6 +2224,7 @@ void DeckGUI::buildFxPanels()
 		beatFxSelector.setColour(juce::ComboBox::backgroundColourId, UI::bgRoot);
 		beatFxSelector.setColour(juce::ComboBox::textColourId, juce::Colours::white);
 		beatFxSelector.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
+		beatFxSelector.setLookAndFeel(&customLookAndFeel);
 		beatFxSelector.onChange = [this]() {
 			int idx = beatFxSelector.getSelectedId() - 1;
 			if (idx >= 0) postFxSelect(FxCategory::Beat, idx);
@@ -2217,6 +2240,7 @@ void DeckGUI::buildFxPanels()
 		beatFxDivisionBox.setColour(juce::ComboBox::backgroundColourId, UI::bgRoot);
 		beatFxDivisionBox.setColour(juce::ComboBox::textColourId, juce::Colours::white);
 		beatFxDivisionBox.setColour(juce::ComboBox::outlineColourId, theme.withAlpha(0.5f));
+		beatFxDivisionBox.setLookAndFeel(&customLookAndFeel);
 		beatFxDivisionBox.onChange = [this]() {
 			// Atomic parameter write - bypass FIFO.
 			auto& chain = player->getFxChain();
@@ -2238,6 +2262,7 @@ void DeckGUI::buildFxPanels()
 		beatFxOnButton.setColour(juce::TextButton::buttonOnColourId, theme.withAlpha(0.85f));
 		beatFxOnButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 		beatFxOnButton.setColour(juce::TextButton::textColourOnId,  juce::Colours::black);
+		beatFxOnButton.setLookAndFeel(&customLookAndFeel);
 		transportContainer.addChildComponent(beatFxOnButton);
 
 		beatFxWetSlider.setSliderStyle(juce::Slider::LinearHorizontal);
@@ -2265,6 +2290,7 @@ void DeckGUI::buildFxPanels()
 		beatFxEditButton.addListener(this);
 		beatFxEditButton.setColour(juce::TextButton::buttonColourId, UI::bgRoot);
 		beatFxEditButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+		beatFxEditButton.setLookAndFeel(&customLookAndFeel);
 		transportContainer.addChildComponent(beatFxEditButton);
 	}
 
@@ -2283,6 +2309,7 @@ void DeckGUI::buildFxPanels()
 			tile->setColour(juce::TextButton::buttonOnColourId, theme.withAlpha(0.85f));
 			tile->setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 			tile->setColour(juce::TextButton::textColourOnId,  juce::Colours::black);
+			tile->setLookAndFeel(&customLookAndFeel);
 
 			tile->onEngageChanged = [this, procIdx](bool engaged) {
 				if (engaged) {
