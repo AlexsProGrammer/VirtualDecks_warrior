@@ -327,6 +327,11 @@ private:
   /// Callback when background BPM analysis completes
   void bpmAnalysisComplete(const juce::String& fileHash, double bpm) override;
 
+  /// Guard: true while a deferred playlist.setTrackTitles() is already
+  /// queued via callAsync so multiple BPM completions in the same message
+  /// loop cycle coalesce into a single UI refresh.
+  bool playlistRefreshScheduled = false;
+
   //==============================================================================
   // Off-thread library ingestion (Phase 2)
 

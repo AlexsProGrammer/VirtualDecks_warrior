@@ -99,10 +99,11 @@ public:
 	 * Install the 3-band waveform colour data computed by WaveformBandAnalyzer.
 	 * When set, paint() renders per-pixel-column RGB tinting (low=R, mid=G,
 	 * high=B). Pass nullptr (or default-construct) to revert to theme colour.
+	 * Virtual so subclasses can invalidate their own caches when data changes.
 	 *
 	 * @param data Shared pointer to immutable BandData; ownership shared.
 	 */
-	void setBandData(BandDataPtr data);
+	virtual void setBandData(BandDataPtr data);
 
 	//============================================================================== 
 

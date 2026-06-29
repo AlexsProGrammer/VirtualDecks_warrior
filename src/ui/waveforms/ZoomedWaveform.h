@@ -70,5 +70,31 @@ private:
 
 	//============================================================================== 
 
+	/**
+	 * Override to rebuild the strip cache when thumbnail data changes.
+	 */
+	void changeListenerCallback(juce::ChangeBroadcaster* source) override;
+
+	/**
+	 * Override to invalidate the strip cache when band data changes.
+	 */
+	void setBandData(BandDataPtr data) override;
+
+	/**
+	 * Renders the entire track waveform into stripCache at a fixed
+	 * horizontal density. Called once per track/data load or resize;
+	 * subsequent frames just blit the visible sub-region.
+	 */
+	void rebuildStripCache();
+
+	//============================================================================== 
+
+	/// Full-track rendered waveform strip. X maps linearly to track time.
+	/// Built once on load/resize; blitted per frame instead of re-rendering.
+	juce::Image stripCache;
+
+	/// True when stripCache must be rebuilt before the next blit.
+	bool stripCacheDirty = true;
+
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ZoomedWaveform)
 };

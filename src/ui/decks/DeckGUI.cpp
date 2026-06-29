@@ -118,7 +118,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	highBandFilter.addListener(this);
 	highBandFilter.addMouseListener(this, false);
 
-	startTimer(20);
+	startTimer(33); // 30 fps is imperceptible for waveform updates; halving from 50 Hz reduces render work
 
 	for (auto i = 0; i < 6; ++i) {
 		cues.push_back(new juce::TextButton());

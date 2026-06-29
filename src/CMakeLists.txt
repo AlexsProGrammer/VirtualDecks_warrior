@@ -107,7 +107,7 @@ else()
         PUBLIC
             JUCE_WEB_BROWSER=0
             JUCE_USE_CURL=0
-            JUCE_DISPLAY_SPLASH_SCREEN=1
+            JUCE_DISPLAY_SPLASH_SCREEN=0
             JUCE_REPORT_APP_USAGE=0
             JUCE_STRICT_REFCOUNTEDPOINTER=1
             JUCE_JACK=1

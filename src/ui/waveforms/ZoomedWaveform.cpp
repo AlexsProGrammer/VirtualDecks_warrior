@@ -27,140 +27,247 @@ ZoomedWaveform::~ZoomedWaveform()
 /**
  * Implementation of paint method for ZoomedWaveform
  *
- * Similar to WaveformDisplay, calls the drawChannel method on audioThumb to
- * draw the waveform.
- * However, the waveform drawn is zoomed in and instead of a moving playhead,
- * the drawn waveform moves against a fixed playhead in the middle.
- *
+ * Blits the visible sub-region from the pre-rendered full-track strip cache
+ * so that only cheap overlays (beat grid, cues, loop region, playhead) are
+ * redrawn on every frame instead of calling the expensive audioThumb.drawChannel.
  */
 void ZoomedWaveform::paint(juce::Graphics& g)
 {
 	g.fillAll(UI::bgSurface);
+
+	if (!isLoaded)
+		return;
+
+	// Rebuild the full-track strip cache if data or size changed.
+	if (stripCacheDirty || stripCache.getHeight() != getHeight())
+		rebuildStripCache();
+
+	const double totalLen = audioThumb.getTotalLength();
+	if (totalLen <= 0.0)
+		return;
+
+	const double thisPos = position * totalLen;
+	const double half    = (totalLen / 80.0) * speedRatio;
+	const double left    = thisPos - half;
+	const double right   = thisPos + half;
+	const double winLen  = right - left;
+
+	const int W = getWidth();
+	const int H = getHeight();
+
+	// ── Blit visible sub-region from strip cache ─────────────────────────────
+	const int sw = stripCache.getWidth();
+
+	// Clamp to valid track range [0, totalLen]
+	const double t0 = std::max(0.0, left);
+	const double t1 = std::min(totalLen, right);
+
+	if (t1 > t0)
+	{
+		const int srcX = (int)(t0 / totalLen * sw);
+		const int srcW = std::max(1, (int)std::ceil((t1 - t0) / totalLen * sw));
+		const int dstX = (int)((t0 - left) / winLen * W);
+		const int dstW = std::max(1, (int)std::ceil((t1 - t0) / winLen * W));
+		g.drawImage(stripCache,
+		            dstX, 0, dstW, H,
+		            juce::jlimit(0, sw - 1, srcX), 0,
+		            juce::jlimit(1, sw - juce::jlimit(0, sw - 1, srcX), srcW), H);
+	}
+
+	// Fill pre-track region with black
+	if (left < 0.0)
+	{
+		const int blackW = (int)((-left) / winLen * W) + 1;
+		g.setColour(juce::Colours::black);
+		g.fillRect(0, 0, blackW, H);
+	}
+
+	// Fill post-track region with black
+	if (right > totalLen)
+	{
+		const int blackX = (int)((totalLen - left) / winLen * W);
+		g.setColour(juce::Colours::black);
+		g.fillRect(blackX, 0, W - blackX, H);
+	}
+
+	// ── Beat grid lines ───────────────────────────────────────────────────────
+	if (beatGridBpm > 0.0)
+	{
+		const double beatIntervalSecs = 60.0 / beatGridBpm;
+		double firstBeat = (beatIntervalSecs > 0.0)
+		    ? std::ceil((left - beatGridOffsetSecs) / beatIntervalSecs) * beatIntervalSecs + beatGridOffsetSecs
+		    : left;
+
+		int beatIndex = (beatIntervalSecs > 0.0)
+		    ? static_cast<int>(std::round((firstBeat - beatGridOffsetSecs) / beatIntervalSecs))
+		    : 0;
+
+		for (double beatTime = firstBeat; beatTime <= right; beatTime += beatIntervalSecs)
+		{
+			const double xPos = juce::jmap(beatTime, left, right, 0.0, (double)W);
+			if (xPos >= 0 && xPos <= W)
+			{
+				if (beatIndex % 4 == 0)
+				{
+					g.setColour(juce::Colours::white.withAlpha(0.5f));
+					g.drawLine((float)xPos, 0.0f, (float)xPos, (float)H, 1.5f);
+				}
+				else
+				{
+					g.setColour(juce::Colours::white.withAlpha(0.2f));
+					g.drawLine((float)xPos, 0.0f, (float)xPos, (float)H, 1.0f);
+				}
+			}
+			beatIndex++;
+		}
+	}
+
+	// ── Cue markers ───────────────────────────────────────────────────────────
+	for (auto i = 0; i < (int)cueTargets.size(); ++i)
+	{
+		const double cueSecs = cueTargets[i]->first * totalLen;
+		if (cueSecs > left && cueSecs < right)
+		{
+			g.setColour(juce::Colour::fromHSL(static_cast<float>(cueTargets[i]->second), 1.0f, 0.5f, 1.0f));
+			const double xPos = juce::jmap(cueSecs, left, right, 0.0, (double)W);
+			g.drawRect((int)xPos, 0, 1, H);
+		}
+	}
+
+	// ── Loop region ───────────────────────────────────────────────────────────
+	if (loopInRel >= 0.0)
+	{
+		const double loopInSecs = loopInRel * totalLen;
+		if (loopInSecs >= left && loopInSecs <= right)
+		{
+			const float lx = static_cast<float>(juce::jmap(loopInSecs, left, right, 0.0, (double)W));
+			g.setColour(juce::Colours::blue);
+			g.drawLine(lx, 0.0f, lx, static_cast<float>(H), 2.0f);
+		}
+
+		if (loopOutRel > loopInRel)
+		{
+			const double loopOutSecs = loopOutRel * totalLen;
+			if (loopOutSecs > left && loopInSecs < right)
+			{
+				const double drawLeft  = std::max(loopInSecs,  left);
+				const double drawRight = std::min(loopOutSecs, right);
+				const float x1 = static_cast<float>(juce::jmap(drawLeft,  left, right, 0.0, (double)W));
+				const float x2 = static_cast<float>(juce::jmap(drawRight, left, right, 0.0, (double)W));
+				g.setColour(loopIsActive ? juce::Colours::limegreen.withAlpha(0.25f)
+				                        : juce::Colours::blue.withAlpha(0.20f));
+				g.fillRect(x1, 0.0f, x2 - x1, static_cast<float>(H));
+
+				const juce::Colour lineCol = loopIsActive ? juce::Colours::limegreen : juce::Colours::blue;
+				g.setColour(lineCol);
+				if (loopInSecs >= left && loopInSecs <= right)
+				{
+					const float lx = static_cast<float>(juce::jmap(loopInSecs, left, right, 0.0, (double)W));
+					g.drawLine(lx, 0.0f, lx, static_cast<float>(H), 2.0f);
+				}
+				if (loopOutSecs >= left && loopOutSecs <= right)
+				{
+					const float rx = static_cast<float>(juce::jmap(loopOutSecs, left, right, 0.0, (double)W));
+					g.drawLine(rx, 0.0f, rx, static_cast<float>(H), 2.0f);
+				}
+			}
+		}
+	}
+
+	// ── Fixed centre playhead ─────────────────────────────────────────────────
 	g.setColour(juce::Colours::grey);
+	g.drawRect(W / 2, 0, 1, H);
 
-	if (isLoaded) {
-		double thisPos = position * audioThumb.getTotalLength();
-		double half = (audioThumb.getTotalLength() / 80) * speedRatio;
-		double left = thisPos - half;
-		double right = thisPos + half;
+	// ── Speed deviation overlay ───────────────────────────────────────────────
+	if (std::abs(speedRatio - 1.0) > 0.001 && beatGridBpm > 0.0)
+	{
+		const double pct = (speedRatio - 1.0) * 100.0;
+		const juce::String sign = pct > 0 ? "+" : "";
+		const juce::String pctText = sign + juce::String(pct, 1) + "%";
+		g.setColour(juce::Colour::fromRGBA(0, 0, 0, 160));
+		g.fillRect(W - 52, 2, 50, 16);
 		g.setColour(theme);
-
-		if (bandData != nullptr && ! bandData->empty()) {
-			drawBandWaveform(g, getLocalBounds(), left, right);
-		}
-		else {
-			audioThumb.drawChannel(g, getLocalBounds(), left, right, 0, .7);
-		}
-
-		if (left < 0) {
-			double widthRect = juce::jmap(fabs(left), (double)0, half * 2, (double)0, (double)getWidth());
-			g.setColour(juce::Colour::fromRGBA(0, 0, 0, 255));
-			g.fillRect(0.0f, 0.0f, (float)widthRect, (float)getHeight() - 1);
-		}
-
-		// Draw beat grid lines
-		if (beatGridBpm > 0.0) {
-			double beatIntervalSecs = 60.0 / beatGridBpm;
-			// Calculate first beat in visible range
-			double firstBeat;
-			if (beatIntervalSecs > 0.0) {
-				firstBeat = std::ceil((left - beatGridOffsetSecs) / beatIntervalSecs) * beatIntervalSecs + beatGridOffsetSecs;
-			}
-			else {
-				firstBeat = left;
-			}
-
-			// Determine the beat index for downbeat emphasis
-			int beatIndex = 0;
-			if (beatIntervalSecs > 0.0)
-				beatIndex = static_cast<int>(std::round((firstBeat - beatGridOffsetSecs) / beatIntervalSecs));
-
-			for (double beatTime = firstBeat; beatTime <= right; beatTime += beatIntervalSecs) {
-				double xPos = juce::jmap(beatTime, left, right, 0.0, (double)getWidth());
-				if (xPos >= 0 && xPos <= getWidth()) {
-					if (beatIndex % 4 == 0) {
-						// Downbeat: brighter line
-						g.setColour(juce::Colours::white.withAlpha(0.5f));
-						g.drawLine((float)xPos, 0.0f, (float)xPos, (float)getHeight(), 1.5f);
-					}
-					else {
-						// Regular beat: subtle line
-						g.setColour(juce::Colours::white.withAlpha(0.2f));
-						g.drawLine((float)xPos, 0.0f, (float)xPos, (float)getHeight(), 1.0f);
-					}
-				}
-				beatIndex++;
-			}
-		}
-
-		for (auto i = 0; i < cueTargets.size(); ++i) {
-			if ((cueTargets[i]->first * audioThumb.getTotalLength()) > left && (cueTargets[i]->first * audioThumb.getTotalLength()) < right) {
-				g.setColour(juce::Colour::fromHSL(static_cast<float>(cueTargets[i]->second), 1.0f, 0.5f, 1.0f));
-				double widthPos = juce::jmap(cueTargets[i]->first * audioThumb.getTotalLength(), left, right, (double)0, (double)getWidth());
-				g.drawRect(widthPos, 0, 1, getHeight());
-			}
-		}
-
-		// Draw loop region highlight in zoomed view
-		if (loopInRel >= 0.0) {
-			double loopInSecs = loopInRel * audioThumb.getTotalLength();
-			// Always draw the IN marker as an blue line if visible
-			if (loopInSecs >= left && loopInSecs <= right) {
-				float lx = static_cast<float>(juce::jmap(loopInSecs, left, right, 0.0, (double)getWidth()));
-				g.setColour(juce::Colours::blue);
-				g.drawLine(lx, 0.0f, lx, static_cast<float>(getHeight()), 2.0f);
-			}
-
-			if (loopOutRel > loopInRel) {
-				double loopOutSecs = loopOutRel * audioThumb.getTotalLength();
-				// Only draw region if it overlaps the visible range
-				if (loopOutSecs > left && loopInSecs < right) {
-					double drawLeft = std::max(loopInSecs, left);
-					double drawRight = std::min(loopOutSecs, right);
-					float x1 = static_cast<float>(juce::jmap(drawLeft, left, right, 0.0, (double)getWidth()));
-					float x2 = static_cast<float>(juce::jmap(drawRight, left, right, 0.0, (double)getWidth()));
-					juce::Colour loopColour = loopIsActive
-						? juce::Colours::limegreen.withAlpha(0.25f)
-						: juce::Colours::blue.withAlpha(0.20f);
-					g.setColour(loopColour);
-					g.fillRect(x1, 0.0f, x2 - x1, static_cast<float>(getHeight()));
-					// Draw boundary lines if visible
-					juce::Colour lineColour = loopIsActive ? juce::Colours::limegreen : juce::Colours::blue;
-					g.setColour(lineColour);
-					if (loopInSecs >= left && loopInSecs <= right) {
-						float lx = static_cast<float>(juce::jmap(loopInSecs, left, right, 0.0, (double)getWidth()));
-						g.drawLine(lx, 0.0f, lx, static_cast<float>(getHeight()), 2.0f);
-					}
-					if (loopOutSecs >= left && loopOutSecs <= right) {
-						float rx = static_cast<float>(juce::jmap(loopOutSecs, left, right, 0.0, (double)getWidth()));
-						g.drawLine(rx, 0.0f, rx, static_cast<float>(getHeight()), 2.0f);
-					}
-				}
-			}
-		}
-
-		g.setColour(juce::Colours::grey);
-		g.drawRect(getWidth() / 2, 0, 1, getHeight());
-
-		// Draw speed % deviation overlay
-		if (std::abs(speedRatio - 1.0) > 0.001 && beatGridBpm > 0.0) {
-			double pct = (speedRatio - 1.0) * 100.0;
-			juce::String sign = pct > 0 ? "+" : "";
-			juce::String pctText = sign + juce::String(pct, 1) + "%";
-			g.setColour(juce::Colour::fromRGBA(0, 0, 0, 160));
-			g.fillRect(getWidth() - 52, 2, 50, 16);
-			g.setColour(theme);
-			g.setFont(juce::Font(juce::FontOptions(12.0f)));
-			g.drawText(pctText, getWidth() - 52, 2, 50, 16, juce::Justification::centred);
-		}
+		g.setFont(juce::Font(juce::FontOptions(12.0f)));
+		g.drawText(pctText, W - 52, 2, 50, 16, juce::Justification::centred);
 	}
 }
 
 /**
  * Implementation of resized method for ZoomedWaveform
  *
+ * Marks the strip cache dirty so it is rebuilt at the new size on next paint.
  */
-void ZoomedWaveform::resized() {}
+void ZoomedWaveform::resized()
+{
+	stripCacheDirty = true;
+}
+
+/**
+ * Implementation of changeListenerCallback for ZoomedWaveform.
+ *
+ * Called by the AudioThumbnail when waveform data loads or updates.
+ * Marks the strip cache dirty so it is rebuilt on the next paint call.
+ */
+void ZoomedWaveform::changeListenerCallback(juce::ChangeBroadcaster* source)
+{
+	juce::ignoreUnused(source);
+	stripCacheDirty = true;
+	repaint();
+}
+
+/**
+ * Override setBandData to invalidate the strip cache when 3-band colour
+ * data arrives from WaveformBandAnalyzer, then delegate to the base class
+ * to store the data and rebuild the band paths.
+ */
+void ZoomedWaveform::setBandData(BandDataPtr data)
+{
+	stripCacheDirty = true;
+	WaveformDisplay::setBandData(std::move(data));
+}
+
+/**
+ * Implementation of rebuildStripCache for ZoomedWaveform.
+ *
+ * Renders the entire track waveform (0 → totalLength) into a wide Image at
+ * a fixed pixel density (component width × 40, capped at 32 000 px).  Each
+ * subsequent frame blits the visible sub-region instead of re-calling the
+ * expensive audioThumb.drawChannel / drawBandWaveform.
+ *
+ * Called at most once per: track load, band-data arrival, or window resize.
+ */
+void ZoomedWaveform::rebuildStripCache()
+{
+	const double totalLen = audioThumb.getTotalLength();
+	const int    h        = getHeight();
+
+	if (totalLen <= 0.0 || h <= 0 || getWidth() <= 0)
+	{
+		stripCache      = juce::Image();
+		stripCacheDirty = false;
+		return;
+	}
+
+	// Pixel density: enough that the zoomed view at 1× speed fills the
+	// component width with crisp pixels. Zoom window ≈ totalLen/40 seconds
+	// visible, so we need ~40 × component width pixels total.
+	// Cap at 32 000 to stay under ~10 MB per strip (32 000 × 80 × 4 bytes).
+	const int w = juce::jlimit(64, 32000, getWidth() * 40);
+
+	stripCache = juce::Image(juce::Image::RGB, w, h, true);
+	{
+		juce::Graphics cg(stripCache);
+		cg.fillAll(UI::bgSurface);
+
+		const juce::Rectangle<int> fullBounds(0, 0, w, h);
+		if (bandData != nullptr && !bandData->empty())
+			drawBandWaveform(cg, fullBounds, 0.0, totalLen);
+		else
+			audioThumb.drawChannel(cg, fullBounds, 0.0, totalLen, 0, 0.7f);
+	}
+
+	stripCacheDirty = false;
+}
 
 //==============================================================================
 

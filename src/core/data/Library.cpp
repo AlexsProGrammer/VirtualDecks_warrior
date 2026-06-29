@@ -621,28 +621,79 @@ void Library::removeSelectedTrack() {
  * Implementation of queueBpmAnalysis method for Library
  *
  * Queues background BPM analysis for tracks that don't yet have a BPM value.
- * Computes fileHash on-the-fly if missing.
+ * If a track is missing its fileHash (legacy library entry saved before hashing
+ * was introduced), the hash is computed on a background thread rather than
+ * blocking the message thread.
  */
 void Library::queueBpmAnalysis(std::vector<track>& tracks)
 {
 	DBG("Library::queueBpmAnalysis - " + juce::String(static_cast<int>(tracks.size())) + " tracks");
+
+	// Collect identities of tracks that need a hash computed first (rare:
+	// only old library entries persisted before the hashing feature was added).
+	std::vector<juce::String> needsHash;
 	for (auto& t : tracks)
 	{
-		// Compute fileHash if not yet set
 		if (t.fileHash.isEmpty())
 		{
-			juce::File audioFile = t.url.getLocalFile();
-			DBG("  Computing hash for: " + t.title + " file=" + audioFile.getFullPathName() + " exists=" + juce::String(audioFile.existsAsFile() ? "yes" : "no"));
-			if (audioFile.existsAsFile())
-				t.fileHash = FileHasher::computeHash(audioFile);
+			DBG("  Hash missing for: " + t.title + " (will compute off-thread)");
+			needsHash.push_back(t.identity);
 		}
+	}
 
-		// Queue analysis if BPM is unknown
+	// Queue analysis for tracks whose hash is already known.
+	for (auto& t : tracks)
+	{
 		if (t.bpm <= 0.0 && t.fileHash.isNotEmpty())
 		{
 			juce::File audioFile = t.url.getLocalFile();
 			bpmAnalysisManager.analyzeTrack(audioFile, t.fileHash);
 		}
+	}
+
+	// For tracks without a hash, compute off-thread and then queue analysis.
+	if (!needsHash.empty())
+	{
+		// Capture data needed off-thread by value.
+		struct PendingEntry { juce::String identity; juce::File file; };
+		std::vector<PendingEntry> pending;
+		for (auto& t : tracks)
+		{
+			if (t.fileHash.isEmpty())
+				pending.push_back({ t.identity, t.url.getLocalFile() });
+		}
+
+		juce::Thread::launch([this, pending = std::move(pending)]() mutable
+		{
+			for (auto& entry : pending)
+			{
+				if (!entry.file.existsAsFile())
+					continue;
+
+				const juce::String hash = FileHasher::computeHash(entry.file);
+				if (hash.isEmpty())
+					continue;
+
+				// Marshal result back to message thread to update the track record.
+				juce::MessageManager::callAsync([this, id = entry.identity,
+				                                 file = entry.file, h = hash]()
+				{
+					for (auto& folder : trackFolders)
+					{
+						for (auto& t : folder.second)
+						{
+							if (t.identity == id && t.fileHash.isEmpty())
+							{
+								t.fileHash = h;
+								if (t.bpm <= 0.0)
+									bpmAnalysisManager.analyzeTrack(file, h);
+								break;
+							}
+						}
+					}
+				});
+			}
+		});
 	}
 }
 
@@ -650,7 +701,10 @@ void Library::queueBpmAnalysis(std::vector<track>& tracks)
  * Implementation of bpmAnalysisComplete callback for Library
  *
  * Called on the message thread when a background BPM analysis finishes.
- * Updates all tracks with the matching fileHash and refreshes the playlist.
+ * Updates all tracks with the matching fileHash and coalesces the playlist
+ * UI refresh so that rapid back-to-back completions cause only one
+ * setTrackTitles() call per message-loop cycle (avoids N UI updates for N
+ * tracks analyzed in quick succession).
  */
 void Library::bpmAnalysisComplete(const juce::String& fileHash, double bpm)
 {
@@ -668,14 +722,27 @@ void Library::bpmAnalysisComplete(const juce::String& fileHash, double bpm)
 		}
 	}
 
-	if (updated && selectedFolderIndex >= 0 &&
-		selectedFolderIndex < static_cast<int>(trackFolders.size()))
-	{
-		playlist.setTrackTitles(trackFolders[selectedFolderIndex].second);
-	}
-
 	if (updated)
+	{
 		scheduleAsyncSave();
+
+		// Coalesce: only post one deferred refresh per message-loop cycle.
+		if (!playlistRefreshScheduled &&
+		    selectedFolderIndex >= 0 &&
+		    selectedFolderIndex < static_cast<int>(trackFolders.size()))
+		{
+			playlistRefreshScheduled = true;
+			juce::MessageManager::callAsync([this]()
+			{
+				playlistRefreshScheduled = false;
+				if (selectedFolderIndex >= 0 &&
+				    selectedFolderIndex < static_cast<int>(trackFolders.size()))
+				{
+					playlist.setTrackTitles(trackFolders[selectedFolderIndex].second);
+				}
+			});
+		}
+	}
 }
 
 //==============================================================================
