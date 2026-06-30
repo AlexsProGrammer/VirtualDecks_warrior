@@ -59,6 +59,7 @@ private:
 	juce::Component audioPanel;
 	juce::Component midiPanel;
 
+	juce::Label generalHeaderLabel{ "generalHeaderLabel", "General settings" };
 	juce::Label masterLabel;
 	juce::Label headphoneLabel;
 	juce::Label masterVolLabel{ "masterVolLabel", "Master Volume" };

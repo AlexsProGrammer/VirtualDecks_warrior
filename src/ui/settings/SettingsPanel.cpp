@@ -30,7 +30,12 @@ SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
 	addAndMakeVisible(audioPanel);
 	addAndMakeVisible(midiPanel);
 
+	generalPanel.addAndMakeVisible(generalHeaderLabel);
 	generalPanel.addAndMakeVisible(startAtFirstHotCueToggle);
+
+	generalHeaderLabel.setFont(juce::Font(juce::FontOptions{ 13.0f }).boldened());
+	generalHeaderLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+	generalHeaderLabel.setJustificationType(juce::Justification::centredLeft);
 
 	audioPanel.addAndMakeVisible(masterLabel);
 	audioPanel.addAndMakeVisible(headphoneLabel);
@@ -153,6 +158,15 @@ void SettingsPanel::showTab(int tabIndex)
 	audioPanel.setVisible(tabIndex == 1);
 	midiPanel.setVisible(tabIndex == 2);
 
+	if (tabIndex == 0)
+		generalPanel.toFront(false);
+	else if (tabIndex == 1)
+		audioPanel.toFront(false);
+	else if (tabIndex == 2)
+		midiPanel.toFront(false);
+
+	resized();
+
 	generalTabBtn.setColour(juce::TextButton::buttonColourId,
 		(tabIndex == 0) ? UI::deck1Accent.withAlpha(0.8f) : UI::bgCard);
 	audioTabBtn.setColour(juce::TextButton::buttonColourId,
@@ -169,7 +183,7 @@ void SettingsPanel::resized()
 	auto tabsArea = area.removeFromTop(32);
 	auto closeArea = tabsArea.removeFromRight(32);
 	closeButton.setBounds(closeArea);
-	
+
 	const int tabW = tabsArea.getWidth() / 3;
 	generalTabBtn.setBounds(tabsArea.removeFromLeft(tabW));
 	audioTabBtn.setBounds(tabsArea.removeFromLeft(tabW));
@@ -181,9 +195,10 @@ void SettingsPanel::resized()
 
 	if (generalPanel.isVisible()) {
 		auto generalArea = generalPanel.getLocalBounds().reduced(16);
-		auto toggleArea = generalArea.removeFromTop(36);
-		auto centered = toggleArea.withTrimmedLeft(generalArea.getWidth() / 4).withTrimmedRight(generalArea.getWidth() / 4);
-		startAtFirstHotCueToggle.setBounds(centered);
+		generalHeaderLabel.setBounds(16, 16, generalArea.getWidth() - 32, 24);
+		startAtFirstHotCueToggle.setBounds(16, 50, generalArea.getWidth() - 32, 28);
+		generalHeaderLabel.setVisible(true);
+		startAtFirstHotCueToggle.setVisible(true);
 	}
 
 	if (audioPanel.isVisible()) {
