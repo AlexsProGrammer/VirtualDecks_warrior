@@ -24,20 +24,23 @@ MainComponent::MainComponent()
 		try { setAudioChannels(0, 0); }
 		catch (const std::exception& e) { DBG("Audio bind error: " << e.what()); }
 
-		juce::String err = deviceManager.initialise(0, 2, nullptr, true);
-		if (err.isNotEmpty())
-			DBG("Warning: Failed to open 2 output channels: " << err);
-
-		if (auto savedState = AppSettings::loadMasterDeviceState())
+		auto savedState = AppSettings::loadMasterDeviceState();
+		if (savedState != nullptr)
 		{
-			try
+			auto err = deviceManager.initialise(0, 2, savedState.get(), true);
+			if (err.isNotEmpty())
 			{
-				deviceManager.initialise(0, 2, savedState.get(), true);
+				DBG("Warning: Failed to restore master device manager state: " << err);
+				err = deviceManager.initialise(0, 2, nullptr, true);
+				if (err.isNotEmpty())
+					DBG("Warning: Failed to open default master output: " << err);
 			}
-			catch (const std::exception& e)
-			{
-				DBG("Warning: Failed to restore master device manager state: " << e.what());
-			}
+		}
+		else
+		{
+			auto err = deviceManager.initialise(0, 2, nullptr, true);
+			if (err.isNotEmpty())
+				DBG("Warning: Failed to open 2 output channels: " << err);
 		}
 	};
 
@@ -106,13 +109,35 @@ MainComponent::MainComponent()
 	cueCallback.setEngine(&audioEngine);
 	{
 		auto savedState = AppSettings::loadHeadphoneDeviceState();
-		try
+		if (savedState != nullptr)
 		{
-			cueDeviceManager.initialise(0, 2, savedState.get(), false);
+			try
+			{
+				cueDeviceManager.initialise(0, 2, savedState.get(), true);
+			}
+			catch (const std::exception& e)
+			{
+				DBG("Warning: Failed to restore headphone device manager state: " << e.what());
+				try
+				{
+					cueDeviceManager.initialise(0, 2, nullptr, true);
+				}
+				catch (const std::exception& fallbackException)
+				{
+					DBG("Warning: Failed to open default headphone output: " << fallbackException.what());
+				}
+			}
 		}
-		catch (const std::exception& e)
+		else
 		{
-			DBG("Warning: Failed to initialize cue device manager: " << e.what());
+			try
+			{
+				cueDeviceManager.initialise(0, 2, nullptr, true);
+			}
+			catch (const std::exception& e)
+			{
+				DBG("Warning: Failed to initialize headphone device manager: " << e.what());
+			}
 		}
 	}
 

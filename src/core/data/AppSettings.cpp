@@ -23,8 +23,13 @@ std::unique_ptr<juce::XmlElement> AppSettings::loadHeadphoneDeviceState()
 	if (root == nullptr)
 		return nullptr;
 
-	if (auto* child = root->getChildByName(kHeadphoneStateTag))
-		return std::make_unique<juce::XmlElement>(*child);
+	if (auto* wrapper = root->getChildByName(kHeadphoneStateTag))
+	{
+		if (auto* inner = wrapper->getFirstChildElement())
+			return std::make_unique<juce::XmlElement>(*inner);
+
+		return std::make_unique<juce::XmlElement>(*wrapper);
+	}
 
 	return nullptr;
 }
@@ -39,8 +44,13 @@ std::unique_ptr<juce::XmlElement> AppSettings::loadMasterDeviceState()
 	if (root == nullptr)
 		return nullptr;
 
-	if (auto* child = root->getChildByName(kMasterStateTag))
-		return std::make_unique<juce::XmlElement>(*child);
+	if (auto* wrapper = root->getChildByName(kMasterStateTag))
+	{
+		if (auto* inner = wrapper->getFirstChildElement())
+			return std::make_unique<juce::XmlElement>(*inner);
+
+		return std::make_unique<juce::XmlElement>(*wrapper);
+	}
 
 	return nullptr;
 }
@@ -60,9 +70,9 @@ void AppSettings::saveMasterDeviceState(const juce::XmlElement* state)
 
 	if (state != nullptr)
 	{
-		auto* copy = new juce::XmlElement(*state);
-		copy->setTagName(kMasterStateTag);
-		root->addChildElement(copy);
+		auto* wrapper = new juce::XmlElement(kMasterStateTag);
+		wrapper->addChildElement(new juce::XmlElement(*state));
+		root->addChildElement(wrapper);
 	}
 
 	root->writeTo(f, juce::XmlElement::TextFormat{});
@@ -114,9 +124,9 @@ void AppSettings::saveHeadphoneDeviceState(const juce::XmlElement* state)
 
 	if (state != nullptr)
 	{
-		auto* copy = new juce::XmlElement(*state);
-		copy->setTagName(kHeadphoneStateTag);
-		root->addChildElement(copy);
+		auto* wrapper = new juce::XmlElement(kHeadphoneStateTag);
+		wrapper->addChildElement(new juce::XmlElement(*state));
+		root->addChildElement(wrapper);
 	}
 
 	root->writeTo(f, juce::XmlElement::TextFormat{});
