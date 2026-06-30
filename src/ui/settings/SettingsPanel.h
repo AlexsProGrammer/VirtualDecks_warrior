@@ -17,10 +17,10 @@ public:
 	 * @param onClose          Called when the user presses the × button.
 	 * @param masterGainSetter Callback to update master output gain (0-1).
 	 * @param headphoneGainSetter Callback to update headphone output gain (0-1).
-	 * @param startAtFirstHotCueSetter Callback to update the start-at-first-hot-cue setting.
 	 * @param initialMasterGain Initial master gain value (0-1).
 	 * @param initialHeadphoneGain Initial headphone gain value (0-1).
 	 * @param initialStartAtFirstHotCue Initial state for the start-at-first-hot-cue toggle.
+	 * @param startAtFirstHotCueSetter Callback to update the start-at-first-hot-cue setting.
 	 */
 	SettingsPanel(juce::AudioDeviceManager& masterManager,
 	              juce::AudioDeviceManager& headphoneManager,
@@ -38,13 +38,26 @@ public:
 	void resized() override;
 
 private:
+	void showTab(int tabIndex);
+
+	int currentTab = 1;
+
 	std::function<void()> closeCallback;
 	std::function<void(float)> masterGainCallback;
 	std::function<void(float)> headphoneGainCallback;
 	std::function<void(bool)> startAtFirstHotCueCallback;
 
-	/// Reference held so we can persist device state when the panel closes.
+	/// References held so we can persist device state when the panel closes.
+	juce::AudioDeviceManager& masterManager;
 	juce::AudioDeviceManager& headphoneManager;
+
+	juce::TextButton generalTabBtn{ "General" };
+	juce::TextButton audioTabBtn{ "Audio" };
+	juce::TextButton midiTabBtn{ "MIDI" };
+
+	juce::Component generalPanel;
+	juce::Component audioPanel;
+	juce::Component midiPanel;
 
 	juce::Label masterLabel;
 	juce::Label headphoneLabel;
@@ -56,7 +69,8 @@ private:
 
 	juce::Slider masterVolSlider;
 	juce::Slider headphoneVolSlider;
-	juce::ToggleButton startAtFirstHotCueToggle{ "Start at first saved hot cue" };
+	juce::ToggleButton startAtFirstHotCueToggle{ "Move loaded track playhead to first saved hot cue" };
+	juce::Label midiPlaceholderLabel{ "midiPlaceholder", "MIDI input mapping — coming in next phase" };
 
 	/// Display labels for slider values (updated in real-time, formatted to 2 decimals).
 	juce::Label masterVolDisplayLabel;

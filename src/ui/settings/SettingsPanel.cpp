@@ -16,35 +16,50 @@ SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
 	: closeCallback(std::move(onClose)),
 	  masterGainCallback(std::move(masterGainSetter)),
 	  headphoneGainCallback(std::move(headphoneGainSetter)),
-	  headphoneManager(headphoneManager),
 	  startAtFirstHotCueCallback(std::move(startAtFirstHotCueSetter)),
+	  masterManager(masterManager),
+	  headphoneManager(headphoneManager),
 	  masterSelector   (masterManager,    0, 0, 2, 2, false, false, true, false),
 	  headphoneSelector(headphoneManager, 0, 0, 2, 2, false, false, true, false)
 {
+	addAndMakeVisible(generalTabBtn);
+	addAndMakeVisible(audioTabBtn);
+	addAndMakeVisible(midiTabBtn);
+	addAndMakeVisible(closeButton);
+	addAndMakeVisible(generalPanel);
+	addAndMakeVisible(audioPanel);
+	addAndMakeVisible(midiPanel);
+
+	generalPanel.addAndMakeVisible(startAtFirstHotCueToggle);
+
+	audioPanel.addAndMakeVisible(masterLabel);
+	audioPanel.addAndMakeVisible(headphoneLabel);
+	audioPanel.addAndMakeVisible(masterSelector);
+	audioPanel.addAndMakeVisible(headphoneSelector);
+	audioPanel.addAndMakeVisible(masterVolLabel);
+	audioPanel.addAndMakeVisible(masterVolDisplayLabel);
+	audioPanel.addAndMakeVisible(masterVolSlider);
+	audioPanel.addAndMakeVisible(headphoneVolLabel);
+	audioPanel.addAndMakeVisible(headphoneVolDisplayLabel);
+	audioPanel.addAndMakeVisible(headphoneVolSlider);
+
+	midiPanel.addAndMakeVisible(midiPlaceholderLabel);
+
 	masterLabel.setText("Master Output", juce::dontSendNotification);
 	masterLabel.setFont(juce::Font(juce::FontOptions{ 13.0f }).boldened());
 	masterLabel.setColour(juce::Label::textColourId, juce::Colours::white);
-	addAndMakeVisible(masterLabel);
 
 	headphoneLabel.setText("Headphone / CUE Output  (use JACK type for per-sink routing)", juce::dontSendNotification);
 	headphoneLabel.setFont(juce::Font(juce::FontOptions{ 13.0f }).boldened());
 	headphoneLabel.setColour(juce::Label::textColourId, UI::deck2Accent);
-	addAndMakeVisible(headphoneLabel);
 
-	addAndMakeVisible(masterSelector);
-	addAndMakeVisible(headphoneSelector);
-
-	// Configure master volume slider (linear, continuous range)
 	masterVolLabel.setFont(juce::Font(juce::FontOptions{ 11.0f }));
 	masterVolLabel.setColour(juce::Label::textColourId, juce::Colours::white);
-	addAndMakeVisible(masterVolLabel);
 
-	// Display label for master volume value (updated in real-time, 2 decimals)
 	masterVolDisplayLabel.setFont(juce::Font(juce::FontOptions{ 10.0f }));
 	masterVolDisplayLabel.setColour(juce::Label::textColourId, juce::Colours::white);
 	masterVolDisplayLabel.setJustificationType(juce::Justification::centredRight);
 	masterVolDisplayLabel.setText(juce::String::formatted("%.2f", initialMasterGain), juce::dontSendNotification);
-	addAndMakeVisible(masterVolDisplayLabel);
 
 	masterVolSlider.setRange(0.0, 1.0, 0.0);  // continuous - no step snapping
 	masterVolSlider.setValue(initialMasterGain, juce::dontSendNotification);
@@ -52,31 +67,23 @@ SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
 	masterVolSlider.setColour(juce::Slider::thumbColourId, juce::Colours::aqua);
 	masterVolSlider.onValueChange = [this]
 	{
-		// Audio gain update: atomic store — instant, no I/O.
 		const float value = static_cast<float>(masterVolSlider.getValue());
 		if (masterGainCallback)
 			masterGainCallback(value);
-		// Update display label with 2 decimal places.
 		masterVolDisplayLabel.setText(juce::String::formatted("%.2f", value), juce::dontSendNotification);
 	};
 	masterVolSlider.onDragEnd = [this]
 	{
-		// Persist only once per drag gesture (not on every pixel).
 		AppSettings::saveMasterGain(static_cast<float>(masterVolSlider.getValue()));
 	};
-	addAndMakeVisible(masterVolSlider);
 
-	// Configure headphone volume slider (linear, continuous range)
 	headphoneVolLabel.setFont(juce::Font(juce::FontOptions{ 11.0f }));
 	headphoneVolLabel.setColour(juce::Label::textColourId, UI::deck2Accent);
-	addAndMakeVisible(headphoneVolLabel);
 
-	// Display label for headphone volume value (updated in real-time, 2 decimals)
 	headphoneVolDisplayLabel.setFont(juce::Font(juce::FontOptions{ 10.0f }));
 	headphoneVolDisplayLabel.setColour(juce::Label::textColourId, UI::deck2Accent);
 	headphoneVolDisplayLabel.setJustificationType(juce::Justification::centredRight);
 	headphoneVolDisplayLabel.setText(juce::String::formatted("%.2f", initialHeadphoneGain), juce::dontSendNotification);
-	addAndMakeVisible(headphoneVolDisplayLabel);
 
 	headphoneVolSlider.setRange(0.0, 1.0, 0.0);  // continuous - no step snapping
 	headphoneVolSlider.setValue(initialHeadphoneGain, juce::dontSendNotification);
@@ -84,44 +91,50 @@ SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
 	headphoneVolSlider.setColour(juce::Slider::thumbColourId, UI::deck2Accent);
 	headphoneVolSlider.onValueChange = [this]
 	{
-		// Audio gain update: atomic store — instant, no I/O.
 		const float value = static_cast<float>(headphoneVolSlider.getValue());
 		if (headphoneGainCallback)
 			headphoneGainCallback(value);
-		// Update display label with 2 decimal places.
 		headphoneVolDisplayLabel.setText(juce::String::formatted("%.2f", value), juce::dontSendNotification);
 	};
 	headphoneVolSlider.onDragEnd = [this]
 	{
-		// Persist only once per drag gesture (not on every pixel).
 		AppSettings::saveHeadphoneGain(static_cast<float>(headphoneVolSlider.getValue()));
 	};
+
 	startAtFirstHotCueToggle.setToggleState(initialStartAtFirstHotCue, juce::dontSendNotification);
 	startAtFirstHotCueToggle.setColour(juce::ToggleButton::textColourId, juce::Colours::white);
 	startAtFirstHotCueToggle.onClick = [this]
 	{
+		AppSettings::saveStartAtFirstHotCue(startAtFirstHotCueToggle.getToggleState());
 		if (startAtFirstHotCueCallback)
 			startAtFirstHotCueCallback(startAtFirstHotCueToggle.getToggleState());
 	};
-	addAndMakeVisible(startAtFirstHotCueToggle);
+
+	midiPlaceholderLabel.setJustificationType(juce::Justification::centred);
+	midiPlaceholderLabel.setColour(juce::Label::textColourId, juce::Colours::white);
 
 	closeButton.setColour(juce::TextButton::buttonColourId,
 	                      juce::Colour::fromRGBA(80, 80, 80, 200));
 	closeButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 	closeButton.onClick = [this]
 	{
-		// Persist gains (covers case where panel closes without a completed drag).
 		AppSettings::saveMasterGain(static_cast<float>(masterVolSlider.getValue()));
 		AppSettings::saveHeadphoneGain(static_cast<float>(headphoneVolSlider.getValue()));
 
-		// Persist the headphone device state before hiding.
+		if (auto xml = this->masterManager.createStateXml())
+			AppSettings::saveMasterDeviceState(xml.get());
 		if (auto xml = this->headphoneManager.createStateXml())
 			AppSettings::saveHeadphoneDeviceState(xml.get());
 
 		if (closeCallback)
 			closeCallback();
 	};
-	addAndMakeVisible(closeButton);
+
+	generalTabBtn.onClick = [this] { showTab(0); };
+	audioTabBtn.onClick = [this] { showTab(1); };
+	midiTabBtn.onClick = [this] { showTab(2); };
+
+	showTab(1);
 }
 
 SettingsPanel::~SettingsPanel() = default;
@@ -133,45 +146,78 @@ void SettingsPanel::paint(juce::Graphics& g)
 	g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), UI::kPanelRadius, 1.0f);
 }
 
+void SettingsPanel::showTab(int tabIndex)
+{
+	currentTab = tabIndex;
+	generalPanel.setVisible(tabIndex == 0);
+	audioPanel.setVisible(tabIndex == 1);
+	midiPanel.setVisible(tabIndex == 2);
+
+	generalTabBtn.setColour(juce::TextButton::buttonColourId,
+		(tabIndex == 0) ? UI::deck1Accent.withAlpha(0.8f) : UI::bgCard);
+	audioTabBtn.setColour(juce::TextButton::buttonColourId,
+		(tabIndex == 1) ? UI::deck1Accent.withAlpha(0.8f) : UI::bgCard);
+	midiTabBtn.setColour(juce::TextButton::buttonColourId,
+		(tabIndex == 2) ? UI::deck1Accent.withAlpha(0.8f) : UI::bgCard);
+}
+
 void SettingsPanel::resized()
 {
 	auto area = getLocalBounds().reduced(8);
 
-	// Close button – top-right corner
-	closeButton.setBounds(area.removeFromRight(28).removeFromTop(28));
-	area.removeFromTop(4);
+	// Tab bar and close button
+	auto tabsArea = area.removeFromTop(32);
+	auto closeArea = tabsArea.removeFromRight(32);
+	closeButton.setBounds(closeArea);
+	
+	const int tabW = tabsArea.getWidth() / 3;
+	generalTabBtn.setBounds(tabsArea.removeFromLeft(tabW));
+	audioTabBtn.setBounds(tabsArea.removeFromLeft(tabW));
+	midiTabBtn.setBounds(tabsArea);
 
-	const int half       = (area.getWidth() - 8) / 2;
-	const int labelH     = 22;
-	const int sliderH    = 80;
+	generalPanel.setBounds(area);
+	audioPanel.setBounds(area);
+	midiPanel.setBounds(area);
 
-	auto leftCol  = area.removeFromLeft(half);
-	auto rightCol = area.withTrimmedLeft(8);
+	if (generalPanel.isVisible()) {
+		auto generalArea = generalPanel.getLocalBounds().reduced(16);
+		auto toggleArea = generalArea.removeFromTop(36);
+		auto centered = toggleArea.withTrimmedLeft(generalArea.getWidth() / 4).withTrimmedRight(generalArea.getWidth() / 4);
+		startAtFirstHotCueToggle.setBounds(centered);
+	}
 
-	// Master side: device selector → volume slider
-	masterLabel.setBounds(leftCol.removeFromTop(labelH));
-	auto masterSelectorArea = leftCol;
-	masterSelectorArea.removeFromBottom(sliderH);
-	masterSelector.setBounds(masterSelectorArea);
+	if (audioPanel.isVisible()) {
+		auto audioArea = audioPanel.getLocalBounds().reduced(8);
+		const int labelH = 22;
+		const int sliderH = 80;
 
-	auto masterVolArea = leftCol.removeFromBottom(sliderH).reduced(0, 4);
-	auto masterLabelRow = masterVolArea.removeFromTop(16);
-	masterVolLabel.setBounds(masterLabelRow.removeFromLeft(masterLabelRow.getWidth() - 40));
-	masterVolDisplayLabel.setBounds(masterLabelRow);  // Right side for value display
-	masterVolSlider.setBounds(masterVolArea);
+		auto leftCol = audioArea.removeFromLeft(audioArea.getWidth() / 2);
+		auto rightCol = audioArea.withTrimmedLeft(8);
 
-	// Headphone side: device selector → volume slider with display
-	headphoneLabel.setBounds(rightCol.removeFromTop(labelH));
-	auto headphoneSelectorArea = rightCol;
-	headphoneSelectorArea.removeFromBottom(sliderH + 28);
-	headphoneSelector.setBounds(headphoneSelectorArea);
+		masterLabel.setBounds(leftCol.removeFromTop(labelH));
+		auto masterSelectorArea = leftCol;
+		masterSelectorArea.removeFromBottom(sliderH);
+		masterSelector.setBounds(masterSelectorArea);
 
-	auto toggleArea = rightCol.removeFromBottom(28).reduced(0, 4);
-	startAtFirstHotCueToggle.setBounds(toggleArea);
+		auto masterVolArea = leftCol.removeFromBottom(sliderH).reduced(0, 4);
+		auto masterLabelRow = masterVolArea.removeFromTop(16);
+		masterVolLabel.setBounds(masterLabelRow.removeFromLeft(masterLabelRow.getWidth() - 40));
+		masterVolDisplayLabel.setBounds(masterLabelRow);
+		masterVolSlider.setBounds(masterVolArea);
 
-	auto headphoneVolArea = rightCol.removeFromBottom(sliderH).reduced(0, 4);
-	auto headphoneLabelRow = headphoneVolArea.removeFromTop(16);
-	headphoneVolLabel.setBounds(headphoneLabelRow.removeFromLeft(headphoneLabelRow.getWidth() - 40));
-	headphoneVolDisplayLabel.setBounds(headphoneLabelRow);  // Right side for value display
-	headphoneVolSlider.setBounds(headphoneVolArea);
+		headphoneLabel.setBounds(rightCol.removeFromTop(labelH));
+		auto headphoneSelectorArea = rightCol;
+		headphoneSelectorArea.removeFromBottom(sliderH);
+		headphoneSelector.setBounds(headphoneSelectorArea);
+
+		auto headphoneVolArea = rightCol.removeFromBottom(sliderH).reduced(0, 4);
+		auto headphoneLabelRow = headphoneVolArea.removeFromTop(16);
+		headphoneVolLabel.setBounds(headphoneLabelRow.removeFromLeft(headphoneLabelRow.getWidth() - 40));
+		headphoneVolDisplayLabel.setBounds(headphoneLabelRow);
+		headphoneVolSlider.setBounds(headphoneVolArea);
+	}
+
+	if (midiPanel.isVisible()) {
+		midiPlaceholderLabel.setBounds(midiPanel.getLocalBounds().reduced(16));
+	}
 }

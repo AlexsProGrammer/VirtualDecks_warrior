@@ -27,6 +27,18 @@ MainComponent::MainComponent()
 		juce::String err = deviceManager.initialise(0, 2, nullptr, true);
 		if (err.isNotEmpty())
 			DBG("Warning: Failed to open 2 output channels: " << err);
+
+		if (auto savedState = AppSettings::loadMasterDeviceState())
+		{
+			try
+			{
+				deviceManager.initialise(0, 2, savedState.get(), true);
+			}
+			catch (const std::exception& e)
+			{
+				DBG("Warning: Failed to restore master device manager state: " << e.what());
+			}
+		}
 	};
 
 	// Some platforms require permissions to open input channels so request that here
@@ -109,11 +121,11 @@ MainComponent::MainComponent()
 	// Load persisted output gains.
 	const float savedMasterGain = AppSettings::loadMasterGain();
 	const float savedHeadphoneGain = AppSettings::loadHeadphoneGain();
-	const bool startAtFirstHotCue = AppSettings::loadStartAtFirstHotCue();
+	startAtFirstHotCueSetting = AppSettings::loadStartAtFirstHotCue();
 	audioEngine.setMasterOutputGain(savedMasterGain);
 	audioEngine.setHeadphoneOutputGain(savedHeadphoneGain);
-	deckGUI1.setStartAtFirstHotCue(startAtFirstHotCue);
-	deckGUI2.setStartAtFirstHotCue(startAtFirstHotCue);
+	deckGUI1.setStartAtFirstHotCue(startAtFirstHotCueSetting);
+	deckGUI2.setStartAtFirstHotCue(startAtFirstHotCueSetting);
 
 	// Settings panel (hidden off-screen until the gear button is pressed).
 	// Provides callbacks for when the user adjusts the volume sliders.
@@ -124,13 +136,14 @@ MainComponent::MainComponent()
 		[this](float gain) { audioEngine.setMasterOutputGain(gain); },
 		[this](float gain) { audioEngine.setHeadphoneOutputGain(gain); },
 		[this](bool enabled) {
+			startAtFirstHotCueSetting = enabled;
 			AppSettings::saveStartAtFirstHotCue(enabled);
 			deckGUI1.setStartAtFirstHotCue(enabled);
 			deckGUI2.setStartAtFirstHotCue(enabled);
 		},
 		savedMasterGain,
 		savedHeadphoneGain,
-		startAtFirstHotCue);
+		startAtFirstHotCueSetting);
 	addChildComponent(*settingsPanel);
 
 	// Settings gear - DrawableButton with SVG icons (normal + hover).
@@ -560,12 +573,12 @@ void MainComponent::closeSidebar(int deckIndex)
 
 juce::Rectangle<int> MainComponent::settingsPanelOpenBounds() const
 {
-	return { 0, 0, getWidth(), juce::jmin(getHeight(), 380) };
+	return { 0, 0, getWidth(), juce::jmin(getHeight(), 480) };
 }
 
 juce::Rectangle<int> MainComponent::settingsPanelClosedBounds() const
 {
-	return { 0, -380, getWidth(), 380 };
+	return { 0, -480, getWidth(), 480 };
 }
 
 void MainComponent::openSettings()

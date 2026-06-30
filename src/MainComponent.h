@@ -136,6 +136,9 @@ private:
 	/// When locked, moving one deck's knob mirrors the other with inverted movement.
 	bool filterChainLocked[3] = { false, false, false };
 
+	/// Whether the app should start playback at the first saved hot cue.
+	bool startAtFirstHotCueSetting = false;
+
 	/// Baseline filter values captured when chain lock is engaged, per deck per band.
 	/// Used for delta-based mirroring: when knob moves, calculate delta from baseline
 	/// and apply the inverse delta to the other deck's baseline.
