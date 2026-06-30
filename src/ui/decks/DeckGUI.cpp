@@ -1310,6 +1310,7 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 					cueTargets.erase(thisButton);
 					waveformDisplay.setCuePoints(cueTargets);
 					zoomedDisplay->setCuePoints(cueTargets);
+					saveHotCuesToCache();
 				}
 				else if (cueTargets.find(thisButton) != cueTargets.end()) {
 					// Jump to cue (quantized)
@@ -1411,6 +1412,7 @@ void DeckGUI::mouseDown(const juce::MouseEvent& event) {
 						cueTargets.erase(cue);
 						waveformDisplay.setCuePoints(cueTargets);
 						zoomedDisplay->setCuePoints(cueTargets);
+						saveHotCuesToCache();
 					}
 				});
 			break;
