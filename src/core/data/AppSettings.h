@@ -24,6 +24,30 @@ namespace AppSettings
 	void saveHeadphoneDeviceState(const juce::XmlElement* state);
 
 	/**
+	 * Load and return the serialised AudioDeviceManager state for the
+	 * master output device. Returns nullptr if the file does not exist or
+	 * contains no master device state.
+	 */
+	std::unique_ptr<juce::XmlElement> loadMasterDeviceState();
+
+	/**
+	 * Persist the master device manager state. Pass nullptr to remove any
+	 * previously stored state.
+	 */
+	void saveMasterDeviceState(const juce::XmlElement* state);
+
+	/**
+	 * Load whether playback should start at the first saved hot cue.
+	 * Returns false if not found.
+	 */
+	bool loadStartAtFirstHotCue();
+
+	/**
+	 * Save whether playback should start at the first saved hot cue.
+	 */
+	void saveStartAtFirstHotCue(bool value);
+
+	/**
 	 * Load the master output gain from persisted settings.
 	 * Returns 1.0f if not found or invalid.
 	 */
