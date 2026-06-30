@@ -24,6 +24,7 @@ if(TARGET juceDjApp)
         ${CMAKE_CURRENT_SOURCE_DIR}/core
         ${CMAKE_CURRENT_SOURCE_DIR}/core/audio
         ${CMAKE_CURRENT_SOURCE_DIR}/core/data
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/midi
         ${CMAKE_CURRENT_SOURCE_DIR}/core/analysis
         ${CMAKE_CURRENT_SOURCE_DIR}/core/effects
         ${CMAKE_CURRENT_SOURCE_DIR}/ui
@@ -178,6 +179,7 @@ else()
         ${CMAKE_CURRENT_SOURCE_DIR}/core
         ${CMAKE_CURRENT_SOURCE_DIR}/core/audio
         ${CMAKE_CURRENT_SOURCE_DIR}/core/data
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/midi
         ${CMAKE_CURRENT_SOURCE_DIR}/core/analysis
         ${CMAKE_CURRENT_SOURCE_DIR}/core/effects
         ${CMAKE_CURRENT_SOURCE_DIR}/ui

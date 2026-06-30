@@ -5,5 +5,6 @@ set(DATA_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/TrackDataCache.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/FileHasher.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/AppSettings.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/MidiMappings.cpp"
 	PARENT_SCOPE
 )
