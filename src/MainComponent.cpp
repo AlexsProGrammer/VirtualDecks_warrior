@@ -152,6 +152,19 @@ MainComponent::MainComponent()
 	deckGUI1.setStartAtFirstHotCue(startAtFirstHotCueSetting);
 	deckGUI2.setStartAtFirstHotCue(startAtFirstHotCueSetting);
 
+	midiMapper.setActionCallback([this](Midi::MidiActionTarget target, int value) {
+		onMidiAction(target, value);
+	});
+	midiMapper.setMappings({ Midi::MidiMappingEntry{0, 1, 7, Midi::MidiActionTarget::Deck1_Volume} });
+
+	auto midiDevices = juce::MidiInput::getAvailableDevices();
+	if (!midiDevices.isEmpty()) {
+		midiMapper.openDevice(midiDevices[0].identifier);
+		DBG("MidiMapper opened device: " << midiDevices[0].name);
+	} else {
+		DBG("MidiMapper: no MIDI input device found");
+	}
+
 	// Settings panel (hidden off-screen until the gear button is pressed).
 	// Provides callbacks for when the user adjusts the volume sliders.
 	settingsPanel = std::make_unique<SettingsPanel>(
@@ -338,6 +351,7 @@ MainComponent::~MainComponent()
 {
 	stopTimer();
 	cueDeviceManager.removeAudioCallback(&cueCallback);
+	midiMapper.closeDevice();
 	shutdownAudio();
 }
 
@@ -628,6 +642,145 @@ void MainComponent::closeSettings()
 	juce::Component::SafePointer<SettingsPanel> safe(settingsPanel.get());
 	juce::Timer::callAfterDelay(240, [safe]() {
 		if (auto* p = safe.getComponent()) p->setVisible(false);
+	});
+}
+
+void MainComponent::toggleCue(int deckIndex)
+{
+	const int current = audioEngine.getCuedDeckIndex();
+	if (current == deckIndex)
+	{
+		audioEngine.setCueDeck(-1);
+		deckGUI1.setCueActive(false);
+		deckGUI2.setCueActive(false);
+	}
+	else
+	{
+		audioEngine.setCueDeck(deckIndex);
+		deckGUI1.setCueActive(deckIndex == 0);
+		deckGUI2.setCueActive(deckIndex == 1);
+	}
+}
+
+void MainComponent::onMidiAction(Midi::MidiActionTarget target, int value)
+{
+	juce::MessageManager::callAsync([this, target, value]() {
+		const double normalized = juce::jlimit(0.0, 1.0, value / 127.0);
+		const double cross = juce::jlimit(-1.0, 1.0, value / 127.0 * 2.0 - 1.0);
+		const double filterValue = juce::jlimit(-20000.0, 20000.0, value / 127.0 * 40000.0 - 20000.0);
+		const double speedValue = juce::jlimit(0.5, 1.5, value / 127.0 * 1.0 + 0.5);
+
+		switch (target)
+		{
+			case Midi::MidiActionTarget::Deck1_Play:
+				deckGUI1.triggerPlayStop();
+				break;
+			case Midi::MidiActionTarget::Deck2_Play:
+				deckGUI2.triggerPlayStop();
+				break;
+			case Midi::MidiActionTarget::Deck1_CueMon:
+				toggleCue(0);
+				break;
+			case Midi::MidiActionTarget::Deck2_CueMon:
+				toggleCue(1);
+				break;
+			case Midi::MidiActionTarget::Deck1_HotCueSet_1:
+				deckGUI1.setHotCue(0);
+				break;
+			case Midi::MidiActionTarget::Deck1_HotCueSet_2:
+				deckGUI1.setHotCue(1);
+				break;
+			case Midi::MidiActionTarget::Deck1_HotCueSet_3:
+				deckGUI1.setHotCue(2);
+				break;
+			case Midi::MidiActionTarget::Deck1_HotCueSet_4:
+				deckGUI1.setHotCue(3);
+				break;
+			case Midi::MidiActionTarget::Deck1_HotCueSet_5:
+				deckGUI1.setHotCue(4);
+				break;
+			case Midi::MidiActionTarget::Deck1_HotCueSet_6:
+				deckGUI1.setHotCue(5);
+				break;
+			case Midi::MidiActionTarget::Deck1_HotCueJump_1:
+				deckGUI1.jumpToHotCue(0);
+				break;
+			case Midi::MidiActionTarget::Deck1_HotCueJump_2:
+				deckGUI1.jumpToHotCue(1);
+				break;
+			case Midi::MidiActionTarget::Deck1_HotCueJump_3:
+				deckGUI1.jumpToHotCue(2);
+				break;
+			case Midi::MidiActionTarget::Deck1_HotCueJump_4:
+				deckGUI1.jumpToHotCue(3);
+				break;
+			case Midi::MidiActionTarget::Deck1_HotCueJump_5:
+				deckGUI1.jumpToHotCue(4);
+				break;
+			case Midi::MidiActionTarget::Deck1_HotCueJump_6:
+				deckGUI1.jumpToHotCue(5);
+				break;
+			case Midi::MidiActionTarget::Deck2_HotCueSet_1:
+				deckGUI2.setHotCue(0);
+				break;
+			case Midi::MidiActionTarget::Deck2_HotCueSet_2:
+				deckGUI2.setHotCue(1);
+				break;
+			case Midi::MidiActionTarget::Deck2_HotCueSet_3:
+				deckGUI2.setHotCue(2);
+				break;
+			case Midi::MidiActionTarget::Deck2_HotCueSet_4:
+				deckGUI2.setHotCue(3);
+				break;
+			case Midi::MidiActionTarget::Deck2_HotCueSet_5:
+				deckGUI2.setHotCue(4);
+				break;
+			case Midi::MidiActionTarget::Deck2_HotCueSet_6:
+				deckGUI2.setHotCue(5);
+				break;
+			case Midi::MidiActionTarget::Deck2_HotCueJump_1:
+				deckGUI2.jumpToHotCue(0);
+				break;
+			case Midi::MidiActionTarget::Deck2_HotCueJump_2:
+				deckGUI2.jumpToHotCue(1);
+				break;
+			case Midi::MidiActionTarget::Deck2_HotCueJump_3:
+				deckGUI2.jumpToHotCue(2);
+				break;
+			case Midi::MidiActionTarget::Deck2_HotCueJump_4:
+				deckGUI2.jumpToHotCue(3);
+				break;
+			case Midi::MidiActionTarget::Deck2_HotCueJump_5:
+				deckGUI2.jumpToHotCue(4);
+				break;
+			case Midi::MidiActionTarget::Deck2_HotCueJump_6:
+				deckGUI2.jumpToHotCue(5);
+				break;
+			case Midi::MidiActionTarget::Deck1_Volume:
+				vol1Slider.setValue(normalized, juce::sendNotification);
+				break;
+			case Midi::MidiActionTarget::Deck2_Volume:
+				vol2Slider.setValue(normalized, juce::sendNotification);
+				break;
+			case Midi::MidiActionTarget::Deck1_Filter:
+				filter1Slider.setValue(filterValue, juce::sendNotification);
+				break;
+			case Midi::MidiActionTarget::Deck2_Filter:
+				filter2Slider.setValue(filterValue, juce::sendNotification);
+				break;
+			case Midi::MidiActionTarget::Crossfader:
+				crossFader.setValue(cross, juce::sendNotification);
+				break;
+			case Midi::MidiActionTarget::Deck1_SpeedRel:
+				audioEngine.getPlayer(0).setSpeed(speedValue);
+				break;
+			case Midi::MidiActionTarget::Deck2_SpeedRel:
+				audioEngine.getPlayer(1).setSpeed(speedValue);
+				break;
+			case Midi::MidiActionTarget::None:
+			default:
+				break;
+		}
 	});
 }
 

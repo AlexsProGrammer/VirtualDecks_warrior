@@ -7,6 +7,8 @@
 #include "core/data/Library.h"
 #include "ui/settings/CustomLookAndFeel.h"
 #include "core/analysis/BeatSyncManager.h"
+#include "core/midi/MidiMapper.h"
+#include "core/data/MidiMappings.h"
 #include "ui/decks/DeckLibrarySidebar.h"
 #include "utilities/CueAudioCallback.h"
 #include "core/data/AppSettings.h"
@@ -44,6 +46,12 @@ public:
 		* @param Component that has added this MainComponent as its listener
 	*/
 	bool keyPressed(const juce::KeyPress& key, Component* originatingComponent);
+
+	/// Handle a decoded MIDI action from the MIDI mapper.
+	void onMidiAction(Midi::MidiActionTarget target, int value);
+
+	/// Toggle headphone cue routing for the requested deck.
+	void toggleCue(int deckIndex);
 	//==============================================================================
 
 	/**
@@ -132,12 +140,15 @@ private:
 	/// Cross-deck beat-sync manager (master/slave coordinator).
 	BeatSyncManager beatSyncManager;
 
-	/// EQ filter chain lock state per band (0=Low, 1=Mid, 2=High).
-	/// When locked, moving one deck's knob mirrors the other with inverted movement.
-	bool filterChainLocked[3] = { false, false, false };
+	/// MIDI input mapper for controller actions.
+	Midi::MidiMapper midiMapper;
 
 	/// Whether the app should start playback at the first saved hot cue.
 	bool startAtFirstHotCueSetting = false;
+
+	/// EQ filter chain lock state per band (0=Low, 1=Mid, 2=High).
+	/// When locked, moving one deck's knob mirrors the other with inverted movement.
+	bool filterChainLocked[3] = { false, false, false };
 
 	/// Baseline filter values captured when chain lock is engaged, per deck per band.
 	/// Used for delta-based mirroring: when knob moves, calculate delta from baseline
