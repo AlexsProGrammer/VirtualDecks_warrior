@@ -102,6 +102,9 @@ public:
 	/// Safe to call from any thread; button visual updates on message thread.
 	void setChainButtonState(int band, bool locked);
 
+	/// Configure whether this deck should start at the first saved hot cue when a track loads.
+	void setStartAtFirstHotCue(bool value) noexcept;
+
 	//==============================================================================
 
 private:
@@ -196,6 +199,12 @@ private:
 
 	/// AudioEngine listener: react to deck load-state transitions.
 	void deckLoadingStateChanged(int deckIdx, DJAudioPlayer::LoadingState newState) override;
+
+	/// Persist hot cue and loop metadata for the currently loaded track.
+	void saveHotCuesToCache();
+
+	/// Whether the deck should start at the first hot cue on load.
+	bool startAtFirstHotCueSetting = false;
 
 	//==============================================================================
 

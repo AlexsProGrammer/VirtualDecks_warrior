@@ -245,6 +245,10 @@ void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
 	juce::Colour fill = backgroundColour;
 
 	// Soft glow halo behind any visible-background button.
+	if (button.getProperties().getWithDefault("isStartCue", false)) {
+		g.setColour(juce::Colours::white.withAlpha(0.12f));
+		g.drawRoundedRectangle(bounds.expanded(3.5f), corner + 3.5f, 2.0f);
+	}
 	g.setColour(fill.withAlpha(0.18f));
 	g.fillRoundedRectangle(bounds.expanded(2.5f), corner + 2.5f);
 

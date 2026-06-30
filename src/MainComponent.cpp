@@ -109,8 +109,11 @@ MainComponent::MainComponent()
 	// Load persisted output gains.
 	const float savedMasterGain = AppSettings::loadMasterGain();
 	const float savedHeadphoneGain = AppSettings::loadHeadphoneGain();
+	const bool startAtFirstHotCue = AppSettings::loadStartAtFirstHotCue();
 	audioEngine.setMasterOutputGain(savedMasterGain);
 	audioEngine.setHeadphoneOutputGain(savedHeadphoneGain);
+	deckGUI1.setStartAtFirstHotCue(startAtFirstHotCue);
+	deckGUI2.setStartAtFirstHotCue(startAtFirstHotCue);
 
 	// Settings panel (hidden off-screen until the gear button is pressed).
 	// Provides callbacks for when the user adjusts the volume sliders.
@@ -120,8 +123,14 @@ MainComponent::MainComponent()
 		[this]() { closeSettings(); },
 		[this](float gain) { audioEngine.setMasterOutputGain(gain); },
 		[this](float gain) { audioEngine.setHeadphoneOutputGain(gain); },
+		[this](bool enabled) {
+			AppSettings::saveStartAtFirstHotCue(enabled);
+			deckGUI1.setStartAtFirstHotCue(enabled);
+			deckGUI2.setStartAtFirstHotCue(enabled);
+		},
 		savedMasterGain,
-		savedHeadphoneGain);
+		savedHeadphoneGain,
+		startAtFirstHotCue);
 	addChildComponent(*settingsPanel);
 
 	// Settings gear - DrawableButton with SVG icons (normal + hover).

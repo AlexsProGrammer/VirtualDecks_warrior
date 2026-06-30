@@ -1229,10 +1229,16 @@ void DeckGUI::buttonClicked(juce::Button* button) {
 	// Loop buttons (quantized except reloop and clear)
 	if (button == &loopInBtn)     queueOrExecute(PendingQuantizeAction::Type::LoopIn, &loopInBtn);
 	if (button == &loopOutBtn)    queueOrExecute(PendingQuantizeAction::Type::LoopOut, &loopOutBtn);
-	if (button == &reloopBtn)     player->toggleReloop();
+	if (button == &reloopBtn) {
+		player->toggleReloop();
+		juce::MessageManager::callAsync([this] { saveHotCuesToCache(); });
+	}
 	if (button == &loopHalveBtn)  queueOrExecute(PendingQuantizeAction::Type::LoopHalve, &loopHalveBtn);
 	if (button == &loopDoubleBtn) queueOrExecute(PendingQuantizeAction::Type::LoopDouble, &loopDoubleBtn);
-	if (button == &loopClearBtn)  player->clearLoop();
+	if (button == &loopClearBtn) {
+		player->clearLoop();
+		juce::MessageManager::callAsync([this] { saveHotCuesToCache(); });
+	}
 
 	// Grid control buttons
 	if (button == &gridNudgeLeftBtn) {
@@ -1669,6 +1675,9 @@ void DeckGUI::updateCueButtons()
 			thisButton->setButtonText("");
 		}
 	}
+
+	if (!cues.empty())
+		cues[0]->getProperties().set("isStartCue", true);
 }
 
 //==============================================================================
@@ -1779,6 +1788,31 @@ void DeckGUI::finishLoadDeck() {
 				grid.bpm = cached.detectedBpm;
 				self->player->setBeatGrid(grid);
 			}
+			self->cueTargets.clear();
+			for (int i = 0; i < (int)self->cues.size() && i < 6; ++i) {
+				auto& cp = cached.hotCues[i];
+				if (cp.relativePos >= 0.0)
+					self->cueTargets[self->cues[i]] = std::make_pair(cp.relativePos, cp.hue);
+			}
+			self->waveformDisplay.setCuePoints(self->cueTargets);
+			self->zoomedDisplay->setCuePoints(self->cueTargets);
+			self->updateCueButtons();
+
+			if (cached.loopInRelative >= 0.0 && cached.loopOutRelative > cached.loopInRelative) {
+				double length = self->player->getLengthInSeconds();
+				if (length > 0.0) {
+					self->player->setPositionRelative(cached.loopInRelative);
+					self->player->setLoopIn();
+					self->player->setPositionRelative(cached.loopOutRelative);
+					self->player->setLoopOut();
+					if (!cached.loopActive)
+						self->player->toggleReloop();
+				}
+			}
+
+			if (self->startAtFirstHotCueSetting && cached.hotCues[0].relativePos >= 0.0)
+				self->player->setPositionRelative(cached.hotCues[0].relativePos);
+
 			self->updateGridBpmDisplay();
 		});
 	}
@@ -1841,6 +1875,47 @@ void DeckGUI::saveTrackData(const BeatGrid& grid) {
 		data.beatGrid = grid;
 		data.detectedBpm = detectedBpm;
 	});
+}
+
+void DeckGUI::saveHotCuesToCache()
+{
+	if (currentFileHash.isEmpty())
+		return;
+
+	std::array<CuePoint, 6> snapshot;
+	for (int i = 0; i < 6; ++i)
+	{
+		if (i < (int)cues.size() && cueTargets.count(cues[i]))
+		{
+			auto [relPos, hue] = cueTargets[cues[i]];
+			snapshot[i].relativePos = relPos;
+			snapshot[i].hue = hue;
+		}
+		else
+		{
+			snapshot[i].relativePos = -1.0;
+			snapshot[i].hue = 0.0f;
+		}
+	}
+
+	const double loopIn = player->getLoopInRelative();
+	const double loopOut = player->getLoopOutRelative();
+	const bool loopActive = player->isLooping();
+
+	TrackDataCache::updateAsync(currentFileHash,
+	    [snapshot, loopIn, loopOut, loopActive](TrackData& data)
+	    {
+		for (int i = 0; i < 6; ++i)
+			data.hotCues[i] = snapshot[i];
+		data.loopInRelative = loopIn;
+		data.loopOutRelative = loopOut;
+		data.loopActive = loopActive;
+	    });
+}
+
+void DeckGUI::setStartAtFirstHotCue(bool value) noexcept
+{
+	startAtFirstHotCueSetting = value;
 }
 
 //==============================================================================
@@ -2138,15 +2213,19 @@ void DeckGUI::executePendingAction() {
 			break;
 		case PendingQuantizeAction::Type::LoopIn:
 			player->setLoopIn();
+			juce::MessageManager::callAsync([this] { saveHotCuesToCache(); });
 			break;
 		case PendingQuantizeAction::Type::LoopOut:
 			player->setLoopOut();
+			juce::MessageManager::callAsync([this] { saveHotCuesToCache(); });
 			break;
 		case PendingQuantizeAction::Type::LoopHalve:
 			player->halveLoop();
+			juce::MessageManager::callAsync([this] { saveHotCuesToCache(); });
 			break;
 		case PendingQuantizeAction::Type::LoopDouble:
 			player->doubleLoop();
+			juce::MessageManager::callAsync([this] { saveHotCuesToCache(); });
 			break;
 		case PendingQuantizeAction::Type::BeatJump:
 			player->beatJump(action.beatJumpBeats);
@@ -2165,6 +2244,7 @@ void DeckGUI::executePendingAction() {
 				cueTargets[action.cueButtonTarget] = std::make_pair(setPos, action.hotCueHue);
 				waveformDisplay.setCuePoints(cueTargets);
 				zoomedDisplay->setCuePoints(cueTargets);
+				saveHotCuesToCache();
 			}
 			break;
 		default:

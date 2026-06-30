@@ -9,12 +9,15 @@ SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
                              std::function<void()>     onClose,
                              std::function<void(float)> masterGainSetter,
                              std::function<void(float)> headphoneGainSetter,
+                             std::function<void(bool)>  startAtFirstHotCueSetter,
                              float                      initialMasterGain,
-                             float                      initialHeadphoneGain)
+                             float                      initialHeadphoneGain,
+                             bool                       initialStartAtFirstHotCue)
 	: closeCallback(std::move(onClose)),
 	  masterGainCallback(std::move(masterGainSetter)),
 	  headphoneGainCallback(std::move(headphoneGainSetter)),
 	  headphoneManager(headphoneManager),
+	  startAtFirstHotCueCallback(std::move(startAtFirstHotCueSetter)),
 	  masterSelector   (masterManager,    0, 0, 2, 2, false, false, true, false),
 	  headphoneSelector(headphoneManager, 0, 0, 2, 2, false, false, true, false)
 {
@@ -93,7 +96,14 @@ SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
 		// Persist only once per drag gesture (not on every pixel).
 		AppSettings::saveHeadphoneGain(static_cast<float>(headphoneVolSlider.getValue()));
 	};
-	addAndMakeVisible(headphoneVolSlider);
+	startAtFirstHotCueToggle.setToggleState(initialStartAtFirstHotCue, juce::dontSendNotification);
+	startAtFirstHotCueToggle.setColour(juce::ToggleButton::textColourId, juce::Colours::white);
+	startAtFirstHotCueToggle.onClick = [this]
+	{
+		if (startAtFirstHotCueCallback)
+			startAtFirstHotCueCallback(startAtFirstHotCueToggle.getToggleState());
+	};
+	addAndMakeVisible(startAtFirstHotCueToggle);
 
 	closeButton.setColour(juce::TextButton::buttonColourId,
 	                      juce::Colour::fromRGBA(80, 80, 80, 200));
@@ -134,7 +144,6 @@ void SettingsPanel::resized()
 	const int half       = (area.getWidth() - 8) / 2;
 	const int labelH     = 22;
 	const int sliderH    = 80;
-	const int buttonH    = 28;
 
 	auto leftCol  = area.removeFromLeft(half);
 	auto rightCol = area.withTrimmedLeft(8);
@@ -154,8 +163,11 @@ void SettingsPanel::resized()
 	// Headphone side: device selector → volume slider with display
 	headphoneLabel.setBounds(rightCol.removeFromTop(labelH));
 	auto headphoneSelectorArea = rightCol;
-	headphoneSelectorArea.removeFromBottom(sliderH);
+	headphoneSelectorArea.removeFromBottom(sliderH + 28);
 	headphoneSelector.setBounds(headphoneSelectorArea);
+
+	auto toggleArea = rightCol.removeFromBottom(28).reduced(0, 4);
+	startAtFirstHotCueToggle.setBounds(toggleArea);
 
 	auto headphoneVolArea = rightCol.removeFromBottom(sliderH).reduced(0, 4);
 	auto headphoneLabelRow = headphoneVolArea.removeFromTop(16);

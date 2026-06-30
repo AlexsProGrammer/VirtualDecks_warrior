@@ -17,16 +17,20 @@ public:
 	 * @param onClose          Called when the user presses the × button.
 	 * @param masterGainSetter Callback to update master output gain (0-1).
 	 * @param headphoneGainSetter Callback to update headphone output gain (0-1).
+	 * @param startAtFirstHotCueSetter Callback to update the start-at-first-hot-cue setting.
 	 * @param initialMasterGain Initial master gain value (0-1).
 	 * @param initialHeadphoneGain Initial headphone gain value (0-1).
+	 * @param initialStartAtFirstHotCue Initial state for the start-at-first-hot-cue toggle.
 	 */
 	SettingsPanel(juce::AudioDeviceManager& masterManager,
 	              juce::AudioDeviceManager& headphoneManager,
 	              std::function<void()>     onClose,
 	              std::function<void(float)> masterGainSetter,
 	              std::function<void(float)> headphoneGainSetter,
+	              std::function<void(bool)>  startAtFirstHotCueSetter,
 	              float                      initialMasterGain = 1.0f,
-	              float                      initialHeadphoneGain = 1.0f);
+	              float                      initialHeadphoneGain = 1.0f,
+	              bool                       initialStartAtFirstHotCue = false);
 
 	~SettingsPanel() override;
 
@@ -37,6 +41,7 @@ private:
 	std::function<void()> closeCallback;
 	std::function<void(float)> masterGainCallback;
 	std::function<void(float)> headphoneGainCallback;
+	std::function<void(bool)> startAtFirstHotCueCallback;
 
 	/// Reference held so we can persist device state when the panel closes.
 	juce::AudioDeviceManager& headphoneManager;
@@ -51,6 +56,7 @@ private:
 
 	juce::Slider masterVolSlider;
 	juce::Slider headphoneVolSlider;
+	juce::ToggleButton startAtFirstHotCueToggle{ "Start at first saved hot cue" };
 
 	/// Display labels for slider values (updated in real-time, formatted to 2 decimals).
 	juce::Label masterVolDisplayLabel;
