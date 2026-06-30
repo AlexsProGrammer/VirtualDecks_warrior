@@ -77,7 +77,7 @@ public:
     void setMappings(std::vector<MidiMappingEntry> newMappings);
     const std::vector<MidiMappingEntry>& getMappings() const noexcept;
 
-    void openDevice(const juce::String& identifier);
+    bool openDevice(const juce::String& identifier);
     void closeDevice();
     juce::String getActiveDeviceIdentifier() const noexcept;
 

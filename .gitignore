@@ -17,3 +17,5 @@ build/
 build-tsan/
 
 package/
+.aider*
+.kilo*

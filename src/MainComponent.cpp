@@ -155,14 +155,15 @@ MainComponent::MainComponent()
 	midiMapper.setActionCallback([this](Midi::MidiActionTarget target, int value) {
 		onMidiAction(target, value);
 	});
-	midiMapper.setMappings({ Midi::MidiMappingEntry{0, 1, 7, Midi::MidiActionTarget::Deck1_Volume} });
-
-	auto midiDevices = juce::MidiInput::getAvailableDevices();
-	if (!midiDevices.isEmpty()) {
-		midiMapper.openDevice(midiDevices[0].identifier);
-		DBG("MidiMapper opened device: " << midiDevices[0].name);
-	} else {
-		DBG("MidiMapper: no MIDI input device found");
+	juce::String savedDevice = AppSettings::loadMidiDeviceId();
+	midiMapper.setMappings(MidiMappings::loadMappings(savedDevice));
+	if (savedDevice.isNotEmpty()) {
+		bool opened = midiMapper.openDevice(savedDevice);
+		DBG("MidiMapper opened saved device: " << (opened ? juce::String("yes (") + savedDevice + ")"
+			    : "NO — device not found"));
+	}
+	if (midiMapper.getActiveDeviceIdentifier().isEmpty()) {
+		DBG("MidiMapper: no active MIDI input device");
 	}
 
 	// Settings panel (hidden off-screen until the gear button is pressed).

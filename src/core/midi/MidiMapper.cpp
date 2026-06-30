@@ -35,18 +35,21 @@ const std::vector<MidiMappingEntry>& MidiMapper::getMappings() const noexcept
     return mappings;
 }
 
-void MidiMapper::openDevice(const juce::String& identifier)
+bool MidiMapper::openDevice(const juce::String& identifier)
 {
     closeDevice();
     if (identifier.isEmpty())
-        return;
+        return false;
 
     auto input = juce::MidiInput::openDevice(identifier, this);
     if (input != nullptr)
     {
         input->start();
         midiInput = std::move(input);
+        return true;
     }
+
+    return false;
 }
 
 void MidiMapper::closeDevice()

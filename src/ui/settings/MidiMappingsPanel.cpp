@@ -40,6 +40,7 @@ MidiMappingsPanel::MidiMappingsPanel(Midi::MidiMapper& mapper_) :
 
     loadSavedMappings();
     refreshDeviceList();
+    startTimerHz(2);
     updateStatusLabel();
 }
 
@@ -117,15 +118,19 @@ void MidiMappingsPanel::buttonClicked(juce::Button* button)
 
 void MidiMappingsPanel::comboBoxChanged(juce::ComboBox* comboBoxThatHasChanged)
 {
-    if (comboBoxThatHasChanged == &deviceSelector) {
-        const int idx = deviceSelector.getSelectedId() - 1;
-        if (idx >= 0 && idx < (int)deviceIds.size()) {
-            mapper.openDevice(deviceIds[idx]);
-            AppSettings::saveMidiDeviceId(deviceIds[idx]);
-            saveMappings();
-            updateStatusLabel();
-        }
-    }
+	if (comboBoxThatHasChanged == &deviceSelector) {
+		const int idx = deviceSelector.getSelectedId() - 1;
+		if (idx >= 0 && idx < (int)deviceIds.size()) {
+			bool opened = mapper.openDevice(deviceIds[idx]);
+			if (opened) {
+				AppSettings::saveMidiDeviceId(deviceIds[idx]);
+				saveMappings();
+			} else {
+				overrideStatusMessage = "Failed to open device — please select another";
+			}
+			updateStatusLabel();
+		}
+	}
 }
 
 void MidiMappingsPanel::refreshDeviceList()
@@ -165,22 +170,58 @@ void MidiMappingsPanel::saveMappings()
 
 void MidiMappingsPanel::loadSavedMappings()
 {
-    juce::String deviceId = AppSettings::loadMidiDeviceId();
-    mappings = MidiMappings::loadMappings(deviceId);
-    mapper.setMappings(mappings);
-    refreshMappingsTable();
+	juce::String deviceId = AppSettings::loadMidiDeviceId();
+	mappings = MidiMappings::loadMappings(deviceId);
+	mapper.setMappings(mappings);
+	refreshMappingsTable();
 
-    if (!deviceId.isEmpty())
-        mapper.openDevice(deviceId);
+	if (!deviceId.isEmpty()) {
+		bool opened = mapper.openDevice(deviceId);
+		if (!opened)
+			overrideStatusMessage = "Device not found — please reconnect or select another";
+	}
+	updateStatusLabel();
 }
 
 void MidiMappingsPanel::updateStatusLabel()
 {
-    if (learnModeActive) {
-        statusLabel.setText("Listening...", juce::dontSendNotification);
-        return;
-    }
-    statusLabel.setText(mapper.getActiveDeviceIdentifier().isEmpty() ? "Not connected" : "Connected", juce::dontSendNotification);
+	if (learnModeActive) {
+		statusLabel.setText("Listening...", juce::dontSendNotification);
+		return;
+	}
+	if (overrideStatusMessage.isNotEmpty()) {
+		statusLabel.setText(overrideStatusMessage, juce::dontSendNotification);
+		return;
+	}
+	statusLabel.setText(mapper.getActiveDeviceIdentifier().isEmpty() ? "Not connected" : "Connected", juce::dontSendNotification);
+}
+
+void MidiMappingsPanel::timerCallback()
+{
+	if (learnModeActive)
+		return;
+
+	const auto available = juce::MidiInput::getAvailableDevices();
+	const auto activeId = mapper.getActiveDeviceIdentifier();
+
+	if (!activeId.isEmpty()) {
+		bool found = false;
+		for (const auto& d : available)
+			if (d.identifier == activeId) { found = true; break; }
+
+		if (!found) {
+			overrideStatusMessage = "Device disconnected — please reconnect or select another";
+			mapper.closeDevice();
+			updateStatusLabel();
+			refreshDeviceList();
+		} else if (!overrideStatusMessage.isEmpty()) {
+			overrideStatusMessage.clear();
+			updateStatusLabel();
+		}
+	} else if (!overrideStatusMessage.isEmpty()) {
+		overrideStatusMessage.clear();
+		updateStatusLabel();
+	}
 }
 
 void MidiMappingsPanel::setLearnMode(bool enable)
@@ -259,44 +300,82 @@ void MidiMappingsPanel::MappingTableModel::paintCell(juce::Graphics& g, int rowN
 
 juce::Component* MidiMappingsPanel::MappingTableModel::refreshComponentForCell(int rowNumber, int columnId, bool, juce::Component* existingComponent)
 {
-    if (columnId != 5)
-        return existingComponent;
+	if (columnId == 1 || columnId == 3) {
+		auto* editor = dynamic_cast<EditableTextEditor*>(existingComponent);
+		if (editor == nullptr) {
+			editor = new EditableTextEditor(owner);
+			editor->setJustification(juce::Justification::centredLeft);
+		}
+		editor->clear();
+		if (columnId == 1)
+			editor->setText(juce::String(owner.mappings[rowNumber].channel), juce::dontSendNotification);
+		else
+			editor->setText(juce::String(owner.mappings[rowNumber].number), juce::dontSendNotification);
+		editor->row = rowNumber;
+		editor->columnId = columnId;
+		return editor;
+	}
 
-    auto* combo = dynamic_cast<ActionComboBox*>(existingComponent);
-    if (combo == nullptr) {
-        combo = new ActionComboBox(owner);
-        auto choices = owner.getActionChoices();
-        for (int i = 0; i < (int)choices.size(); ++i)
-            combo->addItem(choices[i].second, i + 1);
-    }
+	if (columnId == 2) {
+		auto* combo = dynamic_cast<TypeComboBox*>(existingComponent);
+		if (combo == nullptr) {
+			combo = new TypeComboBox(owner);
+			combo->addItem("Note", 0);
+			combo->addItem("CC", 1);
+			combo->onChange = [combo]() {
+				if (combo == nullptr)
+					return;
+				const int row = combo->row;
+				if (row < 0 || row >= (int)combo->owner.mappings.size())
+					return;
+				combo->owner.mappings[row].messageType = combo->getSelectedId() - 1;
+				combo->owner.saveMappings();
+				combo->owner.refreshMappingsTable();
+			};
+		}
+		combo->setRow(rowNumber);
+		combo->setSelectedId(owner.mappings[rowNumber].messageType + 1, juce::dontSendNotification);
+		return combo;
+	}
 
-    combo->setRow(rowNumber);
-    combo->onChange = [combo]() {
-        if (combo == nullptr)
-            return;
+	if (columnId != 5)
+		return existingComponent;
 
-        const int row = combo->row;
-        if (row < 0 || row >= (int)combo->owner.mappings.size())
-            return;
+	auto* combo = dynamic_cast<ActionComboBox*>(existingComponent);
+	if (combo == nullptr) {
+		combo = new ActionComboBox(owner);
+		auto choices = owner.getActionChoices();
+		for (int i = 0; i < (int)choices.size(); ++i)
+			combo->addItem(choices[i].second, i + 1);
+	}
 
-        const int selectedId = combo->getSelectedId();
-        auto choices = combo->owner.getActionChoices();
-        if (selectedId <= 0 || selectedId > (int)choices.size())
-            return;
+	combo->setRow(rowNumber);
+	combo->onChange = [combo]() {
+		if (combo == nullptr)
+			return;
 
-        combo->owner.mappings[row].target = choices[selectedId - 1].first;
-        combo->owner.saveMappings();
-        combo->owner.refreshMappingsTable();
-    };
+		const int row = combo->row;
+		if (row < 0 || row >= (int)combo->owner.mappings.size())
+			return;
 
-    auto choices = owner.getActionChoices();
-    auto it = std::find_if(choices.begin(), choices.end(), [&](auto& p){ return p.first == owner.mappings[rowNumber].target; });
-    if (it != choices.end())
-        combo->setSelectedId((int)std::distance(choices.begin(), it) + 1, juce::dontSendNotification);
-    else
-        combo->setSelectedId(1, juce::dontSendNotification);
+		const int selectedId = combo->getSelectedId();
+		auto choices = combo->owner.getActionChoices();
+		if (selectedId <= 0 || selectedId > (int)choices.size())
+			return;
 
-    return combo;
+		combo->owner.mappings[row].target = choices[selectedId - 1].first;
+		combo->owner.saveMappings();
+		combo->owner.refreshMappingsTable();
+	};
+
+	auto choices = owner.getActionChoices();
+	auto it = std::find_if(choices.begin(), choices.end(), [&](auto& p){ return p.first == owner.mappings[rowNumber].target; });
+	if (it != choices.end())
+		combo->setSelectedId((int)std::distance(choices.begin(), it) + 1, juce::dontSendNotification);
+	else
+		combo->setSelectedId(1, juce::dontSendNotification);
+
+	return combo;
 }
 
 juce::String MidiMappingsPanel::getDeckLabel(Midi::MidiActionTarget target)

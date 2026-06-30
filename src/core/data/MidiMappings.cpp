@@ -127,9 +127,26 @@ namespace MidiMappings
         return root->writeTo(targetFile, juce::XmlElement::TextFormat{});
     }
 
+    static     std::vector<Midi::MidiMappingEntry> getDefaultMappings()
+    {
+        std::vector<Midi::MidiMappingEntry> defaults;
+        for (int i = 0; i < 6; ++i)
+            defaults.push_back({ 0, 0, 36 + i, static_cast<Midi::MidiActionTarget>(static_cast<int>(Midi::MidiActionTarget::Deck1_HotCueSet_1) + i) });
+        for (int i = 0; i < 6; ++i)
+            defaults.push_back({ 0, 0, 48 + i, static_cast<Midi::MidiActionTarget>(static_cast<int>(Midi::MidiActionTarget::Deck2_HotCueSet_1) + i) });
+        defaults.push_back({ 0, 1, 7, Midi::MidiActionTarget::Deck1_Volume });
+        defaults.push_back({ 0, 1, 11, Midi::MidiActionTarget::Deck2_Volume });
+        defaults.push_back({ 0, 1, 1, Midi::MidiActionTarget::Crossfader });
+        return defaults;
+    }
+
     std::vector<Midi::MidiMappingEntry> loadMappings(juce::String& outDeviceId)
     {
-        return loadMappingsFromFile(getMappingsFile(), outDeviceId);
+        auto file = getMappingsFile();
+        if (!file.existsAsFile())
+            return getDefaultMappings();
+
+        return loadMappingsFromFile(file, outDeviceId);
     }
 
     std::vector<Midi::MidiMappingEntry> loadMappingsFromFile(const juce::File& file,
