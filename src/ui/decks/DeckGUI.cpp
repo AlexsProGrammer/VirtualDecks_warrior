@@ -1812,8 +1812,12 @@ void DeckGUI::finishLoadDeck() {
 				}
 			}
 
-			if (self->startAtFirstHotCueSetting && cached.hotCues[0].relativePos >= 0.0)
-				self->player->setPositionRelative(cached.hotCues[0].relativePos);
+			if (self->startAtFirstHotCueSetting) {
+				if (cached.hotCues[0].relativePos >= 0.0)
+					self->player->setPositionRelative(cached.hotCues[0].relativePos);
+				else
+					self->player->setPositionRelative(0.0);
+			}
 
 			self->updateGridBpmDisplay();
 		});

@@ -244,11 +244,7 @@ void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
 	const bool toggled = button.getToggleState();
 	juce::Colour fill = backgroundColour;
 
-	// Soft glow halo behind any visible-background button.
-	if (button.getProperties().getWithDefault("isStartCue", false)) {
-		g.setColour(juce::Colours::white.withAlpha(0.12f));
-		g.drawRoundedRectangle(bounds.expanded(3.5f), corner + 3.5f, 2.0f);
-	}
+	const auto originalBounds = bounds;
 	g.setColour(fill.withAlpha(0.18f));
 	g.fillRoundedRectangle(bounds.expanded(2.5f), corner + 2.5f);
 
@@ -257,6 +253,19 @@ void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
 
 	g.setColour(fill);
 	g.fillRoundedRectangle(bounds, corner);
+
+	// Special Start marker for the top-left hot cue button.
+	if (button.getProperties().getWithDefault("isStartCue", false)) {
+		auto badgeArea = originalBounds.withTrimmedLeft(4).withTrimmedTop(4);
+		badgeArea.setWidth(32);
+		badgeArea.setHeight(12);
+		g.setColour(juce::Colours::yellow.withAlpha(0.95f));
+		g.fillRoundedRectangle(badgeArea.expanded(1.0f), 4.0f);
+
+		g.setColour(juce::Colours::black);
+		g.setFont(juce::Font(8.0f).boldened());
+		g.drawFittedText("Start", badgeArea.toNearestInt(), juce::Justification::centred, 1);
+	}
 
 	g.setColour(toggled ? fill.brighter(0.20f).withAlpha(0.6f)
 	                    : UI::borderSubtle);
