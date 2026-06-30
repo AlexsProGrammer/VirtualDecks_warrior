@@ -15,6 +15,14 @@ struct BandFrame; // forward-declared to avoid pulling WaveformBandAnalyzer.h he
  * beat grid (which may include manual overrides) into a single
  * structure keyed by file content hash.
  */
+struct CuePoint {
+	/// Relative track position for the cue (0.0 .. 1.0). -1.0 means unset.
+	double relativePos = -1.0;
+
+	/// Colour hue for the cue marker.
+	float hue = 0.0f;
+};
+
 struct TrackData {
 	/// Auto-detected BPM (0.0 if not yet analysed)
 	double detectedBpm = 0.0;
@@ -24,6 +32,16 @@ struct TrackData {
 
 	/// Beat grid (may contain manual overrides)
 	BeatGrid beatGrid;
+
+	/// Per-track hot cue metadata.
+	std::array<CuePoint, 6> hotCues {};
+
+	/// Saved loop start/end as relative positions.
+	double loopInRelative = -1.0;
+	double loopOutRelative = -1.0;
+
+	/// Whether the loop was active when saved.
+	bool loopActive = false;
 };
 
 /**

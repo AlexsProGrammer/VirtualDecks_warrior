@@ -55,6 +55,34 @@ TrackData TrackDataCache::load(const juce::String& fileHash)
 			if (bg.hasProperty("isManualOffset"))
 				data.beatGrid.isManualOffset = static_cast<bool>(bg["isManualOffset"]);
 		}
+
+		juce::var hotCuesVar = parsed["hotCues"];
+		if (hotCuesVar.isArray())
+		{
+			auto& array = *hotCuesVar.getArray();
+			const int maxItems = juce::jmin((int)array.size(), 6);
+			for (int i = 0; i < maxItems; ++i)
+			{
+				if (array[i].isObject())
+				{
+					auto* obj = array[i].getDynamicObject();
+					if (obj != nullptr)
+					{
+						if (obj->hasProperty("relativePos"))
+							data.hotCues[i].relativePos = static_cast<double>(obj->getProperty("relativePos"));
+						if (obj->hasProperty("hue"))
+							data.hotCues[i].hue = static_cast<float>(obj->getProperty("hue"));
+					}
+				}
+			}
+		}
+
+		if (parsed.hasProperty("loopInRelative"))
+			data.loopInRelative = static_cast<double>(parsed["loopInRelative"]);
+		if (parsed.hasProperty("loopOutRelative"))
+			data.loopOutRelative = static_cast<double>(parsed["loopOutRelative"]);
+		if (parsed.hasProperty("loopActive"))
+			data.loopActive = static_cast<bool>(parsed["loopActive"]);
 	}
 
 	return data;
@@ -82,6 +110,20 @@ void TrackDataCache::save(const juce::String& fileHash, const TrackData& data)
 	obj->setProperty("detectedBpm", data.detectedBpm);
 	obj->setProperty("confidence", data.confidence);
 	obj->setProperty("beatGrid", juce::var(gridObj));
+
+	juce::Array<juce::var> hotCueArray;
+	hotCueArray.ensureStorageAllocated(6);
+	for (int i = 0; i < 6; ++i)
+	{
+		auto* cueObj = new juce::DynamicObject();
+		cueObj->setProperty("relativePos", data.hotCues[i].relativePos);
+		cueObj->setProperty("hue", data.hotCues[i].hue);
+		hotCueArray.add(juce::var(cueObj));
+	}
+	obj->setProperty("hotCues", juce::var(hotCueArray));
+	obj->setProperty("loopInRelative", data.loopInRelative);
+	obj->setProperty("loopOutRelative", data.loopOutRelative);
+	obj->setProperty("loopActive", data.loopActive);
 
 	juce::var jsonVar(obj);
 	juce::String jsonString = juce::JSON::toString(jsonVar);
