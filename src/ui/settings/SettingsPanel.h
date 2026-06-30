@@ -59,7 +59,7 @@ private:
 
 	juce::Component generalPanel;
 	juce::Component audioPanel;
-	juce::Component midiPanel;
+	MidiMappingsPanel midiPanel;
 
 	juce::Label generalHeaderLabel{ "generalHeaderLabel", "General settings" };
 	juce::Label masterLabel;
@@ -73,8 +73,6 @@ private:
 	juce::Slider masterVolSlider;
 	juce::Slider headphoneVolSlider;
 	juce::ToggleButton startAtFirstHotCueToggle{ "Move loaded track playhead to first saved hot cue" };
-	juce::Label midiPlaceholderLabel{ "midiPlaceholder", "MIDI input mapping — coming in next phase" };
-	std::unique_ptr<MidiMappingsPanel> midiMappingsPanel;
 
 	/// Display labels for slider values (updated in real-time, formatted to 2 decimals).
 	juce::Label masterVolDisplayLabel;

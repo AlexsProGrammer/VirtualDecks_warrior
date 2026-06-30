@@ -65,6 +65,7 @@ private:
     juce::TextButton refreshBtn{ "⟳" };
     juce::TextButton importBtn{ "Import..." };
     juce::TextButton exportBtn{ "Export..." };
+    juce::Component toolbarDivider;
     juce::TextButton addRowBtn{ "Add" };
     juce::TextButton clearRowBtn{ "Remove" };
     juce::TextButton learnBtn{ "MIDI Learn" };

@@ -7,6 +7,7 @@ MidiMappingsPanel::MidiMappingsPanel(Midi::MidiMapper& mapper_) :
     addAndMakeVisible(refreshBtn);
     addAndMakeVisible(importBtn);
     addAndMakeVisible(exportBtn);
+    addAndMakeVisible(toolbarDivider);
     addAndMakeVisible(addRowBtn);
     addAndMakeVisible(clearRowBtn);
     addAndMakeVisible(learnBtn);
@@ -32,6 +33,10 @@ MidiMappingsPanel::MidiMappingsPanel(Midi::MidiMapper& mapper_) :
     statusLabel.setJustificationType(juce::Justification::centredLeft);
     statusLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     statusLabel.setColour(juce::Label::backgroundColourId, UI::bgCard);
+    statusLabel.setColour(juce::Label::outlineColourId, UI::borderSubtle);
+    statusLabel.setBorderSize(juce::BorderSize<int>(1));
+    statusLabel.setOpaque(true);
+    toolbarDivider.setInterceptsMouseClicks(false, false);
 
     loadSavedMappings();
     refreshDeviceList();
@@ -48,20 +53,21 @@ void MidiMappingsPanel::paint(juce::Graphics& g)
 void MidiMappingsPanel::resized()
 {
     auto area = getLocalBounds().reduced(8);
-    auto top = area.removeFromTop(36);
+    auto top = area.removeFromTop(40);
 
-    deviceSelector.setBounds(top.removeFromLeft(240).reduced(0, 2));
+    deviceSelector.setBounds(top.removeFromLeft(260).reduced(0, 2));
     refreshBtn.setBounds(top.removeFromLeft(32).reduced(2));
     importBtn.setBounds(top.removeFromLeft(90).reduced(2));
     exportBtn.setBounds(top.removeFromLeft(90).reduced(2));
 
-    mappingTable.setBounds(area.reduced(0, 8));
+    toolbarDivider.setBounds(top.removeFromLeft(2).withTrimmedTop(6).withHeight(top.getHeight() - 12));
 
-    auto bottom = getLocalBounds().removeFromBottom(36).reduced(8);
-    addRowBtn.setBounds(bottom.removeFromLeft(80).reduced(2));
-    clearRowBtn.setBounds(bottom.removeFromLeft(90).reduced(2));
-    learnBtn.setBounds(bottom.removeFromLeft(90).reduced(2));
-    statusLabel.setBounds(bottom.reduced(2));
+    addRowBtn.setBounds(top.removeFromLeft(80).reduced(2));
+    clearRowBtn.setBounds(top.removeFromLeft(90).reduced(2));
+    learnBtn.setBounds(top.removeFromLeft(110).reduced(2));
+    statusLabel.setBounds(top.reduced(2));
+
+    mappingTable.setBounds(area.reduced(0, 8));
 }
 
 void MidiMappingsPanel::buttonClicked(juce::Button* button)
