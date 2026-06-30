@@ -106,6 +106,34 @@ void AppSettings::saveStartAtFirstHotCue(bool value)
 	root->writeTo(f, juce::XmlElement::TextFormat{});
 }
 
+juce::String AppSettings::loadMidiDeviceId()
+{
+	const juce::File f = getSettingsFile();
+	if (!f.existsAsFile())
+		return {};
+
+	auto root = juce::XmlDocument::parse(f);
+	if (root == nullptr)
+		return {};
+
+	return root->getStringAttribute("midiDeviceId", {});
+}
+
+void AppSettings::saveMidiDeviceId(const juce::String& deviceId)
+{
+	const juce::File f = getSettingsFile();
+	f.getParentDirectory().createDirectory();
+
+	std::unique_ptr<juce::XmlElement> root;
+	if (f.existsAsFile())
+		root = juce::XmlDocument::parse(f);
+	if (root == nullptr)
+		root = std::make_unique<juce::XmlElement>("OtoDecksSettings");
+
+	root->setAttribute("midiDeviceId", deviceId);
+	root->writeTo(f, juce::XmlElement::TextFormat{});
+}
+
 
 void AppSettings::saveHeadphoneDeviceState(const juce::XmlElement* state)
 {

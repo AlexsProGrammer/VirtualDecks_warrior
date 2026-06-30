@@ -37,24 +37,45 @@ include(FetchContent)
 
 set(FETCHCONTENT_QUIET OFF)
 
-FetchContent_Declare(
-    JUCE
-    GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
-    GIT_TAG origin/master
-    GIT_SHALLOW OFF
-    FIND_PACKAGE_ARGS 7.0.3 GLOBAL)
+if (EXISTS "${CMAKE_SOURCE_DIR}/lib/JUCE/CMakeLists.txt")
+    FetchContent_Declare(
+        JUCE
+        SOURCE_DIR "${CMAKE_SOURCE_DIR}/lib/JUCE"
+        FIND_PACKAGE_ARGS 7.0.3 GLOBAL)
+else()
+    FetchContent_Declare(
+        JUCE
+        GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
+        GIT_TAG origin/master
+        GIT_SHALLOW OFF
+        FIND_PACKAGE_ARGS 7.0.3 GLOBAL)
+endif()
 
-FetchContent_Declare(
-    taglib
-    GIT_REPOSITORY https://github.com/taglib/taglib.git
-    GIT_TAG origin/master
-    GIT_SHALLOW ON)
+if (EXISTS "${CMAKE_SOURCE_DIR}/lib/taglib/CMakeLists.txt")
+    FetchContent_Declare(
+        taglib
+        SOURCE_DIR "${CMAKE_SOURCE_DIR}/lib/taglib"
+        FIND_PACKAGE_ARGS 1.0.0 GLOBAL)
+else()
+    FetchContent_Declare(
+        taglib
+        GIT_REPOSITORY https://github.com/taglib/taglib.git
+        GIT_TAG origin/master
+        GIT_SHALLOW ON)
+endif()
 
-FetchContent_Declare(
-    xwax
-    GIT_REPOSITORY https://github.com/xwax/xwax.git
-    GIT_TAG origin/master
-    GIT_SHALLOW ON)
+if (EXISTS "${CMAKE_SOURCE_DIR}/lib/xwax/Makefile")
+    FetchContent_Declare(
+        xwax
+        SOURCE_DIR "${CMAKE_SOURCE_DIR}/lib/xwax"
+        FIND_PACKAGE_ARGS 1.0.0 GLOBAL)
+else()
+    FetchContent_Declare(
+        xwax
+        GIT_REPOSITORY https://github.com/xwax/xwax.git
+        GIT_TAG origin/master
+        GIT_SHALLOW ON)
+endif()
 
 FetchContent_MakeAvailable(JUCE taglib xwax)
 

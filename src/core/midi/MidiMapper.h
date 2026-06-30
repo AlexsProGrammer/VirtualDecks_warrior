@@ -71,6 +71,9 @@ public:
     ~MidiMapper() override;
 
     void setActionCallback(std::function<void(MidiActionTarget, int)> cb);
+    std::function<void(MidiActionTarget, int)> getActionCallback() const noexcept;
+    void setLearnCallback(std::function<void(int channel, int messageType, int number)> cb);
+    void clearLearnCallback() noexcept;
     void setMappings(std::vector<MidiMappingEntry> newMappings);
     const std::vector<MidiMappingEntry>& getMappings() const noexcept;
 
@@ -84,6 +87,7 @@ private:
     std::unique_ptr<juce::MidiInput> midiInput;
     std::vector<MidiMappingEntry> mappings;
     std::function<void(MidiActionTarget, int)> actionCallback;
+    std::function<void(int channel, int messageType, int number)> learnCallback;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiMapper)
 };

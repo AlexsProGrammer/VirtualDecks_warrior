@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "MidiMappingsPanel.h"
 
 /**
  * Slide-in settings panel that hosts device selectors for the master output
@@ -24,6 +25,7 @@ public:
 	 */
 	SettingsPanel(juce::AudioDeviceManager& masterManager,
 	              juce::AudioDeviceManager& headphoneManager,
+	              Midi::MidiMapper&         midiMapper,
 	              std::function<void()>     onClose,
 	              std::function<void(float)> masterGainSetter,
 	              std::function<void(float)> headphoneGainSetter,
@@ -72,6 +74,7 @@ private:
 	juce::Slider headphoneVolSlider;
 	juce::ToggleButton startAtFirstHotCueToggle{ "Move loaded track playhead to first saved hot cue" };
 	juce::Label midiPlaceholderLabel{ "midiPlaceholder", "MIDI input mapping — coming in next phase" };
+	std::unique_ptr<MidiMappingsPanel> midiMappingsPanel;
 
 	/// Display labels for slider values (updated in real-time, formatted to 2 decimals).
 	juce::Label masterVolDisplayLabel;

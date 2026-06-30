@@ -170,6 +170,7 @@ MainComponent::MainComponent()
 	settingsPanel = std::make_unique<SettingsPanel>(
 		deviceManager,
 		cueDeviceManager,
+		midiMapper,
 		[this]() { closeSettings(); },
 		[this](float gain) { audioEngine.setMasterOutputGain(gain); },
 		[this](float gain) { audioEngine.setHeadphoneOutputGain(gain); },

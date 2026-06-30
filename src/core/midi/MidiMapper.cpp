@@ -10,6 +10,21 @@ void MidiMapper::setActionCallback(std::function<void(MidiActionTarget, int)> cb
     actionCallback = std::move(cb);
 }
 
+std::function<void(MidiActionTarget, int)> MidiMapper::getActionCallback() const noexcept
+{
+    return actionCallback;
+}
+
+void MidiMapper::setLearnCallback(std::function<void(int channel, int messageType, int number)> cb)
+{
+    learnCallback = std::move(cb);
+}
+
+void MidiMapper::clearLearnCallback() noexcept
+{
+    learnCallback = nullptr;
+}
+
 void MidiMapper::setMappings(std::vector<MidiMappingEntry> newMappings)
 {
     mappings = std::move(newMappings);
@@ -71,6 +86,9 @@ void MidiMapper::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMes
         return;
 
     const int value = messageType == 0 ? message.getVelocity() : message.getControllerValue();
+
+    if (learnCallback)
+        learnCallback(channel, messageType, number);
 
     for (const auto& mapping : mappings)
     {

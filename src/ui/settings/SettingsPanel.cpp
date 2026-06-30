@@ -6,6 +6,7 @@
 
 SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
                              juce::AudioDeviceManager& headphoneManager,
+                             Midi::MidiMapper&         midiMapper,
                              std::function<void()>     onClose,
                              std::function<void(float)> masterGainSetter,
                              std::function<void(float)> headphoneGainSetter,
@@ -48,7 +49,8 @@ SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
 	audioPanel.addAndMakeVisible(headphoneVolDisplayLabel);
 	audioPanel.addAndMakeVisible(headphoneVolSlider);
 
-	midiPanel.addAndMakeVisible(midiPlaceholderLabel);
+	midiMappingsPanel = std::make_unique<MidiMappingsPanel>(midiMapper);
+	midiPanel.addAndMakeVisible(*midiMappingsPanel);
 
 	masterLabel.setText("Master Output", juce::dontSendNotification);
 	masterLabel.setFont(juce::Font(juce::FontOptions{ 13.0f }).boldened());
@@ -115,8 +117,10 @@ SettingsPanel::SettingsPanel(juce::AudioDeviceManager& masterManager,
 			startAtFirstHotCueCallback(startAtFirstHotCueToggle.getToggleState());
 	};
 
-	midiPlaceholderLabel.setJustificationType(juce::Justification::centred);
-	midiPlaceholderLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+	if (midiMappingsPanel != nullptr)
+	{
+		midiMappingsPanel->setVisible(true);
+	}
 
 	closeButton.setColour(juce::TextButton::buttonColourId,
 	                      juce::Colour::fromRGBA(80, 80, 80, 200));
@@ -233,6 +237,9 @@ void SettingsPanel::resized()
 	}
 
 	if (midiPanel.isVisible()) {
-		midiPlaceholderLabel.setBounds(midiPanel.getLocalBounds().reduced(16));
+		if (midiMappingsPanel != nullptr)
+			midiMappingsPanel->setBounds(midiPanel.getLocalBounds().reduced(16));
+		else
+			midiPlaceholderLabel.setBounds(midiPanel.getLocalBounds().reduced(16));
 	}
 }
