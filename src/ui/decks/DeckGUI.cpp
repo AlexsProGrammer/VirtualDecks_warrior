@@ -1919,6 +1919,54 @@ void DeckGUI::saveHotCuesToCache()
 	    });
 }
 
+void DeckGUI::triggerPlayStop()
+{
+	queueOrExecute(player->isPlaying() ? PendingQuantizeAction::Type::PlayStop
+	                                      : PendingQuantizeAction::Type::PlayStart,
+	               &playButton);
+}
+
+void DeckGUI::jumpToHotCue(int index)
+{
+	if (index < 0 || index >= static_cast<int>(cues.size()))
+		return;
+
+	auto* cueButton = cues[index];
+	auto it = cueTargets.find(cueButton);
+	if (it == cueTargets.end())
+		return;
+
+	queueOrExecute(PendingQuantizeAction::Type::HotCueJump, cueButton,
+	               0, it->second.first, -1.0, 0.0f, cueButton);
+}
+
+void DeckGUI::setHotCue(int index)
+{
+	if (index < 0 || index >= static_cast<int>(cues.size()))
+		return;
+
+	auto* cueButton = cues[index];
+	float hue = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+	queueOrExecute(PendingQuantizeAction::Type::HotCueSet, cueButton,
+	               0, -1.0, player->getPositionRelative(), hue, cueButton);
+}
+
+void DeckGUI::clearHotCue(int index)
+{
+	if (index < 0 || index >= static_cast<int>(cues.size()))
+		return;
+
+	auto* cueButton = cues[index];
+
+	if (pendingAction.isValid() && pendingAction.srcButton == cueButton)
+		clearPendingAction();
+
+	cueTargets.erase(cueButton);
+	waveformDisplay.setCuePoints(cueTargets);
+	zoomedDisplay->setCuePoints(cueTargets);
+	saveHotCuesToCache();
+}
+
 void DeckGUI::setStartAtFirstHotCue(bool value) noexcept
 {
 	startAtFirstHotCueSetting = value;

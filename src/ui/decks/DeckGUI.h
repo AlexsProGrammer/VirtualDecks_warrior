@@ -102,6 +102,18 @@ public:
 	/// Safe to call from any thread; button visual updates on message thread.
 	void setChainButtonState(int band, bool locked);
 
+	/// Trigger the deck's play/pause transport from external code.
+	void triggerPlayStop();
+
+	/// Jump to the specified hot cue index (0-5) if it is set.
+	void jumpToHotCue(int index);
+
+	/// Set the specified hot cue index (0-5) at the current playback position.
+	void setHotCue(int index);
+
+	/// Clear the specified hot cue index (0-5).
+	void clearHotCue(int index);
+
 	/// Configure whether this deck should start at the first saved hot cue when a track loads.
 	void setStartAtFirstHotCue(bool value) noexcept;
 
