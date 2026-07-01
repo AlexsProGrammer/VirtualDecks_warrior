@@ -105,6 +105,27 @@ public:
 	/// Trigger the deck's play/pause transport from external code.
 	void triggerPlayStop();
 
+	/// Trigger the deck's loop-in button from external code.
+	void triggerLoopIn();
+
+	/// Trigger the deck's loop-out button from external code.
+	void triggerLoopOut();
+
+	/// Trigger the deck's reloop button from external code.
+	void triggerReloop();
+
+	/// Trigger the deck's Beat FX on/off button from external code.
+	void triggerBeatFxOn();
+
+	/// Set the Beat FX wet mix from external code (0.0 to 1.0).
+	void setBeatFxWet(double wet);
+
+	/// Trigger the deck's sync engage button from external code.
+	void triggerSyncEngage();
+
+	/// Trigger the deck's master toggle button from external code.
+	void triggerMaster();
+
 	/// Jump to the specified hot cue index (0-5) if it is set.
 	void jumpToHotCue(int index);
 

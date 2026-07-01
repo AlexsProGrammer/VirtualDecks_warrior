@@ -56,6 +56,28 @@ namespace MidiMappings
             case Midi::MidiActionTarget::Deck1_SpeedRel: return "Deck1_SpeedRel";
             case Midi::MidiActionTarget::Deck2_SpeedRel: return "Deck2_SpeedRel";
             case Midi::MidiActionTarget::Crossfader: return "Crossfader";
+            case Midi::MidiActionTarget::Deck1_EqLow: return "Deck1_EqLow";
+            case Midi::MidiActionTarget::Deck2_EqLow: return "Deck2_EqLow";
+            case Midi::MidiActionTarget::Deck1_EqMid: return "Deck1_EqMid";
+            case Midi::MidiActionTarget::Deck2_EqMid: return "Deck2_EqMid";
+            case Midi::MidiActionTarget::Deck1_EqHigh: return "Deck1_EqHigh";
+            case Midi::MidiActionTarget::Deck2_EqHigh: return "Deck2_EqHigh";
+            case Midi::MidiActionTarget::Deck1_JogWheel: return "Deck1_JogWheel";
+            case Midi::MidiActionTarget::Deck2_JogWheel: return "Deck2_JogWheel";
+            case Midi::MidiActionTarget::Deck1_BeatFxOn: return "Deck1_BeatFxOn";
+            case Midi::MidiActionTarget::Deck2_BeatFxOn: return "Deck2_BeatFxOn";
+            case Midi::MidiActionTarget::Deck1_BeatFxWet: return "Deck1_BeatFxWet";
+            case Midi::MidiActionTarget::Deck2_BeatFxWet: return "Deck2_BeatFxWet";
+            case Midi::MidiActionTarget::Deck1_LoopIn: return "Deck1_LoopIn";
+            case Midi::MidiActionTarget::Deck2_LoopIn: return "Deck2_LoopIn";
+            case Midi::MidiActionTarget::Deck1_LoopOut: return "Deck1_LoopOut";
+            case Midi::MidiActionTarget::Deck2_LoopOut: return "Deck2_LoopOut";
+            case Midi::MidiActionTarget::Deck1_Reloop: return "Deck1_Reloop";
+            case Midi::MidiActionTarget::Deck2_Reloop: return "Deck2_Reloop";
+            case Midi::MidiActionTarget::Deck1_Sync: return "Deck1_Sync";
+            case Midi::MidiActionTarget::Deck2_Sync: return "Deck2_Sync";
+            case Midi::MidiActionTarget::Deck1_Master: return "Deck1_Master";
+            case Midi::MidiActionTarget::Deck2_Master: return "Deck2_Master";
         }
         return "None";
     }
@@ -97,6 +119,28 @@ namespace MidiMappings
         if (actionString == "Deck1_SpeedRel") return Midi::MidiActionTarget::Deck1_SpeedRel;
         if (actionString == "Deck2_SpeedRel") return Midi::MidiActionTarget::Deck2_SpeedRel;
         if (actionString == "Crossfader") return Midi::MidiActionTarget::Crossfader;
+        if (actionString == "Deck1_EqLow") return Midi::MidiActionTarget::Deck1_EqLow;
+        if (actionString == "Deck2_EqLow") return Midi::MidiActionTarget::Deck2_EqLow;
+        if (actionString == "Deck1_EqMid") return Midi::MidiActionTarget::Deck1_EqMid;
+        if (actionString == "Deck2_EqMid") return Midi::MidiActionTarget::Deck2_EqMid;
+        if (actionString == "Deck1_EqHigh") return Midi::MidiActionTarget::Deck1_EqHigh;
+        if (actionString == "Deck2_EqHigh") return Midi::MidiActionTarget::Deck2_EqHigh;
+        if (actionString == "Deck1_JogWheel") return Midi::MidiActionTarget::Deck1_JogWheel;
+        if (actionString == "Deck2_JogWheel") return Midi::MidiActionTarget::Deck2_JogWheel;
+        if (actionString == "Deck1_BeatFxOn") return Midi::MidiActionTarget::Deck1_BeatFxOn;
+        if (actionString == "Deck2_BeatFxOn") return Midi::MidiActionTarget::Deck2_BeatFxOn;
+        if (actionString == "Deck1_BeatFxWet") return Midi::MidiActionTarget::Deck1_BeatFxWet;
+        if (actionString == "Deck2_BeatFxWet") return Midi::MidiActionTarget::Deck2_BeatFxWet;
+        if (actionString == "Deck1_LoopIn") return Midi::MidiActionTarget::Deck1_LoopIn;
+        if (actionString == "Deck2_LoopIn") return Midi::MidiActionTarget::Deck2_LoopIn;
+        if (actionString == "Deck1_LoopOut") return Midi::MidiActionTarget::Deck1_LoopOut;
+        if (actionString == "Deck2_LoopOut") return Midi::MidiActionTarget::Deck2_LoopOut;
+        if (actionString == "Deck1_Reloop") return Midi::MidiActionTarget::Deck1_Reloop;
+        if (actionString == "Deck2_Reloop") return Midi::MidiActionTarget::Deck2_Reloop;
+        if (actionString == "Deck1_Sync") return Midi::MidiActionTarget::Deck1_Sync;
+        if (actionString == "Deck2_Sync") return Midi::MidiActionTarget::Deck2_Sync;
+        if (actionString == "Deck1_Master") return Midi::MidiActionTarget::Deck1_Master;
+        if (actionString == "Deck2_Master") return Midi::MidiActionTarget::Deck2_Master;
         return Midi::MidiActionTarget::None;
     }
 

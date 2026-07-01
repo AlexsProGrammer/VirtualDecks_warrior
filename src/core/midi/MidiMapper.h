@@ -47,7 +47,29 @@ enum class MidiActionTarget
     Deck2_Filter,
     Deck1_SpeedRel,
     Deck2_SpeedRel,
-    Crossfader
+    Crossfader,
+    Deck1_EqLow,
+    Deck2_EqLow,
+    Deck1_EqMid,
+    Deck2_EqMid,
+    Deck1_EqHigh,
+    Deck2_EqHigh,
+    Deck1_JogWheel,
+    Deck2_JogWheel,
+    Deck1_BeatFxOn,
+    Deck2_BeatFxOn,
+    Deck1_BeatFxWet,
+    Deck2_BeatFxWet,
+    Deck1_LoopIn,
+    Deck2_LoopIn,
+    Deck1_LoopOut,
+    Deck2_LoopOut,
+    Deck1_Reloop,
+    Deck2_Reloop,
+    Deck1_Sync,
+    Deck2_Sync,
+    Deck1_Master,
+    Deck2_Master
 };
 
 /**

@@ -395,12 +395,34 @@ juce::String MidiMappingsPanel::getDeckLabel(Midi::MidiActionTarget target)
         case Midi::MidiActionTarget::Deck1_Filter:
         case Midi::MidiActionTarget::Deck1_Volume:
         case Midi::MidiActionTarget::Deck1_SpeedRel:
+        case Midi::MidiActionTarget::Deck1_EqLow:
+        case Midi::MidiActionTarget::Deck1_EqMid:
+        case Midi::MidiActionTarget::Deck1_EqHigh:
+        case Midi::MidiActionTarget::Deck1_JogWheel:
+        case Midi::MidiActionTarget::Deck1_BeatFxOn:
+        case Midi::MidiActionTarget::Deck1_BeatFxWet:
+        case Midi::MidiActionTarget::Deck1_LoopIn:
+        case Midi::MidiActionTarget::Deck1_LoopOut:
+        case Midi::MidiActionTarget::Deck1_Reloop:
+        case Midi::MidiActionTarget::Deck1_Sync:
+        case Midi::MidiActionTarget::Deck1_Master:
             return "Deck 1";
         case Midi::MidiActionTarget::Deck2_Play:
         case Midi::MidiActionTarget::Deck2_CueMon:
         case Midi::MidiActionTarget::Deck2_Filter:
         case Midi::MidiActionTarget::Deck2_Volume:
         case Midi::MidiActionTarget::Deck2_SpeedRel:
+        case Midi::MidiActionTarget::Deck2_EqLow:
+        case Midi::MidiActionTarget::Deck2_EqMid:
+        case Midi::MidiActionTarget::Deck2_EqHigh:
+        case Midi::MidiActionTarget::Deck2_JogWheel:
+        case Midi::MidiActionTarget::Deck2_BeatFxOn:
+        case Midi::MidiActionTarget::Deck2_BeatFxWet:
+        case Midi::MidiActionTarget::Deck2_LoopIn:
+        case Midi::MidiActionTarget::Deck2_LoopOut:
+        case Midi::MidiActionTarget::Deck2_Reloop:
+        case Midi::MidiActionTarget::Deck2_Sync:
+        case Midi::MidiActionTarget::Deck2_Master:
             return "Deck 2";
         default:
             return "Global";
@@ -434,6 +456,28 @@ std::vector<std::pair<Midi::MidiActionTarget, juce::String>> MidiMappingsPanel::
         { Midi::MidiActionTarget::Deck2_Volume, "Deck2 Volume" },
         { Midi::MidiActionTarget::Deck1_Filter, "Deck1 Filter" },
         { Midi::MidiActionTarget::Deck2_Filter, "Deck2 Filter" },
+        { Midi::MidiActionTarget::Deck1_EqLow, "Deck1 EQ Low" },
+        { Midi::MidiActionTarget::Deck1_EqMid, "Deck1 EQ Mid" },
+        { Midi::MidiActionTarget::Deck1_EqHigh, "Deck1 EQ High" },
+        { Midi::MidiActionTarget::Deck2_EqLow, "Deck2 EQ Low" },
+        { Midi::MidiActionTarget::Deck2_EqMid, "Deck2 EQ Mid" },
+        { Midi::MidiActionTarget::Deck2_EqHigh, "Deck2 EQ High" },
+        { Midi::MidiActionTarget::Deck1_JogWheel, "Deck1 Jog Wheel" },
+        { Midi::MidiActionTarget::Deck2_JogWheel, "Deck2 Jog Wheel" },
+        { Midi::MidiActionTarget::Deck1_BeatFxOn, "Deck1 Beat FX On/Off" },
+        { Midi::MidiActionTarget::Deck2_BeatFxOn, "Deck2 Beat FX On/Off" },
+        { Midi::MidiActionTarget::Deck1_BeatFxWet, "Deck1 Beat FX Wet" },
+        { Midi::MidiActionTarget::Deck2_BeatFxWet, "Deck2 Beat FX Wet" },
+        { Midi::MidiActionTarget::Deck1_LoopIn, "Deck1 Loop In" },
+        { Midi::MidiActionTarget::Deck2_LoopIn, "Deck2 Loop In" },
+        { Midi::MidiActionTarget::Deck1_LoopOut, "Deck1 Loop Out" },
+        { Midi::MidiActionTarget::Deck2_LoopOut, "Deck2 Loop Out" },
+        { Midi::MidiActionTarget::Deck1_Reloop, "Deck1 Reloop" },
+        { Midi::MidiActionTarget::Deck2_Reloop, "Deck2 Reloop" },
+        { Midi::MidiActionTarget::Deck1_Sync, "Deck1 Sync" },
+        { Midi::MidiActionTarget::Deck2_Sync, "Deck2 Sync" },
+        { Midi::MidiActionTarget::Deck1_Master, "Deck1 Master" },
+        { Midi::MidiActionTarget::Deck2_Master, "Deck2 Master" },
         { Midi::MidiActionTarget::Deck1_SpeedRel, "Deck1 Speed" },
         { Midi::MidiActionTarget::Deck2_SpeedRel, "Deck2 Speed" },
         { Midi::MidiActionTarget::Crossfader, "Crossfader" },

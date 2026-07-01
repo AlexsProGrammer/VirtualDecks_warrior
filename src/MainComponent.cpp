@@ -770,6 +770,92 @@ void MainComponent::onMidiAction(Midi::MidiActionTarget target, int value)
 			case Midi::MidiActionTarget::Deck2_Filter:
 				filter2Slider.setValue(filterValue, juce::sendNotification);
 				break;
+			case Midi::MidiActionTarget::Deck1_EqLow:
+				deckGUI1.setFilterValue(0, juce::jlimit(0.01, 2.0, normalized * 2.0));
+				break;
+			case Midi::MidiActionTarget::Deck1_EqMid:
+				deckGUI1.setFilterValue(1, juce::jlimit(0.01, 2.0, normalized * 2.0));
+				break;
+			case Midi::MidiActionTarget::Deck1_EqHigh:
+				deckGUI1.setFilterValue(2, juce::jlimit(0.01, 2.0, normalized * 2.0));
+				break;
+			case Midi::MidiActionTarget::Deck1_JogWheel:
+			{
+				double current = audioEngine.getPlayer(0).getPositionRelative();
+				double delta = (value - 64) * 0.001;
+				audioEngine.getPlayer(0).setPositionRelative(juce::jlimit(0.0, 1.0, current + delta));
+				break;
+			}
+			case Midi::MidiActionTarget::Deck1_BeatFxOn:
+				if (value > 0)
+					deckGUI1.triggerBeatFxOn();
+				break;
+			case Midi::MidiActionTarget::Deck1_BeatFxWet:
+				deckGUI1.setBeatFxWet(normalized);
+				break;
+			case Midi::MidiActionTarget::Deck1_LoopIn:
+				if (value > 0)
+					deckGUI1.triggerLoopIn();
+				break;
+			case Midi::MidiActionTarget::Deck1_LoopOut:
+				if (value > 0)
+					deckGUI1.triggerLoopOut();
+				break;
+			case Midi::MidiActionTarget::Deck1_Reloop:
+				if (value > 0)
+					deckGUI1.triggerReloop();
+				break;
+			case Midi::MidiActionTarget::Deck1_Sync:
+				if (value > 0)
+					deckGUI1.triggerSyncEngage();
+				break;
+			case Midi::MidiActionTarget::Deck1_Master:
+				if (value > 0)
+					deckGUI1.triggerMaster();
+				break;
+			case Midi::MidiActionTarget::Deck2_EqLow:
+				deckGUI2.setFilterValue(0, juce::jlimit(0.01, 2.0, normalized * 2.0));
+				break;
+			case Midi::MidiActionTarget::Deck2_EqMid:
+				deckGUI2.setFilterValue(1, juce::jlimit(0.01, 2.0, normalized * 2.0));
+				break;
+			case Midi::MidiActionTarget::Deck2_EqHigh:
+				deckGUI2.setFilterValue(2, juce::jlimit(0.01, 2.0, normalized * 2.0));
+				break;
+			case Midi::MidiActionTarget::Deck2_JogWheel:
+			{
+				double current = audioEngine.getPlayer(1).getPositionRelative();
+				double delta = (value - 64) * 0.001;
+				audioEngine.getPlayer(1).setPositionRelative(juce::jlimit(0.0, 1.0, current + delta));
+				break;
+			}
+			case Midi::MidiActionTarget::Deck2_BeatFxOn:
+				if (value > 0)
+					deckGUI2.triggerBeatFxOn();
+				break;
+			case Midi::MidiActionTarget::Deck2_BeatFxWet:
+				deckGUI2.setBeatFxWet(normalized);
+				break;
+			case Midi::MidiActionTarget::Deck2_LoopIn:
+				if (value > 0)
+					deckGUI2.triggerLoopIn();
+				break;
+			case Midi::MidiActionTarget::Deck2_LoopOut:
+				if (value > 0)
+					deckGUI2.triggerLoopOut();
+				break;
+			case Midi::MidiActionTarget::Deck2_Reloop:
+				if (value > 0)
+					deckGUI2.triggerReloop();
+				break;
+			case Midi::MidiActionTarget::Deck2_Sync:
+				if (value > 0)
+					deckGUI2.triggerSyncEngage();
+				break;
+			case Midi::MidiActionTarget::Deck2_Master:
+				if (value > 0)
+					deckGUI2.triggerMaster();
+				break;
 			case Midi::MidiActionTarget::Crossfader:
 				crossFader.setValue(cross, juce::sendNotification);
 				break;

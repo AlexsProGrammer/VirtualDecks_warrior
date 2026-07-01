@@ -1931,6 +1931,42 @@ void DeckGUI::triggerPlayStop()
 	               &playButton);
 }
 
+void DeckGUI::triggerLoopIn()
+{
+	loopInBtn.triggerClick();
+}
+
+void DeckGUI::triggerLoopOut()
+{
+	loopOutBtn.triggerClick();
+}
+
+void DeckGUI::triggerReloop()
+{
+	reloopBtn.triggerClick();
+}
+
+void DeckGUI::triggerBeatFxOn()
+{
+	beatFxOnButton.triggerClick();
+}
+
+void DeckGUI::setBeatFxWet(double wet)
+{
+	wet = juce::jlimit(0.0, 1.0, wet);
+	beatFxWetSlider.setValue(wet, juce::sendNotification);
+}
+
+void DeckGUI::triggerSyncEngage()
+{
+	syncEngageBtn.triggerClick();
+}
+
+void DeckGUI::triggerMaster()
+{
+	masterToggleBtn.triggerClick();
+}
+
 void DeckGUI::jumpToHotCue(int index)
 {
 	if (index < 0 || index >= static_cast<int>(cues.size()))
