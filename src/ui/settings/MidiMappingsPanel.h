@@ -101,10 +101,18 @@ private:
 
     Midi::MidiMapper& mapper;
     juce::ComboBox deviceSelector;
-    juce::TextButton refreshBtn{ "⟳" };
+    juce::TextButton refreshBtn{ "Autodetect" };
     juce::TextButton importBtn{ "Import..." };
     juce::TextButton exportBtn{ "Export..." };
-    juce::Component toolbarDivider;
+    struct ToolbarDivider : public juce::Component
+    {
+        void paint(juce::Graphics& g) override
+        {
+            g.fillAll(UI::borderSubtle);
+        }
+    };
+    ToolbarDivider toolbarDivider;
+    ToolbarDivider toolbarDivider2;
     juce::TextButton addRowBtn{ "Add" };
     juce::TextButton clearRowBtn{ "Remove" };
     juce::TextButton learnBtn{ "MIDI Learn" };

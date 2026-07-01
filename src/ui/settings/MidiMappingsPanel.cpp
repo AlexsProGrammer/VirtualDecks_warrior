@@ -8,6 +8,7 @@ MidiMappingsPanel::MidiMappingsPanel(Midi::MidiMapper& mapper_) :
     addAndMakeVisible(importBtn);
     addAndMakeVisible(exportBtn);
     addAndMakeVisible(toolbarDivider);
+    addAndMakeVisible(toolbarDivider2);
     addAndMakeVisible(addRowBtn);
     addAndMakeVisible(clearRowBtn);
     addAndMakeVisible(learnBtn);
@@ -30,13 +31,15 @@ MidiMappingsPanel::MidiMappingsPanel(Midi::MidiMapper& mapper_) :
     clearRowBtn.addListener(this);
     learnBtn.addListener(this);
 
+    toolbarDivider.setInterceptsMouseClicks(false, false);
+    toolbarDivider2.setInterceptsMouseClicks(false, false);
+
     statusLabel.setJustificationType(juce::Justification::centredLeft);
     statusLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     statusLabel.setColour(juce::Label::backgroundColourId, UI::bgCard);
     statusLabel.setColour(juce::Label::outlineColourId, UI::borderSubtle);
     statusLabel.setBorderSize(juce::BorderSize<int>(1));
     statusLabel.setOpaque(true);
-    toolbarDivider.setInterceptsMouseClicks(false, false);
 
     loadSavedMappings();
     refreshDeviceList();
@@ -56,13 +59,19 @@ void MidiMappingsPanel::resized()
     auto area = getLocalBounds().reduced(8);
     auto top = area.removeFromTop(40);
 
-    deviceSelector.setBounds(top.removeFromLeft(260).reduced(0, 2));
-    refreshBtn.setBounds(top.removeFromLeft(32).reduced(2));
+    const int deviceWidth = juce::jmin(420, juce::jmax(340, top.getWidth() / 2));
+    deviceSelector.setBounds(top.removeFromLeft(deviceWidth).reduced(0, 2));
+    refreshBtn.setBounds(top.removeFromLeft(110).reduced(2));
+
+    top.removeFromLeft(4);
+    toolbarDivider.setBounds(top.removeFromLeft(2).withTrimmedTop(6).withHeight(top.getHeight() - 12));
+    top.removeFromLeft(4);
     importBtn.setBounds(top.removeFromLeft(90).reduced(2));
     exportBtn.setBounds(top.removeFromLeft(90).reduced(2));
 
-    toolbarDivider.setBounds(top.removeFromLeft(2).withTrimmedTop(6).withHeight(top.getHeight() - 12));
-
+    top.removeFromLeft(4);
+    toolbarDivider2.setBounds(top.removeFromLeft(2).withTrimmedTop(6).withHeight(top.getHeight() - 12));
+    top.removeFromLeft(4);
     addRowBtn.setBounds(top.removeFromLeft(80).reduced(2));
     clearRowBtn.setBounds(top.removeFromLeft(90).reduced(2));
     learnBtn.setBounds(top.removeFromLeft(110).reduced(2));
