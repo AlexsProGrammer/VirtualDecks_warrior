@@ -444,6 +444,7 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	jumpTabButton.setLookAndFeel(&customLookAndFeel);
 	loopTabButton.setLookAndFeel(&customLookAndFeel);
 	syncTabButton.setLookAndFeel(&customLookAndFeel);
+	quantizeTabButton.setLookAndFeel(&customLookAndFeel);
 	padFxTabButton.setLookAndFeel(&customLookAndFeel);
 	beatFxTabButton.setLookAndFeel(&customLookAndFeel);
 	releaseFxTabButton.setLookAndFeel(&customLookAndFeel);
