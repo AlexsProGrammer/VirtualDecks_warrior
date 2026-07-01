@@ -183,13 +183,31 @@ void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
 		auto circle = juce::Rectangle<float>(diameter, diameter).withCentre(bounds.getCentre());
 		const bool toggled = button.getToggleState();
 		const bool hasActiveTint = (backgroundColour.getAlpha() > 10);
+		const bool noRing = (bool) button.getProperties().getWithDefault("noRing", false);
+		const bool hasDeckTheme = button.getProperties().contains("deckThemeColour");
+		juce::Colour deckTheme = juce::Colours::transparentBlack;
+		if (hasDeckTheme)
+		{
+			const juce::var themeValue = button.getProperties().getWithDefault("deckThemeColour", (juce::int64) juce::Colours::transparentBlack.getARGB());
+			const juce::uint32 themeArgb = (juce::uint32) (themeValue.operator juce::int64());
+			deckTheme = juce::Colour(themeArgb);
+		}
 
 		// Active fill: prefer the explicit on-colour if the button is toggled
 		// or has been given a tinted background; otherwise pure outline.
 		if (toggled || hasActiveTint)
 		{
-			juce::Colour fill = backgroundColour.getAlpha() > 10 ? backgroundColour
-			                                                     : juce::Colours::white.withAlpha(0.10f);
+			juce::Colour fill = backgroundColour;
+			if (hasDeckTheme)
+			{
+				if (isButtonDown)
+					fill = deckTheme;
+				else if (isMouseOverButton)
+					fill = juce::Colours::lightgrey;
+				else
+					fill = juce::Colours::white;
+			}
+
 			g.setColour(fill.withAlpha(0.20f));
 			g.fillEllipse(circle.expanded(2.0f));
 			g.setColour(isButtonDown ? fill.darker(0.15f)
@@ -208,9 +226,12 @@ void CustomLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& bu
 		}
 
 		// Always-visible outline ring - this is what makes the 4 buttons look matched.
-		g.setColour(toggled ? backgroundColour.brighter(0.20f).withAlpha(0.85f)
-		                    : UI::borderStrong);
-		g.drawEllipse(circle, 1.4f);
+		if (!noRing)
+		{
+			g.setColour(toggled ? backgroundColour.brighter(0.20f).withAlpha(0.85f)
+			                    : UI::borderStrong);
+			g.drawEllipse(circle, 1.4f);
+		}
 		return;
 	}
 

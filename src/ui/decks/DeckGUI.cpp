@@ -79,7 +79,8 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 
 	cueButtonImage = juce::Drawable::createFromImageData(BinaryData::iconHeadphone_svg, (size_t)BinaryData::iconHeadphone_svgSize);
 	cueButtonImageActive = CustomLookAndFeel::loadIcon(BinaryData::iconHeadphone_svg, theme);
-	cueButton.setImages(cueButtonImage.get(), nullptr, nullptr, nullptr, cueButtonImageActive.get());
+	cueButtonImageHover = CustomLookAndFeel::loadIcon(BinaryData::iconHeadphone_svg, juce::Colours::lightgrey);
+	cueButton.setImages(cueButtonImage.get(), cueButtonImageHover.get(), nullptr, nullptr, cueButtonImageActive.get());
 	cueButton.setColour(juce::DrawableButton::backgroundColourId,   juce::Colours::transparentBlack);
 	cueButton.setColour(juce::DrawableButton::backgroundOnColourId, theme.withAlpha(0.85f));
 	cueButton.setClickingTogglesState(false);
@@ -93,6 +94,8 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	cuePointBtn.setColour(juce::TextButton::textColourOnId, juce::Colours::black);
 	cuePointBtn.setClickingTogglesState(false);
 	cuePointBtn.getProperties().set("circularOutline", true);
+	cuePointBtn.getProperties().set("noRing", true);
+	cuePointBtn.getProperties().set("deckThemeColour", (juce::int64) theme.getARGB());
 	cuePointBtn.getProperties().set("forceBoldText", true);
 	cuePointBtn.setLookAndFeel(&customLookAndFeel);
 	cuePointBtn.setTooltip("CUE - press to set/recall cue point; hold to preview from cue");
@@ -219,7 +222,8 @@ DeckGUI::DeckGUI(DJAudioPlayer* _player, juce::AudioFormatManager& formatManager
 	// Fast-sync compact button (always visible near play/load).
 	fastSyncBtnImage = juce::Drawable::createFromImageData(BinaryData::iconSyncBolt_svg, (size_t)BinaryData::iconSyncBolt_svgSize);
 	fastSyncBtnImageActive = CustomLookAndFeel::loadIcon(BinaryData::iconSyncBolt_svg, UI::accentPositive);
-	fastSyncBtn.setImages(fastSyncBtnImage.get(), nullptr, nullptr, nullptr, fastSyncBtnImageActive.get());
+	fastSyncBtnImageHover = CustomLookAndFeel::loadIcon(BinaryData::iconSyncBolt_svg, juce::Colours::lightgrey);
+	fastSyncBtn.setImages(fastSyncBtnImage.get(), fastSyncBtnImageHover.get(), nullptr, nullptr, fastSyncBtnImageActive.get());
 	fastSyncBtn.setColour(juce::DrawableButton::backgroundColourId,   juce::Colours::transparentBlack);
 	fastSyncBtn.setColour(juce::DrawableButton::backgroundOnColourId, UI::accentPositive.withAlpha(0.85f));
 	fastSyncBtn.setClickingTogglesState(true);
