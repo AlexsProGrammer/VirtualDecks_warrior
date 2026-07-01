@@ -178,12 +178,17 @@ void SettingsPanel::resized()
 
 	// Tab bar and close button
 	auto tabsArea = area.removeFromTop(32);
-	auto closeArea = tabsArea.removeFromRight(32);
+	const int tabGap = 6;
+	const int closeButtonW = 32;
+	auto closeArea = tabsArea.removeFromRight(closeButtonW);
+	auto spacer = tabsArea.removeFromRight(tabGap);
 	closeButton.setBounds(closeArea);
 
-	const int tabW = tabsArea.getWidth() / 3;
+	const int tabW = (tabsArea.getWidth() - 2 * tabGap) / 3;
 	generalTabBtn.setBounds(tabsArea.removeFromLeft(tabW));
+	tabsArea.removeFromLeft(tabGap);
 	audioTabBtn.setBounds(tabsArea.removeFromLeft(tabW));
+	tabsArea.removeFromLeft(tabGap);
 	midiTabBtn.setBounds(tabsArea);
 
 	generalPanel.setBounds(area);
