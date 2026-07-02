@@ -66,9 +66,62 @@ private:
         int row = -1;
     };
 
+    struct OutputEditableTextEditor : public juce::TextEditor
+    {
+        explicit OutputEditableTextEditor(MidiMappingsPanel& owner_) : owner(owner_) {}
+        void focusLost(juce::Component::FocusChangeType cause) override
+        {
+            juce::TextEditor::focusLost(cause);
+            commitValue();
+        }
+
+        void commitValue()
+        {
+            if (row < 0 || row >= (int)owner.outputMappings.size())
+                return;
+
+            const int value = getText().getIntValue();
+            if (columnId == 1)
+                owner.outputMappings[row].channel = juce::jlimit(1, 16, value);
+            else if (columnId == 3)
+                owner.outputMappings[row].number = juce::jlimit(0, 127, value);
+            else if (columnId == 5)
+                owner.outputMappings[row].onValue = juce::jlimit(0, 127, value);
+            else if (columnId == 6)
+                owner.outputMappings[row].offValue = juce::jlimit(0, 127, value);
+
+            owner.saveOutputMappings();
+            owner.refreshOutputMappingsTable();
+        }
+
+        MidiMappingsPanel& owner;
+        int row = -1;
+        int columnId = -1;
+    };
+
+    struct OutputActionComboBox : public juce::ComboBox
+    {
+        explicit OutputActionComboBox(MidiMappingsPanel& owner_) : owner(owner_) {}
+        void setRow(int newRow) { row = newRow; }
+        MidiMappingsPanel& owner;
+        int row = -1;
+    };
+
     struct MappingTableModel : public juce::TableListBoxModel
     {
         explicit MappingTableModel(MidiMappingsPanel& owner_) : owner(owner_) {}
+
+        int getNumRows() override;
+        void paintRowBackground(juce::Graphics& g, int rowNumber, int width, int height, bool rowIsSelected) override;
+        void paintCell(juce::Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) override;
+        juce::Component* refreshComponentForCell(int rowNumber, int columnId, bool isRowSelected, juce::Component* existingComponent) override;
+
+        MidiMappingsPanel& owner;
+    };
+
+    struct OutputMappingTableModel : public juce::TableListBoxModel
+    {
+        explicit OutputMappingTableModel(MidiMappingsPanel& owner_) : owner(owner_) {}
 
         int getNumRows() override;
         void paintRowBackground(juce::Graphics& g, int rowNumber, int width, int height, bool rowIsSelected) override;
@@ -82,14 +135,20 @@ private:
     void comboBoxChanged(juce::ComboBox* comboBoxThatHasChanged) override;
 
     void refreshDeviceList();
+    void refreshOutputDeviceList();
     void refreshMappingsTable();
+    void refreshOutputMappingsTable();
     void timerCallback() override;
     void saveMappings();
+    void saveOutputMappings();
     void loadSavedMappings();
+    void loadSavedOutputMappings();
+    void setOutputMode(bool enable);
     void updateStatusLabel();
     void setLearnMode(bool enable);
     void handleLearnMessage(int channel, int messageType, int number);
     juce::String getSelectedMidiDeviceId() const;
+    juce::String getSelectedMidiOutputDeviceId() const;
     juce::String getMappingDeviceId() const;
     void setActionForRow(int row, Midi::MidiActionTarget target);
 
@@ -98,8 +157,11 @@ private:
     static juce::String getTypeLabel(int messageType);
     static juce::String getStatusLabel(const Midi::MidiMappingEntry& entry);
     static std::vector<std::pair<Midi::MidiActionTarget, juce::String>> getActionChoices();
+    static std::vector<std::pair<Midi::MidiActionTarget, juce::String>> getOutputActionChoices();
 
     Midi::MidiMapper& mapper;
+    juce::TextButton inputModeBtn{ "INPUT" };
+    juce::TextButton outputModeBtn{ "OUTPUT" };
     juce::ComboBox deviceSelector;
     juce::TextButton refreshBtn{ "Autodetect" };
     juce::TextButton importBtn{ "Import..." };
@@ -117,15 +179,20 @@ private:
     juce::TextButton clearRowBtn{ "Remove" };
     juce::TextButton learnBtn{ "MIDI Learn" };
     juce::TableListBox mappingTable;
+    juce::TableListBox outputMappingTable;
     juce::Label statusLabel{ "status", "Not connected" };
     juce::String overrideStatusMessage;
+    bool outputModeActive = false;
     bool learnModeActive = false;
     int learnTargetRow = -1;
     std::shared_ptr<juce::FileChooser> fileChooserRef;
     std::function<void()> onMappingsChanged;
     std::vector<Midi::MidiMappingEntry> mappings;
+    std::vector<Midi::MidiOutputEntry> outputMappings;
     std::vector<juce::String> deviceIds;
+    std::vector<juce::String> outputDeviceIds;
     MappingTableModel tableModel{ *this };
+    OutputMappingTableModel outputTableModel{ *this };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiMappingsPanel)
 };

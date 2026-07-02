@@ -26,6 +26,8 @@ namespace MidiMappings
                                                              juce::String& outDeviceId);
 
     std::vector<Midi::MidiOutputEntry> loadOutputMappings(juce::String& outOutputDeviceId);
+    std::vector<Midi::MidiOutputEntry> loadOutputMappingsFromFile(const juce::File& file,
+                                                                 juce::String& outOutputDeviceId);
 
     bool exportMappings(const std::vector<Midi::MidiMappingEntry>& entries,
                         const juce::String& deviceId,

@@ -3,6 +3,8 @@
 MidiMappingsPanel::MidiMappingsPanel(Midi::MidiMapper& mapper_) :
     mapper(mapper_)
 {
+    addAndMakeVisible(inputModeBtn);
+    addAndMakeVisible(outputModeBtn);
     addAndMakeVisible(deviceSelector);
     addAndMakeVisible(refreshBtn);
     addAndMakeVisible(importBtn);
@@ -13,9 +15,18 @@ MidiMappingsPanel::MidiMappingsPanel(Midi::MidiMapper& mapper_) :
     addAndMakeVisible(clearRowBtn);
     addAndMakeVisible(learnBtn);
     addAndMakeVisible(mappingTable);
+    addAndMakeVisible(outputMappingTable);
     addAndMakeVisible(statusLabel);
 
     mappingTable.setModel(&tableModel);
+    outputMappingTable.setModel(&outputTableModel);
+    inputModeBtn.setClickingTogglesState(true);
+    outputModeBtn.setClickingTogglesState(true);
+    inputModeBtn.setToggleState(true, juce::dontSendNotification);
+    outputModeBtn.setToggleState(false, juce::dontSendNotification);
+    inputModeBtn.setColour(juce::TextButton::buttonOnColourId, UI::accentPositive);
+    outputModeBtn.setColour(juce::TextButton::buttonOnColourId, UI::accentPositive);
+
     mappingTable.getHeader().addColumn("Ch", 1, 40, 40, 40, juce::TableHeaderComponent::defaultFlags);
     mappingTable.getHeader().addColumn("Type", 2, 60, 60, 80, juce::TableHeaderComponent::defaultFlags);
     mappingTable.getHeader().addColumn("Number", 3, 60, 60, 80, juce::TableHeaderComponent::defaultFlags);
@@ -23,6 +34,15 @@ MidiMappingsPanel::MidiMappingsPanel(Midi::MidiMapper& mapper_) :
     mappingTable.getHeader().addColumn("Action", 5, 120, 80, 250, juce::TableHeaderComponent::defaultFlags);
     mappingTable.getHeader().addColumn("Status", 6, 120, 80, 180, juce::TableHeaderComponent::defaultFlags);
 
+    outputMappingTable.getHeader().addColumn("State", 1, 160, 80, 240, juce::TableHeaderComponent::defaultFlags);
+    outputMappingTable.getHeader().addColumn("Ch", 2, 40, 40, 40, juce::TableHeaderComponent::defaultFlags);
+    outputMappingTable.getHeader().addColumn("Type", 3, 60, 60, 80, juce::TableHeaderComponent::defaultFlags);
+    outputMappingTable.getHeader().addColumn("Number", 4, 60, 60, 80, juce::TableHeaderComponent::defaultFlags);
+    outputMappingTable.getHeader().addColumn("On", 5, 50, 50, 70, juce::TableHeaderComponent::defaultFlags);
+    outputMappingTable.getHeader().addColumn("Off", 6, 50, 50, 70, juce::TableHeaderComponent::defaultFlags);
+
+    inputModeBtn.addListener(this);
+    outputModeBtn.addListener(this);
     deviceSelector.addListener(this);
     refreshBtn.addListener(this);
     importBtn.addListener(this);
@@ -59,7 +79,11 @@ void MidiMappingsPanel::resized()
     auto area = getLocalBounds().reduced(8);
     auto top = area.removeFromTop(40);
 
-    const int deviceWidth = juce::jmin(420, juce::jmax(340, top.getWidth() / 2));
+    inputModeBtn.setBounds(top.removeFromLeft(80).reduced(2));
+    outputModeBtn.setBounds(top.removeFromLeft(90).reduced(2));
+    top.removeFromLeft(8);
+
+    const int deviceWidth = juce::jmin(360, juce::jmax(260, top.getWidth() / 3));
     deviceSelector.setBounds(top.removeFromLeft(deviceWidth).reduced(0, 2));
     refreshBtn.setBounds(top.removeFromLeft(110).reduced(2));
 
@@ -78,18 +102,37 @@ void MidiMappingsPanel::resized()
     statusLabel.setBounds(top.reduced(2));
 
     mappingTable.setBounds(area.reduced(0, 8));
+    outputMappingTable.setBounds(area.reduced(0, 8));
 }
 
 void MidiMappingsPanel::buttonClicked(juce::Button* button)
 {
-    if (button == &refreshBtn) {
-        refreshDeviceList();
+    if (button == &inputModeBtn) {
+        setOutputMode(false);
+    } else if (button == &outputModeBtn) {
+        setOutputMode(true);
+    } else if (button == &refreshBtn) {
+        if (outputModeActive)
+            refreshOutputDeviceList();
+        else
+            refreshDeviceList();
     } else if (button == &importBtn) {
-        fileChooserRef = std::make_shared<juce::FileChooser>("Import MIDI mappings", juce::File(), "*.xml");
+        fileChooserRef = std::make_shared<juce::FileChooser>(outputModeActive ? "Import MIDI output mappings" : "Import MIDI mappings", juce::File(), "*.xml");
         fileChooserRef->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
             [this](const juce::FileChooser& chooser) {
                 auto file = chooser.getResult();
-                if (file.existsAsFile()) {
+                if (!file.existsAsFile())
+                    return;
+
+                if (outputModeActive) {
+                    juce::String outputDeviceId;
+                    auto loaded = MidiMappings::loadOutputMappingsFromFile(file, outputDeviceId);
+                    if (!loaded.empty()) {
+                        outputMappings = std::move(loaded);
+                        refreshOutputMappingsTable();
+                        saveOutputMappings();
+                    }
+                } else {
                     juce::String deviceId;
                     auto loaded = MidiMappings::loadMappingsFromFile(file, deviceId);
                     if (!loaded.empty()) {
@@ -101,45 +144,78 @@ void MidiMappingsPanel::buttonClicked(juce::Button* button)
                 }
             });
     } else if (button == &exportBtn) {
-        fileChooserRef = std::make_shared<juce::FileChooser>("Export MIDI mappings", juce::File(), "*.xml");
+        fileChooserRef = std::make_shared<juce::FileChooser>(outputModeActive ? "Export MIDI output mappings" : "Export MIDI mappings", juce::File(), "*.xml");
         fileChooserRef->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
             [this](const juce::FileChooser& chooser) {
                 auto file = chooser.getResult();
                 if (!file.exists())
                     file = file.withFileExtension(".xml");
-                MidiMappings::exportMappings(mappings, getSelectedMidiDeviceId(), file);
+
+                if (outputModeActive)
+                    MidiMappings::saveOutputMappings(outputMappings, getSelectedMidiOutputDeviceId(), file);
+                else
+                    MidiMappings::exportMappings(mappings, getSelectedMidiDeviceId(), file);
             });
     } else if (button == &addRowBtn) {
-        mappings.push_back({0, 0, 0, Midi::MidiActionTarget::None});
-        refreshMappingsTable();
-        saveMappings();
-    } else if (button == &clearRowBtn) {
-        int row = mappingTable.getSelectedRow();
-        if (row >= 0 && row < (int)mappings.size()) {
-            mappings.erase(mappings.begin() + row);
+        if (outputModeActive) {
+            outputMappings.push_back({Midi::MidiActionTarget::None, 1, 0, 0, 127, 0});
+            refreshOutputMappingsTable();
+            saveOutputMappings();
+        } else {
+            mappings.push_back({0, 0, 0, Midi::MidiActionTarget::None});
             refreshMappingsTable();
             saveMappings();
         }
+    } else if (button == &clearRowBtn) {
+        if (outputModeActive) {
+            int row = outputMappingTable.getSelectedRow();
+            if (row >= 0 && row < (int)outputMappings.size()) {
+                outputMappings.erase(outputMappings.begin() + row);
+                refreshOutputMappingsTable();
+                saveOutputMappings();
+            }
+        } else {
+            int row = mappingTable.getSelectedRow();
+            if (row >= 0 && row < (int)mappings.size()) {
+                mappings.erase(mappings.begin() + row);
+                refreshMappingsTable();
+                saveMappings();
+            }
+        }
     } else if (button == &learnBtn) {
-        setLearnMode(!learnModeActive);
+        if (!outputModeActive)
+            setLearnMode(!learnModeActive);
     }
 }
 
 void MidiMappingsPanel::comboBoxChanged(juce::ComboBox* comboBoxThatHasChanged)
 {
-	if (comboBoxThatHasChanged == &deviceSelector) {
-		const int idx = deviceSelector.getSelectedId() - 1;
-		if (idx >= 0 && idx < (int)deviceIds.size()) {
-			bool opened = mapper.openDevice(deviceIds[idx]);
-			if (opened) {
-				AppSettings::saveMidiDeviceId(deviceIds[idx]);
-				saveMappings();
-			} else {
-				overrideStatusMessage = "Failed to open device — please select another";
-			}
-			updateStatusLabel();
-		}
-	}
+    if (comboBoxThatHasChanged == &deviceSelector) {
+        const int idx = deviceSelector.getSelectedId() - 1;
+        if (outputModeActive) {
+            if (idx >= 0 && idx < (int)outputDeviceIds.size()) {
+                bool opened = mapper.openOutputDevice(outputDeviceIds[idx]);
+                if (opened) {
+                    AppSettings::saveMidiOutputDeviceId(outputDeviceIds[idx]);
+                    saveOutputMappings();
+                } else {
+                    overrideStatusMessage = "Failed to open output device — please select another";
+                }
+                updateStatusLabel();
+            }
+        } else {
+            if (idx >= 0 && idx < (int)deviceIds.size()) {
+                bool opened = mapper.openDevice(deviceIds[idx]);
+                if (opened) {
+                    AppSettings::saveMidiDeviceId(deviceIds[idx]);
+                    saveMappings();
+                } else {
+                    overrideStatusMessage = "Failed to open device — please select another";
+                }
+                updateStatusLabel();
+            }
+        }
+    }
 }
 
 void MidiMappingsPanel::refreshDeviceList()
@@ -166,6 +242,30 @@ void MidiMappingsPanel::refreshDeviceList()
     updateStatusLabel();
 }
 
+void MidiMappingsPanel::refreshOutputDeviceList()
+{
+    deviceSelector.clear(juce::dontSendNotification);
+    outputDeviceIds.clear();
+
+    auto devices = juce::MidiOutput::getAvailableDevices();
+    for (auto& d : devices) {
+        outputDeviceIds.push_back(d.identifier);
+        deviceSelector.addItem(d.name, outputDeviceIds.size());
+    }
+
+    auto activeId = mapper.getActiveOutputDeviceIdentifier();
+    int selected = 0;
+    for (int i = 0; i < (int)outputDeviceIds.size(); ++i) {
+        if (outputDeviceIds[i] == activeId) {
+            selected = i + 1;
+            break;
+        }
+    }
+
+    deviceSelector.setSelectedId(selected, juce::dontSendNotification);
+    updateStatusLabel();
+}
+
 void MidiMappingsPanel::refreshMappingsTable()
 {
     mappingTable.updateContent();
@@ -177,19 +277,38 @@ void MidiMappingsPanel::saveMappings()
     MidiMappings::saveMappings(mappings, getSelectedMidiDeviceId());
 }
 
+void MidiMappingsPanel::saveOutputMappings()
+{
+    MidiMappings::saveOutputMappings(outputMappings, getSelectedMidiOutputDeviceId());
+}
+
 void MidiMappingsPanel::loadSavedMappings()
 {
-	juce::String deviceId = AppSettings::loadMidiDeviceId();
-	mappings = MidiMappings::loadMappings(deviceId);
-	mapper.setMappings(mappings);
-	refreshMappingsTable();
+    juce::String deviceId = AppSettings::loadMidiDeviceId();
+    mappings = MidiMappings::loadMappings(deviceId);
+    mapper.setMappings(mappings);
+    refreshMappingsTable();
 
-	if (!deviceId.isEmpty()) {
-		bool opened = mapper.openDevice(deviceId);
-		if (!opened)
-			overrideStatusMessage = "Device not found — please reconnect or select another";
-	}
-	updateStatusLabel();
+    if (!deviceId.isEmpty()) {
+        bool opened = mapper.openDevice(deviceId);
+        if (!opened)
+            overrideStatusMessage = "Device not found — please reconnect or select another";
+    }
+    updateStatusLabel();
+}
+
+void MidiMappingsPanel::loadSavedOutputMappings()
+{
+    juce::String deviceId = AppSettings::loadMidiOutputDeviceId();
+    outputMappings = MidiMappings::loadOutputMappings(deviceId);
+    refreshOutputMappingsTable();
+
+    if (!deviceId.isEmpty()) {
+        bool opened = mapper.openOutputDevice(deviceId);
+        if (!opened)
+            overrideStatusMessage = "Output device not found — please reconnect or select another";
+    }
+    updateStatusLabel();
 }
 
 void MidiMappingsPanel::updateStatusLabel()
@@ -514,7 +633,194 @@ juce::String MidiMappingsPanel::getSelectedMidiDeviceId() const
     return (idx >= 0 && idx < (int)deviceIds.size()) ? deviceIds[idx] : juce::String();
 }
 
+juce::String MidiMappingsPanel::getSelectedMidiOutputDeviceId() const
+{
+    const int idx = deviceSelector.getSelectedId() - 1;
+    return (idx >= 0 && idx < (int)outputDeviceIds.size()) ? outputDeviceIds[idx] : juce::String();
+}
+
+void MidiMappingsPanel::refreshOutputMappingsTable()
+{
+    outputMappingTable.updateContent();
+    outputMappingTable.repaint();
+}
+
+int MidiMappingsPanel::OutputMappingTableModel::getNumRows()
+{
+    return owner.outputMappings.size();
+}
+
+void MidiMappingsPanel::OutputMappingTableModel::paintRowBackground(juce::Graphics& g, int rowNumber, int width, int height, bool rowIsSelected)
+{
+    if (rowIsSelected)
+        g.fillAll(juce::Colour::fromRGBA(0, 125, 225, 120));
+    else if (rowNumber % 2 == 0)
+        g.fillAll(UI::bgCard);
+    else
+        g.fillAll(UI::bgRoot);
+}
+
+void MidiMappingsPanel::OutputMappingTableModel::paintCell(juce::Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected)
+{
+    if (rowNumber < 0 || rowNumber >= (int)owner.outputMappings.size())
+        return;
+
+    const auto& entry = owner.outputMappings[rowNumber];
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::Font(juce::FontOptions{ 12.0f }));
+
+    switch (columnId) {
+        case 2:
+            g.drawText(juce::String(entry.channel), 2, 0, width - 4, height, juce::Justification::centredLeft);
+            break;
+        case 3:
+            g.drawText(owner.getTypeLabel(entry.messageType), 2, 0, width - 4, height, juce::Justification::centredLeft);
+            break;
+        case 4:
+            g.drawText(juce::String(entry.number), 2, 0, width - 4, height, juce::Justification::centredLeft);
+            break;
+        case 5:
+            g.drawText(juce::String(entry.onValue), 2, 0, width - 4, height, juce::Justification::centredLeft);
+            break;
+        case 6:
+            g.drawText(juce::String(entry.offValue), 2, 0, width - 4, height, juce::Justification::centredLeft);
+            break;
+        default:
+            break;
+    }
+}
+
+juce::Component* MidiMappingsPanel::OutputMappingTableModel::refreshComponentForCell(int rowNumber, int columnId, bool, juce::Component* existingComponent)
+{
+    if (columnId == 2 || columnId == 4 || columnId == 5 || columnId == 6) {
+        auto* editor = dynamic_cast<OutputEditableTextEditor*>(existingComponent);
+        if (editor == nullptr) {
+            editor = new OutputEditableTextEditor(owner);
+            editor->setJustification(juce::Justification::centredLeft);
+        }
+
+        editor->clear();
+        if (columnId == 2)
+            editor->setText(juce::String(owner.outputMappings[rowNumber].channel), juce::dontSendNotification);
+        else if (columnId == 4)
+            editor->setText(juce::String(owner.outputMappings[rowNumber].number), juce::dontSendNotification);
+        else if (columnId == 5)
+            editor->setText(juce::String(owner.outputMappings[rowNumber].onValue), juce::dontSendNotification);
+        else if (columnId == 6)
+            editor->setText(juce::String(owner.outputMappings[rowNumber].offValue), juce::dontSendNotification);
+
+        editor->row = rowNumber;
+        editor->columnId = columnId;
+        return editor;
+    }
+
+    if (columnId == 3) {
+        auto* combo = dynamic_cast<TypeComboBox*>(existingComponent);
+        if (combo == nullptr) {
+            combo = new TypeComboBox(owner);
+            combo->addItem("Note", 1);
+            combo->addItem("CC", 2);
+            combo->onChange = [combo]() {
+                if (combo == nullptr)
+                    return;
+                const int row = combo->row;
+                if (row < 0 || row >= (int)combo->owner.outputMappings.size())
+                    return;
+                combo->owner.outputMappings[row].messageType = combo->getSelectedId() - 1;
+                combo->owner.saveOutputMappings();
+                combo->owner.refreshOutputMappingsTable();
+            };
+        }
+        combo->setRow(rowNumber);
+        combo->setSelectedId(owner.outputMappings[rowNumber].messageType + 1, juce::dontSendNotification);
+        return combo;
+    }
+
+    if (columnId != 1)
+        return existingComponent;
+
+    auto* combo = dynamic_cast<OutputActionComboBox*>(existingComponent);
+    if (combo == nullptr) {
+        combo = new OutputActionComboBox(owner);
+        auto choices = owner.getOutputActionChoices();
+        for (int i = 0; i < (int)choices.size(); ++i)
+            combo->addItem(choices[i].second, i + 1);
+    }
+
+    combo->setRow(rowNumber);
+    combo->onChange = [combo]() {
+        if (combo == nullptr)
+            return;
+        const int row = combo->row;
+        if (row < 0 || row >= (int)combo->owner.outputMappings.size())
+            return;
+        const int selectedId = combo->getSelectedId();
+        auto choices = combo->owner.getOutputActionChoices();
+        if (selectedId <= 0 || selectedId > (int)choices.size())
+            return;
+        combo->owner.outputMappings[row].target = choices[selectedId - 1].first;
+        combo->owner.saveOutputMappings();
+        combo->owner.refreshOutputMappingsTable();
+    };
+
+    auto choices = owner.getOutputActionChoices();
+    auto it = std::find_if(choices.begin(), choices.end(), [&](auto& p) { return p.first == owner.outputMappings[rowNumber].target; });
+    if (it != choices.end())
+        combo->setSelectedId((int)std::distance(choices.begin(), it) + 1, juce::dontSendNotification);
+    else
+        combo->setSelectedId(1, juce::dontSendNotification);
+
+    return combo;
+}
+
+std::vector<std::pair<Midi::MidiActionTarget, juce::String>> MidiMappingsPanel::getOutputActionChoices()
+{
+    return {
+        { Midi::MidiActionTarget::None, "None" },
+        { Midi::MidiActionTarget::Deck1_Play, "Deck1 Play (BTN)" },
+        { Midi::MidiActionTarget::Deck2_Play, "Deck2 Play (BTN)" },
+        { Midi::MidiActionTarget::Deck1_CueMon, "Deck1 Cue (BTN)" },
+        { Midi::MidiActionTarget::Deck2_CueMon, "Deck2 Cue (BTN)" },
+        { Midi::MidiActionTarget::Deck1_BeatFxOn, "Deck1 Beat FX On/Off (BTN)" },
+        { Midi::MidiActionTarget::Deck2_BeatFxOn, "Deck2 Beat FX On/Off (BTN)" },
+        { Midi::MidiActionTarget::Deck1_Reloop, "Deck1 Reloop (BTN)" },
+        { Midi::MidiActionTarget::Deck2_Reloop, "Deck2 Reloop (BTN)" },
+        { Midi::MidiActionTarget::Deck1_Sync, "Deck1 Sync (BTN)" },
+        { Midi::MidiActionTarget::Deck2_Sync, "Deck2 Sync (BTN)" },
+        { Midi::MidiActionTarget::Deck1_Master, "Deck1 Master (BTN)" },
+        { Midi::MidiActionTarget::Deck2_Master, "Deck2 Master (BTN)" },
+        { Midi::MidiActionTarget::Deck1_HotCueSet_1, "Deck1 HotCue Set 1 (BTN)" },
+        { Midi::MidiActionTarget::Deck1_HotCueSet_2, "Deck1 HotCue Set 2 (BTN)" },
+        { Midi::MidiActionTarget::Deck1_HotCueSet_3, "Deck1 HotCue Set 3 (BTN)" },
+        { Midi::MidiActionTarget::Deck1_HotCueSet_4, "Deck1 HotCue Set 4 (BTN)" },
+        { Midi::MidiActionTarget::Deck1_HotCueSet_5, "Deck1 HotCue Set 5 (BTN)" },
+        { Midi::MidiActionTarget::Deck1_HotCueSet_6, "Deck1 HotCue Set 6 (BTN)" },
+        { Midi::MidiActionTarget::Deck2_HotCueSet_1, "Deck2 HotCue Set 1 (BTN)" },
+        { Midi::MidiActionTarget::Deck2_HotCueSet_2, "Deck2 HotCue Set 2 (BTN)" },
+        { Midi::MidiActionTarget::Deck2_HotCueSet_3, "Deck2 HotCue Set 3 (BTN)" },
+        { Midi::MidiActionTarget::Deck2_HotCueSet_4, "Deck2 HotCue Set 4 (BTN)" },
+        { Midi::MidiActionTarget::Deck2_HotCueSet_5, "Deck2 HotCue Set 5 (BTN)" },
+        { Midi::MidiActionTarget::Deck2_HotCueSet_6, "Deck2 HotCue Set 6 (BTN)" },
+        { Midi::MidiActionTarget::Deck1_VuMeter, "Deck1 VU Meter (CC)" },
+        { Midi::MidiActionTarget::Deck2_VuMeter, "Deck2 VU Meter (CC)" },
+    };
+}
+
+void MidiMappingsPanel::setOutputMode(bool enable)
+{
+    outputModeActive = enable;
+    inputModeBtn.setToggleState(!enable, juce::dontSendNotification);
+    outputModeBtn.setToggleState(enable, juce::dontSendNotification);
+    mappingTable.setVisible(!enable);
+    outputMappingTable.setVisible(enable);
+    learnBtn.setEnabled(!enable);
+    if (enable)
+        refreshOutputDeviceList();
+    else
+        refreshDeviceList();
+}
+
 juce::String MidiMappingsPanel::getMappingDeviceId() const
 {
-    return getSelectedMidiDeviceId();
+    return outputModeActive ? getSelectedMidiOutputDeviceId() : getSelectedMidiDeviceId();
 }

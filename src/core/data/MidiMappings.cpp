@@ -207,10 +207,15 @@ namespace MidiMappings
 
     std::vector<Midi::MidiOutputEntry> loadOutputMappings(juce::String& outOutputDeviceId)
     {
+        return loadOutputMappingsFromFile(getMappingsFile(), outOutputDeviceId);
+    }
+
+    std::vector<Midi::MidiOutputEntry> loadOutputMappingsFromFile(const juce::File& file,
+                                                                 juce::String& outOutputDeviceId)
+    {
         std::vector<Midi::MidiOutputEntry> result;
         outOutputDeviceId.clear();
 
-        auto file = getMappingsFile();
         if (!file.existsAsFile())
             return result;
 
