@@ -3,12 +3,17 @@
 namespace MidiMappings
 {
     static constexpr const char* kRootTag = "MidiMappings";
+    static constexpr const char* kInputMappingsTag = "InputMappings";
+    static constexpr const char* kOutputMappingsTag = "OutputMappings";
     static constexpr const char* kEntryTag = "Entry";
     static constexpr const char* kDeviceAttr = "device";
+    static constexpr const char* kOutputDeviceAttr = "outputDevice";
     static constexpr const char* kChannelAttr = "channel";
     static constexpr const char* kTypeAttr = "type";
     static constexpr const char* kNumberAttr = "number";
     static constexpr const char* kActionAttr = "action";
+    static constexpr const char* kOnValueAttr = "onValue";
+    static constexpr const char* kOffValueAttr = "offValue";
 
     juce::File getMappingsFile()
     {
@@ -77,6 +82,8 @@ namespace MidiMappings
             case Midi::MidiActionTarget::Deck1_Sync: return "Deck1_Sync";
             case Midi::MidiActionTarget::Deck2_Sync: return "Deck2_Sync";
             case Midi::MidiActionTarget::Deck1_Master: return "Deck1_Master";
+            case Midi::MidiActionTarget::Deck1_VuMeter: return "Deck1_VuMeter";
+            case Midi::MidiActionTarget::Deck2_VuMeter: return "Deck2_VuMeter";
             case Midi::MidiActionTarget::Deck2_Master: return "Deck2_Master";
         }
         return "None";
@@ -140,8 +147,98 @@ namespace MidiMappings
         if (actionString == "Deck1_Sync") return Midi::MidiActionTarget::Deck1_Sync;
         if (actionString == "Deck2_Sync") return Midi::MidiActionTarget::Deck2_Sync;
         if (actionString == "Deck1_Master") return Midi::MidiActionTarget::Deck1_Master;
+        if (actionString == "Deck1_VuMeter") return Midi::MidiActionTarget::Deck1_VuMeter;
+        if (actionString == "Deck2_VuMeter") return Midi::MidiActionTarget::Deck2_VuMeter;
         if (actionString == "Deck2_Master") return Midi::MidiActionTarget::Deck2_Master;
         return Midi::MidiActionTarget::None;
+    }
+
+    bool saveOutputMappings(const std::vector<Midi::MidiOutputEntry>& entries,
+                            const juce::String& outputDeviceId)
+    {
+        return saveOutputMappings(entries, outputDeviceId, getMappingsFile());
+    }
+
+    bool saveOutputMappings(const std::vector<Midi::MidiOutputEntry>& entries,
+                            const juce::String& outputDeviceId,
+                            const juce::File& targetFile)
+    {
+        targetFile.getParentDirectory().createDirectory();
+        std::unique_ptr<juce::XmlElement> root;
+
+        if (targetFile.existsAsFile())
+            root = juce::XmlDocument::parse(targetFile);
+
+        if (root == nullptr || !root->hasTagName(kRootTag))
+            root = std::make_unique<juce::XmlElement>(kRootTag);
+
+        root->setAttribute(kOutputDeviceAttr, outputDeviceId);
+
+        auto* inputSection = root->getChildByName(kInputMappingsTag);
+        if (inputSection == nullptr)
+        {
+            inputSection = new juce::XmlElement(kInputMappingsTag);
+            root->addChildElement(inputSection);
+        }
+
+        auto* outputSection = root->getChildByName(kOutputMappingsTag);
+        if (outputSection != nullptr)
+            outputSection->deleteAllChildElements();
+        else
+        {
+            outputSection = new juce::XmlElement(kOutputMappingsTag);
+            root->addChildElement(outputSection);
+        }
+
+        for (const auto& entry : entries)
+        {
+            auto* child = new juce::XmlElement(kEntryTag);
+            child->setAttribute(kChannelAttr, entry.channel);
+            child->setAttribute(kTypeAttr, entry.messageType);
+            child->setAttribute(kNumberAttr, entry.number);
+            child->setAttribute(kActionAttr, actionToString(entry.target));
+            child->setAttribute(kOnValueAttr, entry.onValue);
+            child->setAttribute(kOffValueAttr, entry.offValue);
+            outputSection->addChildElement(child);
+        }
+
+        return root->writeTo(targetFile, juce::XmlElement::TextFormat{});
+    }
+
+    std::vector<Midi::MidiOutputEntry> loadOutputMappings(juce::String& outOutputDeviceId)
+    {
+        std::vector<Midi::MidiOutputEntry> result;
+        outOutputDeviceId.clear();
+
+        auto file = getMappingsFile();
+        if (!file.existsAsFile())
+            return result;
+
+        auto root = juce::XmlDocument::parse(file);
+        if (root == nullptr || !root->hasTagName(kRootTag))
+            return result;
+
+        outOutputDeviceId = root->getStringAttribute(kOutputDeviceAttr, {});
+        auto* outputSection = root->getChildByName(kOutputMappingsTag);
+        if (outputSection == nullptr)
+            return result;
+
+        for (auto* child = outputSection->getFirstChildElement(); child != nullptr; child = child->getNextElement())
+        {
+            if (!child->hasTagName(kEntryTag))
+                continue;
+
+            Midi::MidiOutputEntry entry;
+            entry.channel = static_cast<int>(child->getDoubleAttribute(kChannelAttr, 1.0));
+            entry.messageType = static_cast<int>(child->getDoubleAttribute(kTypeAttr, 0.0));
+            entry.number = static_cast<int>(child->getDoubleAttribute(kNumberAttr, 0.0));
+            entry.target = stringToAction(child->getStringAttribute(kActionAttr, "None"));
+            entry.onValue = static_cast<int>(child->getDoubleAttribute(kOnValueAttr, 127.0));
+            entry.offValue = static_cast<int>(child->getDoubleAttribute(kOffValueAttr, 0.0));
+            result.push_back(entry);
+        }
+
+        return result;
     }
 
     bool saveMappings(const std::vector<Midi::MidiMappingEntry>& entries,
@@ -207,8 +304,11 @@ namespace MidiMappings
             return result;
 
         outDeviceId = root->getStringAttribute(kDeviceAttr, {});
+        auto* inputSection = root->getChildByName(kInputMappingsTag);
+        if (inputSection == nullptr)
+            return result;
 
-        for (auto* child = root->getFirstChildElement(); child != nullptr; child = child->getNextElement())
+        for (auto* child = inputSection->getFirstChildElement(); child != nullptr; child = child->getNextElement())
         {
             if (!child->hasTagName(kEntryTag))
                 continue;
