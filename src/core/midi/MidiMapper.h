@@ -69,7 +69,9 @@ enum class MidiActionTarget
     Deck1_Sync,
     Deck2_Sync,
     Deck1_Master,
-    Deck2_Master
+    Deck2_Master,
+    Deck1_VuMeter,
+    Deck2_VuMeter
 };
 
 /**
@@ -84,7 +86,20 @@ struct MidiMappingEntry
 };
 
 /**
- * MIDI input manager and mapping router.
+ * Single MIDI output mapping entry for feedback.
+ */
+struct MidiOutputEntry
+{
+    MidiActionTarget target = MidiActionTarget::None;
+    int channel = 1;                ///< 1-16; use 1 by default
+    int messageType = 0;            ///< 0 = Note, 1 = CC
+    int number = 0;                 ///< Note number or controller number
+    int onValue = 127;              ///< value to send when active
+    int offValue = 0;               ///< value to send when inactive
+};
+
+/**
+ * MIDI input and output manager.
  */
 class MidiMapper : public juce::MidiInputCallback
 {
@@ -103,11 +118,23 @@ public:
     void closeDevice();
     juce::String getActiveDeviceIdentifier() const noexcept;
 
+    bool openOutputDevice(const juce::String& identifier);
+    void closeOutputDevice();
+    juce::String getActiveOutputDeviceIdentifier() const noexcept;
+
+    void setOutputMappings(std::vector<MidiOutputEntry> newMappings);
+    const std::vector<MidiOutputEntry>& getOutputMappings() const noexcept;
+
+    void sendBoolFeedback(MidiActionTarget target, bool active);
+    void sendValueFeedback(MidiActionTarget target, int value);
+
     void handleIncomingMidiMessage(juce::MidiInput* source, const juce::MidiMessage& message) override;
 
 private:
     std::unique_ptr<juce::MidiInput> midiInput;
+    std::unique_ptr<juce::MidiOutput> midiOutput;
     std::vector<MidiMappingEntry> mappings;
+    std::vector<MidiOutputEntry> outputMappings;
     std::function<void(MidiActionTarget, int)> actionCallback;
     std::function<void(int channel, int messageType, int number)> learnCallback;
 

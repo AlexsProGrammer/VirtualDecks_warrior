@@ -66,6 +66,80 @@ juce::String MidiMapper::getActiveDeviceIdentifier() const noexcept
     return midiInput != nullptr ? midiInput->getIdentifier() : juce::String();
 }
 
+bool MidiMapper::openOutputDevice(const juce::String& identifier)
+{
+    closeOutputDevice();
+    if (identifier.isEmpty())
+        return false;
+
+    auto output = juce::MidiOutput::openDevice(identifier);
+    if (output != nullptr)
+    {
+        midiOutput = std::move(output);
+        return true;
+    }
+
+    return false;
+}
+
+void MidiMapper::closeOutputDevice()
+{
+    midiOutput.reset();
+}
+
+juce::String MidiMapper::getActiveOutputDeviceIdentifier() const noexcept
+{
+    return midiOutput != nullptr ? midiOutput->getIdentifier() : juce::String();
+}
+
+void MidiMapper::setOutputMappings(std::vector<MidiOutputEntry> newMappings)
+{
+    outputMappings = std::move(newMappings);
+}
+
+const std::vector<MidiOutputEntry>& MidiMapper::getOutputMappings() const noexcept
+{
+    return outputMappings;
+}
+
+static void sendMidiMessageForEntry(juce::MidiOutput& output, const MidiOutputEntry& entry, int value)
+{
+    auto message = entry.messageType == 0
+        ? juce::MidiMessage::noteOn(entry.channel, entry.number, (juce::uint8) value)
+        : juce::MidiMessage::controllerEvent(entry.channel, entry.number, (juce::uint8) value);
+
+    output.sendMessageNow(message);
+}
+
+void MidiMapper::sendBoolFeedback(MidiActionTarget target, bool active)
+{
+    if (midiOutput == nullptr)
+        return;
+
+    for (const auto& entry : outputMappings)
+    {
+        if (entry.target != target)
+            continue;
+
+        const int value = active ? entry.onValue : entry.offValue;
+        sendMidiMessageForEntry(*midiOutput, entry, value);
+    }
+}
+
+void MidiMapper::sendValueFeedback(MidiActionTarget target, int value)
+{
+    if (midiOutput == nullptr)
+        return;
+
+    for (const auto& entry : outputMappings)
+    {
+        if (entry.target != target)
+            continue;
+
+        sendMidiMessageForEntry(*midiOutput, entry, value);
+    }
+}
+
 void MidiMapper::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage& message)
 {
     if (actionCallback == nullptr)
