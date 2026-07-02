@@ -1967,6 +1967,11 @@ void DeckGUI::triggerMaster()
 	masterToggleBtn.triggerClick();
 }
 
+bool DeckGUI::isBeatFxOn() const noexcept
+{
+    return beatFxOnButton.getToggleState();
+}
+
 void DeckGUI::jumpToHotCue(int index)
 {
 	if (index < 0 || index >= static_cast<int>(cues.size()))

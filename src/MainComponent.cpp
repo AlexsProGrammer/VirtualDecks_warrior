@@ -874,6 +874,83 @@ void MainComponent::onMidiAction(Midi::MidiActionTarget target, int value)
 
 void MainComponent::timerCallback()
 {
+	const auto activeOutputId = midiMapper.getActiveOutputDeviceIdentifier();
+	bool forceSendAll = false;
+	if (activeOutputId.isEmpty()) {
+		lastMidiOutputDeviceIdentifier.clear();
+	} else if (activeOutputId != lastMidiOutputDeviceIdentifier) {
+		forceSendAll = true;
+		lastMidiOutputDeviceIdentifier = activeOutputId;
+	}
+
+	MidiFeedbackState currentState;
+
+	for (int deck = 0; deck < 2; ++deck) {
+		auto& player = audioEngine.getPlayer(deck);
+		auto& gui = (deck == 0 ? deckGUI1 : deckGUI2);
+
+		currentState.playing[deck] = player.isPlaying();
+		currentState.cueActive[deck] = audioEngine.getCuedDeckIndex() == deck;
+		currentState.beatFxOn[deck] = gui.isBeatFxOn();
+		currentState.loopActive[deck] = player.isLooping();
+		currentState.sync[deck] = beatSyncManager.isSynced(deck);
+		currentState.master[deck] = beatSyncManager.isMaster(deck);
+		for (int cueIndex = 0; cueIndex < 6; ++cueIndex)
+			currentState.hotCues[deck][cueIndex] = gui.isHotCueSet(cueIndex);
+
+		const float rms = player.getRMSLevel();
+		const int mappedRms = juce::jlimit(0, 127,
+			static_cast<int>(juce::jmap(rms, -60.0f, 0.0f, 0.0f, 127.0f)));
+		currentState.vuValue[deck] = static_cast<float>(mappedRms);
+
+		if (forceSendAll || currentState.playing[deck] != midiFeedbackState.playing[deck])
+			midiMapper.sendBoolFeedback(deck == 0 ? Midi::MidiActionTarget::Deck1_Play
+				: Midi::MidiActionTarget::Deck2_Play,
+				currentState.playing[deck]);
+
+		if (forceSendAll || currentState.cueActive[deck] != midiFeedbackState.cueActive[deck])
+			midiMapper.sendBoolFeedback(deck == 0 ? Midi::MidiActionTarget::Deck1_CueMon
+				: Midi::MidiActionTarget::Deck2_CueMon,
+				currentState.cueActive[deck]);
+
+		if (forceSendAll || currentState.beatFxOn[deck] != midiFeedbackState.beatFxOn[deck])
+			midiMapper.sendBoolFeedback(deck == 0 ? Midi::MidiActionTarget::Deck1_BeatFxOn
+				: Midi::MidiActionTarget::Deck2_BeatFxOn,
+				currentState.beatFxOn[deck]);
+
+		if (forceSendAll || currentState.loopActive[deck] != midiFeedbackState.loopActive[deck])
+			midiMapper.sendBoolFeedback(deck == 0 ? Midi::MidiActionTarget::Deck1_Reloop
+				: Midi::MidiActionTarget::Deck2_Reloop,
+				currentState.loopActive[deck]);
+
+		if (forceSendAll || currentState.sync[deck] != midiFeedbackState.sync[deck])
+			midiMapper.sendBoolFeedback(deck == 0 ? Midi::MidiActionTarget::Deck1_Sync
+				: Midi::MidiActionTarget::Deck2_Sync,
+				currentState.sync[deck]);
+
+		if (forceSendAll || currentState.master[deck] != midiFeedbackState.master[deck])
+			midiMapper.sendBoolFeedback(deck == 0 ? Midi::MidiActionTarget::Deck1_Master
+				: Midi::MidiActionTarget::Deck2_Master,
+				currentState.master[deck]);
+
+		for (int cueIndex = 0; cueIndex < 6; ++cueIndex) {
+			if (forceSendAll || currentState.hotCues[deck][cueIndex] != midiFeedbackState.hotCues[deck][cueIndex]) {
+				const int base = deck == 0
+					? static_cast<int>(Midi::MidiActionTarget::Deck1_HotCueSet_1)
+					: static_cast<int>(Midi::MidiActionTarget::Deck2_HotCueSet_1);
+				midiMapper.sendBoolFeedback(
+					static_cast<Midi::MidiActionTarget>(base + cueIndex),
+					currentState.hotCues[deck][cueIndex]);
+			}
+		}
+
+		midiMapper.sendValueFeedback(deck == 0 ? Midi::MidiActionTarget::Deck1_VuMeter
+			: Midi::MidiActionTarget::Deck2_VuMeter,
+			mappedRms);
+	}
+
+	midiFeedbackState = currentState;
+
 	// Repaint only the mixer column when the displayed RMS values change.
 	const float rms1 = audioEngine.getPlayer(0).getRMSLevel();
 	const float rms2 = audioEngine.getPlayer(1).getRMSLevel();

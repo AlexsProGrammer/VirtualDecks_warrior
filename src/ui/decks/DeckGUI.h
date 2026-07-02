@@ -129,86 +129,81 @@ public:
 	/// Return true if the hot cue button at the given index has been set.
 	bool isHotCueSet(int index) const noexcept;
 
-	/// Jump to the specified hot cue index (0-5) if it is set.
-	void jumpToHotCue(int index);
+    /// Return true if the Beat FX on/off button is currently engaged.
+    bool isBeatFxOn() const noexcept;
 
-	/// Set the specified hot cue index (0-5) at the current playback position.
-	void setHotCue(int index);
+    /// Jump to the specified hot cue index (0-5) if it is set.
+    void jumpToHotCue(int index);
 
-	/// Clear the specified hot cue index (0-5).
-	void clearHotCue(int index);
+    /// Set the specified hot cue index (0-5) at the current playback position.
+    void setHotCue(int index);
 
-	/// Configure whether this deck should start at the first saved hot cue when a track loads.
-	void setStartAtFirstHotCue(bool value) noexcept;
+    /// Clear the specified hot cue index (0-5).
+    void clearHotCue(int index);
 
-	//==============================================================================
+    /// Configure whether this deck should start at the first saved hot cue when a track loads.
+    void setStartAtFirstHotCue(bool value) noexcept;
 
-private:
+    /**
+        * Paints the DeckGUI Component.
+        *
+        * @param juce::Graphics object for the component to draw itself on
+    */
+    void paint(juce::Graphics&) override;
 
-	//==============================================================================
+    /**
+        * Set bounds of member components
+    */
+    void resized() override;
 
-	/**
-		* Paints the DeckGUI Component.
-		*
-		* @param juce::Graphics object for the component to draw itself on
-	*/
-	void paint(juce::Graphics&) override;
+    /**
+        * Called on mouse down to handle right-click context menus on cue buttons.
+        *
+        * @param juce::MouseEvent object
+    */
+    void mouseDown(const juce::MouseEvent& event) override;
 
-	/**
-		* Set bounds of member components
-	*/
-	void resized() override;
+    //==============================================================================
 
-	/**
-		* Called on mouse down to handle right-click context menus on cue buttons.
-		*
-		* @param juce::MouseEvent object
-	*/
-	void mouseDown(const juce::MouseEvent& event) override;
+    /**
+        * Called when button in DeckGUI listener is clicked.
+        *
+        * @param juce::Button object that has added this component as its listener
+    */
+    void buttonClicked(juce::Button* button) override;
 
-	//==============================================================================
+    //==============================================================================
 
-	/**
-		* Called when button in DeckGUI listener is clicked.
-		*
-		* @param juce::Button object that has added this component as its listener
-	*/
-	void buttonClicked(juce::Button* button) override;
+    /**
+        * Called when slider knob in DeckGUI listener is dragged.
+        *
+        * @param juce::Slider object that has added this component as its listener
+    */
+    void sliderValueChanged(juce::Slider* slider) override;
 
-	//==============================================================================
+    /**
+        * Called when file is dragged into DeckGUI.
+        *
+        * @param juce::StringArray object containing the files dragged over the component
+        * @return true
+    */
+    bool isInterestedInFileDrag(const juce::StringArray& files) override;
 
-	/**
-		* Called when slider knob in DeckGUI listener is dragged.
-		*
-		* @param juce::Slider object that has added this component as its listener
-	*/
-	void sliderValueChanged(juce::Slider* slider)override;
+    /**
+        * Called when file is dropped into DeckGUI.
+        *
+        * @param juce::StringArray object containing the files dragged over the component
+        * @param x position of file dropped
+        * @param y position of file dropped
+    */
+    void filesDropped(const juce::StringArray& files, int x, int y) override;
 
-	//==============================================================================
+    //==============================================================================
 
-	/**
-		* Called when file is dragged into DeckGUI.
-		*
-		* @param juce::StringArray object containing the files dragged over the component
-		* @return true
-	*/
-	bool isInterestedInFileDrag(const juce::StringArray& files) override;
-
-	/**
-		* Called when file is dropped into DeckGUI.
-		*
-		* @param juce::StringArray object containing the files dragged over the component
-		* @param x position of file dropped
-		* @param y position of file dropped
-	*/
-	void filesDropped(const juce::StringArray& files, int x, int y) override;
-
-	//==============================================================================
-
-	/**
-		* Called at specific intervals defined in startTimer() params.
-	*/
-	void timerCallback() override;
+    /**
+        * Called at specific intervals defined in startTimer() params.
+    */
+    void timerCallback() override;
 
 	//==============================================================================
 

@@ -14,6 +14,18 @@
 #include "core/data/AppSettings.h"
 #include "ui/settings/SettingsPanel.h"
 
+struct MidiFeedbackState
+{
+    bool playing[2] = { false, false };
+    bool cueActive[2] = { false, false };
+    bool beatFxOn[2] = { false, false };
+    bool loopActive[2] = { false, false };
+    bool sync[2] = { false, false };
+    bool master[2] = { false, false };
+    bool hotCues[2][6] = { { false, false, false, false, false, false }, { false, false, false, false, false, false } };
+    float vuValue[2] = { -999.0f, -999.0f };
+};
+
 //==============================================================================
 /*
 	This component lives inside our window, and this is where you should put all
@@ -242,8 +254,15 @@ private:
 	/// Cached RMS level for deck 2.
 	float lastRms2 = -999.0f;
 
-	/// Application-wide tooltip window - must be owned by the top-level component.
-	juce::TooltipWindow tooltipWindow{ this, 600 };
+    /// Tracks MIDI feedback state so only changed boolean targets are resent.
+    MidiFeedbackState midiFeedbackState;
 
-	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
+    /// Last MIDI output device identifier seen on the timer callback.
+    juce::String lastMidiOutputDeviceIdentifier;
+
+    /// Application-wide tooltip window - must be owned by the top-level component.
+    juce::TooltipWindow tooltipWindow{ this, 600 };
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
+
