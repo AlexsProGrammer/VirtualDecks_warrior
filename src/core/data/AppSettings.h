@@ -75,6 +75,16 @@ namespace AppSettings
 	void saveMidiDeviceId(const juce::String& deviceId);
 
 	/**
+	 * Load the previously selected MIDI output device identifier.
+	 */
+	juce::String loadMidiOutputDeviceId();
+
+	/**
+	 * Save the selected MIDI output device identifier.
+	 */
+	void saveMidiOutputDeviceId(const juce::String& deviceId);
+
+	/**
 	 * Save the headphone output gain to persisted settings.
 	 */
 	void saveHeadphoneGain(float gain);
