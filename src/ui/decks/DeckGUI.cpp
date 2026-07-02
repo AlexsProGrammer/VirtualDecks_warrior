@@ -1981,6 +1981,15 @@ void DeckGUI::jumpToHotCue(int index)
 	               0, it->second.first, -1.0, 0.0f, cueButton);
 }
 
+bool DeckGUI::isHotCueSet(int index) const noexcept
+{
+	if (index < 0 || index >= static_cast<int>(cues.size()))
+		return false;
+
+	auto* cueButton = cues[index];
+	return cueTargets.find(cueButton) != cueTargets.end();
+}
+
 void DeckGUI::setHotCue(int index)
 {
 	if (index < 0 || index >= static_cast<int>(cues.size()))

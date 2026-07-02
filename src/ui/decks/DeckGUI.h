@@ -126,6 +126,9 @@ public:
 	/// Trigger the deck's master toggle button from external code.
 	void triggerMaster();
 
+	/// Return true if the hot cue button at the given index has been set.
+	bool isHotCueSet(int index) const noexcept;
+
 	/// Jump to the specified hot cue index (0-5) if it is set.
 	void jumpToHotCue(int index);
 
