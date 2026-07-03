@@ -62,6 +62,7 @@ MidiMappingsPanel::MidiMappingsPanel(Midi::MidiMapper& mapper_) :
     statusLabel.setOpaque(true);
 
     loadSavedMappings();
+    loadSavedOutputMappings();
     refreshDeviceList();
     startTimerHz(2);
     updateStatusLabel();
@@ -303,6 +304,7 @@ void MidiMappingsPanel::loadSavedOutputMappings()
 {
     juce::String deviceId = AppSettings::loadMidiOutputDeviceId();
     outputMappings = MidiMappings::loadOutputMappings(deviceId);
+    mapper.setOutputMappings(outputMappings);
     refreshOutputMappingsTable();
 
     if (!deviceId.isEmpty()) {
@@ -569,8 +571,8 @@ std::vector<std::pair<Midi::MidiActionTarget, juce::String>> MidiMappingsPanel::
 {
     return {
         { Midi::MidiActionTarget::None, "None" },
-        { Midi::MidiActionTarget::Deck1_Play, "Deck1 Play (BTN)" },
-        { Midi::MidiActionTarget::Deck2_Play, "Deck2 Play (BTN)" },
+        { Midi::MidiActionTarget::Deck1_Play, "Deck1 Play/Pause (BTN)" },
+        { Midi::MidiActionTarget::Deck2_Play, "Deck2 Play/Pause (BTN)" },
         { Midi::MidiActionTarget::Deck1_CueMon, "Deck1 Cue (BTN)" },
         { Midi::MidiActionTarget::Deck2_CueMon, "Deck2 Cue (BTN)" },
         { Midi::MidiActionTarget::Deck1_Volume, "Deck1 Volume (KNOB)" },
@@ -779,8 +781,8 @@ std::vector<std::pair<Midi::MidiActionTarget, juce::String>> MidiMappingsPanel::
 {
     return {
         { Midi::MidiActionTarget::None, "None" },
-        { Midi::MidiActionTarget::Deck1_Play, "Deck1 Play (BTN)" },
-        { Midi::MidiActionTarget::Deck2_Play, "Deck2 Play (BTN)" },
+        { Midi::MidiActionTarget::Deck1_Play, "Deck1 Play/Pause (BTN)" },
+        { Midi::MidiActionTarget::Deck2_Play, "Deck2 Play/Pause (BTN)" },
         { Midi::MidiActionTarget::Deck1_CueMon, "Deck1 Cue (BTN)" },
         { Midi::MidiActionTarget::Deck2_CueMon, "Deck2 Cue (BTN)" },
         { Midi::MidiActionTarget::Deck1_BeatFxOn, "Deck1 Beat FX On/Off (BTN)" },
