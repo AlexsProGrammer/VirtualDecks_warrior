@@ -1926,8 +1926,8 @@ void DeckGUI::saveHotCuesToCache()
 
 void DeckGUI::triggerPlayStop()
 {
-	queueOrExecute(player->isPlaying() ? PendingQuantizeAction::Type::PlayStop
-	                                      : PendingQuantizeAction::Type::PlayStart,
+	queueOrExecute(!modeIsPlaying ? PendingQuantizeAction::Type::PlayStart
+	                               : PendingQuantizeAction::Type::PlayStop,
 	               &playButton);
 }
 

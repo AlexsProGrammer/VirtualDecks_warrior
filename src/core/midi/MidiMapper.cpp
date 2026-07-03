@@ -161,7 +161,16 @@ void MidiMapper::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMes
 
     const int value = messageType == 0 ? message.getVelocity() : message.getControllerValue();
 
-    if (learnCallback && !(messageType == 0 && value == 0))
+    // Note-based mappings (buttons/pads) can fire both a "note on" (press) and
+    // a "note off" event (release). A real Note Off message is allowed to
+    // carry a non-zero release velocity, so `value == 0` is NOT a reliable way
+    // to detect a release - use JUCE's own isNoteOn()/isNoteOff() semantics
+    // instead (isNoteOn() defaults to returning false for velocity-0 note-ons,
+    // so it already treats those as releases too).
+    const bool isNotePress = messageType == 0 && message.isNoteOn();
+    const bool isNoteRelease = messageType == 0 && !isNotePress;
+
+    if (learnCallback && !isNoteRelease)
     {
         const auto callback = learnCallback;
         juce::MessageManager::callAsync([callback, channel, messageType, number]() {
@@ -170,6 +179,11 @@ void MidiMapper::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMes
     }
 
     if (actionCallback == nullptr)
+        return;
+
+    // Only trigger the mapped action on the press so momentary buttons behave
+    // as a single toggle instead of firing twice per physical press.
+    if (isNoteRelease)
         return;
 
     for (const auto& mapping : mappings)
@@ -184,6 +198,13 @@ void MidiMapper::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMes
             continue;
 
         if (mapping.channel != 0 && mapping.channel != channel)
+            continue;
+
+        // Defense-in-depth: if a button-type action ever ends up mapped to a
+        // CC (e.g. a hand-edited/imported MidiMappings.xml), ignore the
+        // "off" value (0) so it still behaves as a single press-to-toggle
+        // rather than firing again when the controller reports release.
+        if (Midi::isButtonAction(mapping.target) && value == 0)
             continue;
 
         actionCallback(mapping.target, value);
