@@ -63,6 +63,7 @@ MidiMappingsPanel::MidiMappingsPanel(Midi::MidiMapper& mapper_) :
 
     loadSavedMappings();
     loadSavedOutputMappings();
+    setOutputMode(false);
     refreshDeviceList();
     startTimerHz(2);
     updateStatusLabel();
