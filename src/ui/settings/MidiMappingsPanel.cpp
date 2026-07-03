@@ -274,11 +274,13 @@ void MidiMappingsPanel::refreshMappingsTable()
 
 void MidiMappingsPanel::saveMappings()
 {
+    mapper.setMappings(mappings);
     MidiMappings::saveMappings(mappings, getSelectedMidiDeviceId());
 }
 
 void MidiMappingsPanel::saveOutputMappings()
 {
+    mapper.setOutputMappings(outputMappings);
     MidiMappings::saveOutputMappings(outputMappings, getSelectedMidiOutputDeviceId());
 }
 
