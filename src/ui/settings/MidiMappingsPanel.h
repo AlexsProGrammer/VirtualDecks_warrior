@@ -81,9 +81,9 @@ private:
                 return;
 
             const int value = getText().getIntValue();
-            if (columnId == 1)
+            if (columnId == 2)
                 owner.outputMappings[row].channel = juce::jlimit(1, 16, value);
-            else if (columnId == 3)
+            else if (columnId == 4)
                 owner.outputMappings[row].number = juce::jlimit(0, 127, value);
             else if (columnId == 5)
                 owner.outputMappings[row].onValue = juce::jlimit(0, 127, value);
