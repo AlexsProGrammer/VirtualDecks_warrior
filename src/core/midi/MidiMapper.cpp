@@ -142,9 +142,6 @@ void MidiMapper::sendValueFeedback(MidiActionTarget target, int value)
 
 void MidiMapper::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage& message)
 {
-    if (actionCallback == nullptr)
-        return;
-
     const int channel = message.getChannel();
     const int number = message.isNoteOn() || message.isNoteOff()
         ? message.getNoteNumber()
@@ -164,8 +161,16 @@ void MidiMapper::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMes
 
     const int value = messageType == 0 ? message.getVelocity() : message.getControllerValue();
 
-    if (learnCallback)
-        learnCallback(channel, messageType, number);
+    if (learnCallback && !(messageType == 0 && value == 0))
+    {
+        const auto callback = learnCallback;
+        juce::MessageManager::callAsync([callback, channel, messageType, number]() {
+            callback(channel, messageType, number);
+        });
+    }
+
+    if (actionCallback == nullptr)
+        return;
 
     for (const auto& mapping : mappings)
     {
