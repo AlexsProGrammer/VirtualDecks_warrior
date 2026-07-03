@@ -67,6 +67,11 @@ MidiMappingsPanel::MidiMappingsPanel(Midi::MidiMapper& mapper_) :
     refreshDeviceList();
     startTimerHz(2);
     updateStatusLabel();
+
+    juce::MessageManager::callAsync([this]() {
+        restoreSavedInputDevice();
+        restoreSavedOutputDevice();
+    });
 }
 
 MidiMappingsPanel::~MidiMappingsPanel() = default;
@@ -290,16 +295,34 @@ void MidiMappingsPanel::loadSavedMappings()
 {
     refreshDeviceList();
 
-    juce::String savedDeviceId = AppSettings::loadMidiDeviceId();
     juce::String fileDeviceId;
     mappings = MidiMappings::loadMappings(fileDeviceId);
     mapper.setMappings(mappings);
     refreshMappingsTable();
+    updateStatusLabel();
+}
 
+void MidiMappingsPanel::loadSavedOutputMappings()
+{
+    refreshOutputDeviceList();
+
+    juce::String fileDeviceId;
+    outputMappings = MidiMappings::loadOutputMappings(fileDeviceId);
+    mapper.setOutputMappings(outputMappings);
+    refreshOutputMappingsTable();
+    updateStatusLabel();
+}
+
+void MidiMappingsPanel::restoreSavedInputDevice()
+{
+    refreshDeviceList();
+
+    const juce::String savedDeviceId = AppSettings::loadMidiDeviceId();
     if (!savedDeviceId.isEmpty()) {
         bool opened = mapper.openDevice(savedDeviceId);
         if (opened) {
             refreshDeviceList();
+            overrideStatusMessage.clear();
         } else {
             overrideStatusMessage = "Saved MIDI device not found — please select another";
             AppSettings::saveMidiDeviceId({});
@@ -308,20 +331,16 @@ void MidiMappingsPanel::loadSavedMappings()
     updateStatusLabel();
 }
 
-void MidiMappingsPanel::loadSavedOutputMappings()
+void MidiMappingsPanel::restoreSavedOutputDevice()
 {
     refreshOutputDeviceList();
 
-    juce::String savedDeviceId = AppSettings::loadMidiOutputDeviceId();
-    juce::String fileDeviceId;
-    outputMappings = MidiMappings::loadOutputMappings(fileDeviceId);
-    mapper.setOutputMappings(outputMappings);
-    refreshOutputMappingsTable();
-
+    const juce::String savedDeviceId = AppSettings::loadMidiOutputDeviceId();
     if (!savedDeviceId.isEmpty()) {
         bool opened = mapper.openOutputDevice(savedDeviceId);
         if (opened) {
             refreshOutputDeviceList();
+            overrideStatusMessage.clear();
         } else {
             overrideStatusMessage = "Saved MIDI output device not found — please select another";
             AppSettings::saveMidiOutputDeviceId({});

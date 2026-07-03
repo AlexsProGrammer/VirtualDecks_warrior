@@ -156,11 +156,14 @@ MainComponent::MainComponent()
 		onMidiAction(target, value);
 	});
 	juce::String savedDevice = AppSettings::loadMidiDeviceId();
-	midiMapper.setMappings(MidiMappings::loadMappings(savedDevice));
+	juce::String fileDeviceId;
+	midiMapper.setMappings(MidiMappings::loadMappings(fileDeviceId));
 	if (savedDevice.isNotEmpty()) {
 		bool opened = midiMapper.openDevice(savedDevice);
 		DBG("MidiMapper opened saved device: " << (opened ? juce::String("yes (") + savedDevice + ")"
 			    : "NO — device not found"));
+		if (!opened)
+			AppSettings::saveMidiDeviceId({});
 	}
 	if (midiMapper.getActiveDeviceIdentifier().isEmpty()) {
 		DBG("MidiMapper: no active MIDI input device");

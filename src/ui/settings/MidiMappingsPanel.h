@@ -143,6 +143,8 @@ private:
     void saveOutputMappings();
     void loadSavedMappings();
     void loadSavedOutputMappings();
+    void restoreSavedInputDevice();
+    void restoreSavedOutputDevice();
     void setOutputMode(bool enable);
     void updateStatusLabel();
     void setLearnMode(bool enable);
