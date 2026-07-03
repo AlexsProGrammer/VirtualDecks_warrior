@@ -146,77 +146,67 @@ private:
 
 inline bool isButtonAction(MidiActionTarget action)
 {
-    switch (action) {
-        case MidiActionTarget::Deck1_Play:
-        case MidiActionTarget::Deck2_Play:
-        case MidiActionTarget::Deck1_CueMon:
-        case MidiActionTarget::Deck2_CueMon:
-        case MidiActionTarget::Deck1_HotCueSet_1:
-        case MidiActionTarget::Deck1_HotCueSet_2:
-        case MidiActionTarget::Deck1_HotCueSet_3:
-        case MidiActionTarget::Deck1_HotCueSet_4:
-        case MidiActionTarget::Deck1_HotCueSet_5:
-        case MidiActionTarget::Deck1_HotCueSet_6:
-        case MidiActionTarget::Deck1_HotCueJump_1:
-        case MidiActionTarget::Deck1_HotCueJump_2:
-        case MidiActionTarget::Deck1_HotCueJump_3:
-        case MidiActionTarget::Deck1_HotCueJump_4:
-        case MidiActionTarget::Deck1_HotCueJump_5:
-        case MidiActionTarget::Deck1_HotCueJump_6:
-        case MidiActionTarget::Deck2_HotCueSet_1:
-        case MidiActionTarget::Deck2_HotCueSet_2:
-        case MidiActionTarget::Deck2_HotCueSet_3:
-        case MidiActionTarget::Deck2_HotCueSet_4:
-        case MidiActionTarget::Deck2_HotCueSet_5:
-        case MidiActionTarget::Deck2_HotCueSet_6:
-        case MidiActionTarget::Deck2_HotCueJump_1:
-        case MidiActionTarget::Deck2_HotCueJump_2:
-        case MidiActionTarget::Deck2_HotCueJump_3:
-        case MidiActionTarget::Deck2_HotCueJump_4:
-        case MidiActionTarget::Deck2_HotCueJump_5:
-        case MidiActionTarget::Deck2_HotCueJump_6:
-        case MidiActionTarget::Deck1_BeatFxOn:
-        case MidiActionTarget::Deck2_BeatFxOn:
-        case MidiActionTarget::Deck1_LoopIn:
-        case MidiActionTarget::Deck2_LoopIn:
-        case MidiActionTarget::Deck1_LoopOut:
-        case MidiActionTarget::Deck2_LoopOut:
-        case MidiActionTarget::Deck1_Reloop:
-        case MidiActionTarget::Deck2_Reloop:
-        case MidiActionTarget::Deck1_Sync:
-        case MidiActionTarget::Deck2_Sync:
-        case MidiActionTarget::Deck1_Master:
-        case MidiActionTarget::Deck2_Master:
-            return true;
-        default:
-            return false;
-    }
+    return action == MidiActionTarget::Deck1_Play
+        || action == MidiActionTarget::Deck2_Play
+        || action == MidiActionTarget::Deck1_CueMon
+        || action == MidiActionTarget::Deck2_CueMon
+        || action == MidiActionTarget::Deck1_HotCueSet_1
+        || action == MidiActionTarget::Deck1_HotCueSet_2
+        || action == MidiActionTarget::Deck1_HotCueSet_3
+        || action == MidiActionTarget::Deck1_HotCueSet_4
+        || action == MidiActionTarget::Deck1_HotCueSet_5
+        || action == MidiActionTarget::Deck1_HotCueSet_6
+        || action == MidiActionTarget::Deck1_HotCueJump_1
+        || action == MidiActionTarget::Deck1_HotCueJump_2
+        || action == MidiActionTarget::Deck1_HotCueJump_3
+        || action == MidiActionTarget::Deck1_HotCueJump_4
+        || action == MidiActionTarget::Deck1_HotCueJump_5
+        || action == MidiActionTarget::Deck1_HotCueJump_6
+        || action == MidiActionTarget::Deck2_HotCueSet_1
+        || action == MidiActionTarget::Deck2_HotCueSet_2
+        || action == MidiActionTarget::Deck2_HotCueSet_3
+        || action == MidiActionTarget::Deck2_HotCueSet_4
+        || action == MidiActionTarget::Deck2_HotCueSet_5
+        || action == MidiActionTarget::Deck2_HotCueSet_6
+        || action == MidiActionTarget::Deck2_HotCueJump_1
+        || action == MidiActionTarget::Deck2_HotCueJump_2
+        || action == MidiActionTarget::Deck2_HotCueJump_3
+        || action == MidiActionTarget::Deck2_HotCueJump_4
+        || action == MidiActionTarget::Deck2_HotCueJump_5
+        || action == MidiActionTarget::Deck2_HotCueJump_6
+        || action == MidiActionTarget::Deck1_BeatFxOn
+        || action == MidiActionTarget::Deck2_BeatFxOn
+        || action == MidiActionTarget::Deck1_LoopIn
+        || action == MidiActionTarget::Deck2_LoopIn
+        || action == MidiActionTarget::Deck1_LoopOut
+        || action == MidiActionTarget::Deck2_LoopOut
+        || action == MidiActionTarget::Deck1_Reloop
+        || action == MidiActionTarget::Deck2_Reloop
+        || action == MidiActionTarget::Deck1_Sync
+        || action == MidiActionTarget::Deck2_Sync
+        || action == MidiActionTarget::Deck1_Master
+        || action == MidiActionTarget::Deck2_Master;
 }
 
 inline bool isContinuousAction(MidiActionTarget action)
 {
-    switch (action) {
-        case MidiActionTarget::Deck1_Volume:
-        case MidiActionTarget::Deck2_Volume:
-        case MidiActionTarget::Deck1_Filter:
-        case MidiActionTarget::Deck2_Filter:
-        case MidiActionTarget::Deck1_SpeedRel:
-        case MidiActionTarget::Deck2_SpeedRel:
-        case MidiActionTarget::Crossfader:
-        case MidiActionTarget::Deck1_EqLow:
-        case MidiActionTarget::Deck2_EqLow:
-        case MidiActionTarget::Deck1_EqMid:
-        case MidiActionTarget::Deck2_EqMid:
-        case MidiActionTarget::Deck1_EqHigh:
-        case MidiActionTarget::Deck2_EqHigh:
-        case MidiActionTarget::Deck1_JogWheel:
-        case MidiActionTarget::Deck2_JogWheel:
-        case MidiActionTarget::Deck1_BeatFxWet:
-        case MidiActionTarget::Deck2_BeatFxWet:
-            return true;
-        default:
-            return false;
-    }
+    return action == MidiActionTarget::Deck1_Volume
+        || action == MidiActionTarget::Deck2_Volume
+        || action == MidiActionTarget::Deck1_Filter
+        || action == MidiActionTarget::Deck2_Filter
+        || action == MidiActionTarget::Deck1_SpeedRel
+        || action == MidiActionTarget::Deck2_SpeedRel
+        || action == MidiActionTarget::Crossfader
+        || action == MidiActionTarget::Deck1_EqLow
+        || action == MidiActionTarget::Deck2_EqLow
+        || action == MidiActionTarget::Deck1_EqMid
+        || action == MidiActionTarget::Deck2_EqMid
+        || action == MidiActionTarget::Deck1_EqHigh
+        || action == MidiActionTarget::Deck2_EqHigh
+        || action == MidiActionTarget::Deck1_JogWheel
+        || action == MidiActionTarget::Deck2_JogWheel
+        || action == MidiActionTarget::Deck1_BeatFxWet
+        || action == MidiActionTarget::Deck2_BeatFxWet;
 }
 
 } // namespace Midi

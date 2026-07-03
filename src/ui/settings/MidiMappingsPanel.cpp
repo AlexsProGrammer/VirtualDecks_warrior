@@ -276,17 +276,19 @@ void MidiMappingsPanel::refreshMappingsTable()
 void MidiMappingsPanel::saveMappings()
 {
     mapper.setMappings(mappings);
-    MidiMappings::saveMappings(mappings, getSelectedMidiDeviceId());
+    MidiMappings::saveMappings(mappings, mapper.getActiveDeviceIdentifier());
 }
 
 void MidiMappingsPanel::saveOutputMappings()
 {
     mapper.setOutputMappings(outputMappings);
-    MidiMappings::saveOutputMappings(outputMappings, getSelectedMidiOutputDeviceId());
+    MidiMappings::saveOutputMappings(outputMappings, mapper.getActiveOutputDeviceIdentifier());
 }
 
 void MidiMappingsPanel::loadSavedMappings()
 {
+    refreshDeviceList();
+
     juce::String savedDeviceId = AppSettings::loadMidiDeviceId();
     juce::String fileDeviceId;
     mappings = MidiMappings::loadMappings(fileDeviceId);
@@ -295,14 +297,20 @@ void MidiMappingsPanel::loadSavedMappings()
 
     if (!savedDeviceId.isEmpty()) {
         bool opened = mapper.openDevice(savedDeviceId);
-        if (!opened)
-            overrideStatusMessage = "Device not found — please reconnect or select another";
+        if (opened) {
+            refreshDeviceList();
+        } else {
+            overrideStatusMessage = "Saved MIDI device not found — please select another";
+            AppSettings::saveMidiDeviceId({});
+        }
     }
     updateStatusLabel();
 }
 
 void MidiMappingsPanel::loadSavedOutputMappings()
 {
+    refreshOutputDeviceList();
+
     juce::String savedDeviceId = AppSettings::loadMidiOutputDeviceId();
     juce::String fileDeviceId;
     outputMappings = MidiMappings::loadOutputMappings(fileDeviceId);
@@ -311,8 +319,12 @@ void MidiMappingsPanel::loadSavedOutputMappings()
 
     if (!savedDeviceId.isEmpty()) {
         bool opened = mapper.openOutputDevice(savedDeviceId);
-        if (!opened)
-            overrideStatusMessage = "Output device not found — please reconnect or select another";
+        if (opened) {
+            refreshOutputDeviceList();
+        } else {
+            overrideStatusMessage = "Saved MIDI output device not found — please select another";
+            AppSettings::saveMidiOutputDeviceId({});
+        }
     }
     updateStatusLabel();
 }
