@@ -7,7 +7,7 @@
 **Professional dual-deck DJ application built with C++17 and the JUCE framework.**
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.9.5-blue?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/version-0.9.6-blue?style=flat-square" alt="Version" />
   <img src="https://img.shields.io/badge/C%2B%2B-17-00599C?style=flat-square&logo=c%2B%2B&logoColor=white" alt="C++17" />
   <img src="https://img.shields.io/static/v1?style=flat-square&message=JUCE&color=222222&logo=JUCE&logoColor=8DC63F&label=" alt="JUCE" />
   <img src="https://img.shields.io/badge/build-CMake%203.25%2B-064F8C?style=flat-square&logo=cmake&logoColor=white" alt="CMake" />
@@ -30,6 +30,7 @@
 - [Overview](#overview)
 - [Features](#features)
   - [Audio Engine](#audio-engine)
+  - [MIDI Control](#midi-control)
   - [Effects (FX Chain)](#effects-fx-chain)
   - [BPM Detection & Beat Grid](#bpm-detection--beat-grid)
   - [Beat Sync](#beat-sync)
@@ -82,6 +83,14 @@ AudioFormatReaderSource
 - **Headphone cue routing** - `setCueDeck()` taps a deck's processed output into a ring buffer for independent headphone monitoring without affecting the master mix
 - **RMS metering** - per-deck level feeds the UI volume meter
 - **Crossfader** - master cross-fade slider with configurable gain curves
+
+### MIDI Control
+
+Fully MIDI-mappable controls for all performance actions. The MIDI input mapping lets you assign hardware buttons, knobs, and faders to playback, loop, cue, FX, and transport controls. MIDI output routing sends deck state and beat sync status back to external devices for visual feedback and linked controller displays.
+
+- MIDI input mapping for decks, loop functions, hot cues, transport, speed, and FX controls
+- MIDI output feeds device LEDs and sync indicators with live playhead and deck state
+- Custom mapping support lets you remap controls without rebuilding the app
 
 ### Effects (FX Chain)
 
@@ -249,44 +258,32 @@ All UI-to-audio communication passes through `AudioCommandFifo<256>` - a trivial
 
 ```
 .
-├── CMakeLists.txt              - root build config (v0.9.5, FetchContent deps)
+├── CMakeLists.txt              - root build config (v0.9.6, FetchContent deps)
 ├── assets/                     - SVG icons, PNG logo, default font, effects.json
 └── src/
     ├── Main.cpp                - application entry point
-    ├── MainComponent.*         - root UI, crossfader, audio device setup
-    ├── AudioEngine.*           - central audio facade, off-thread loading, cue tap
-    ├── AudioCommandFifo.h      - lock-free UI→audio command ring buffer
-    ├── DJAudioPlayer.*         - per-deck signal chain, filters, loop, beat jump
-    ├── FxChain.h               - 3-slot ordered effects engine
-    ├── FxFactory.*             - constructs effect processors from IDs
-    ├── FxIds.h                 - 28 effect ID enum
-    ├── FxProcessor.h           - abstract base for all DSP processors
-    ├── FxParameter.h           - thread-safe named parameter with range/unit
-    ├── FxProcessors.h          - all concrete processor implementations
-    ├── FxSettings.*            - per-effect parameter persistence
-    ├── FxParameterModal.*      - parameter editor popup
-    ├── BpmDetector.*           - 3-algorithm BPM analysis
-    ├── BpmAnalysisManager.*    - background analysis queue
-    ├── BeatGrid.h              - beat grid data struct
-    ├── BeatGridConfig.*        - per-track grid JSON persistence (legacy)
-    ├── TrackDataCache.*        - hash-keyed BPM + band data cache
-    ├── WaveformBandAnalyzer.*  - offline 3-band spectral frame analysis
-    ├── BeatSyncManager.*       - cross-deck master/slave sync
-    ├── CueAudioCallback.*      - headphone cue tap ring buffer
-    ├── DeckGUI.*               - per-deck UI (9 tabs, controls, overlays)
-    ├── WaveformDisplay.*       - full waveform component
-    ├── ZoomedWaveform.*        - zoomed waveform strip
-    ├── JogWheel.*              - circular jog wheel
-    ├── DeckLibrarySidebar.*    - per-deck slide-in library panel
-    ├── DeckQueue.*             - per-deck upcoming track queue
-    ├── Library.*               - folder/track library with XML persistence
-    ├── PlaylistComponent.*     - track list within a folder
-    ├── Track.h                 - track data struct
-    ├── AppSettings.*           - global application settings persistence
-    ├── SettingsPanel.*         - settings UI panel
-    ├── CustomLookAndFeel.*     - SVG-based custom slider/table rendering
-    ├── UIConstants.h           - shared colour constants and layout values
-    └── CMakeLists.txt          - source file list, binary data registration
+    ├── MainComponent.cpp       - main component with audio setup and crossfader UI
+    ├── MainComponent.h
+    ├── CMakeLists.txt          - source file list and binary data registration
+    ├── core/                   - core app systems and audio engine
+    │    ├── CMakeLists.txt
+    │    ├── analysis/          - BPM detection, beat sync, waveform band analysis
+    │    ├── audio/             - DJAudioPlayer, AudioEngine, track playback chain
+    │    ├── data/              - library persistence, track metadata, caches, settings
+    │    ├── effects/           - FX chain, effect processors, parameter definitions
+    │    └── midi/              - MIDI mapper and mapping support
+    ├── ui/                     - user interface components and panels
+    │    ├── CMakeLists.txt
+    │    ├── decks/             - deck UI, queue, library sidebar controls
+    │    ├── library/           - playlist display and folder/track browsing UI
+    │    ├── settings/          - settings panels, custom look-and-feel, effect modal
+    │    └── waveforms/         - waveform display, zoomed strip, jog wheel visuals
+    └── utilities/              - shared utilities, UI constants, cue callback helpers
+        ├── CMakeLists.txt
+        ├── CueAudioCallback.cpp
+        ├── CueAudioCallback.h
+        ├── IconTabButton.h
+        └── UIConstants.h
 ```
 
 ---

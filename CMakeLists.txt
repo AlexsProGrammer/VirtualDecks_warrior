@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(juceDjApp VERSION 0.9.5 LANGUAGES C CXX)
+project(juceDjApp VERSION 0.9.6 LANGUAGES C CXX)
 
 # Use modern C++ by default
 set(CMAKE_CXX_STANDARD 17)
@@ -85,7 +85,7 @@ juce_add_gui_app(juceDjApp
     COMPANY_COPYRIGHT "Copyright (c) 2025 Pro-Grammer"
     COMPANY_WEBSITE "https://pro-grammer.de"
     COMPANY_EMAIL "info@pro-grammer.de"
-    VERSION "0.9.5"
+    VERSION "0.9.6"
     ICON_BIG "${CMAKE_SOURCE_DIR}/assets/logo.png"
     MICROPHONE_PERMISSION_ENABLED TRUE
     MICROPHONE_PERMISSION_TEXT "VirtualDecks requires microphone access for audio.")
@@ -255,7 +255,7 @@ if(WIN32)
     # Windows NSIS installer configuration
     set(CPACK_GENERATOR "NSIS")
     set(CPACK_PACKAGE_NAME "VirtualDecks")
-    set(CPACK_PACKAGE_VERSION "0.9.5")
+    set(CPACK_PACKAGE_VERSION "0.9.6")
     set(CPACK_PACKAGE_VENDOR "Pro-Grammer")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "VirtualDecks - Cross-platform DJ application")
     set(CPACK_PACKAGE_INSTALL_DIRECTORY "VirtualDecks")
