@@ -287,13 +287,14 @@ void MidiMappingsPanel::saveOutputMappings()
 
 void MidiMappingsPanel::loadSavedMappings()
 {
-    juce::String deviceId = AppSettings::loadMidiDeviceId();
-    mappings = MidiMappings::loadMappings(deviceId);
+    juce::String savedDeviceId = AppSettings::loadMidiDeviceId();
+    juce::String fileDeviceId;
+    mappings = MidiMappings::loadMappings(fileDeviceId);
     mapper.setMappings(mappings);
     refreshMappingsTable();
 
-    if (!deviceId.isEmpty()) {
-        bool opened = mapper.openDevice(deviceId);
+    if (!savedDeviceId.isEmpty()) {
+        bool opened = mapper.openDevice(savedDeviceId);
         if (!opened)
             overrideStatusMessage = "Device not found — please reconnect or select another";
     }
@@ -302,13 +303,14 @@ void MidiMappingsPanel::loadSavedMappings()
 
 void MidiMappingsPanel::loadSavedOutputMappings()
 {
-    juce::String deviceId = AppSettings::loadMidiOutputDeviceId();
-    outputMappings = MidiMappings::loadOutputMappings(deviceId);
+    juce::String savedDeviceId = AppSettings::loadMidiOutputDeviceId();
+    juce::String fileDeviceId;
+    outputMappings = MidiMappings::loadOutputMappings(fileDeviceId);
     mapper.setOutputMappings(outputMappings);
     refreshOutputMappingsTable();
 
-    if (!deviceId.isEmpty()) {
-        bool opened = mapper.openOutputDevice(deviceId);
+    if (!savedDeviceId.isEmpty()) {
+        bool opened = mapper.openOutputDevice(savedDeviceId);
         if (!opened)
             overrideStatusMessage = "Output device not found — please reconnect or select another";
     }

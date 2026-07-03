@@ -257,8 +257,31 @@ namespace MidiMappings
                       const juce::File& targetFile)
     {
         targetFile.getParentDirectory().createDirectory();
-        auto root = std::make_unique<juce::XmlElement>(kRootTag);
+        std::unique_ptr<juce::XmlElement> root;
+
+        if (targetFile.existsAsFile())
+            root = juce::XmlDocument::parse(targetFile);
+
+        if (root == nullptr || !root->hasTagName(kRootTag))
+            root = std::make_unique<juce::XmlElement>(kRootTag);
+
         root->setAttribute(kDeviceAttr, deviceId);
+
+        auto* outputSection = root->getChildByName(kOutputMappingsTag);
+        if (outputSection == nullptr)
+        {
+            outputSection = new juce::XmlElement(kOutputMappingsTag);
+            root->addChildElement(outputSection);
+        }
+
+        auto* inputSection = root->getChildByName(kInputMappingsTag);
+        if (inputSection != nullptr)
+            inputSection->deleteAllChildElements();
+        else
+        {
+            inputSection = new juce::XmlElement(kInputMappingsTag);
+            root->addChildElement(inputSection);
+        }
 
         for (const auto& entry : entries)
         {
@@ -267,7 +290,7 @@ namespace MidiMappings
             child->setAttribute(kTypeAttr, entry.messageType);
             child->setAttribute(kNumberAttr, entry.number);
             child->setAttribute(kActionAttr, actionToString(entry.target));
-            root->addChildElement(child);
+            inputSection->addChildElement(child);
         }
 
         return root->writeTo(targetFile, juce::XmlElement::TextFormat{});
