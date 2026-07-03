@@ -375,10 +375,25 @@ void MidiMappingsPanel::handleLearnMessage(int channel, int messageType, int num
     if (learnTargetRow < 0 || learnTargetRow >= (int)mappings.size())
         return;
 
+    const auto target = mappings[learnTargetRow].target;
+    if (target != Midi::MidiActionTarget::None) {
+        if (Midi::isButtonAction(target) && messageType != 0) {
+            overrideStatusMessage = "Use a pad/button for this action";
+            setLearnMode(false);
+            updateStatusLabel();
+            return;
+        }
+        if (Midi::isContinuousAction(target) && messageType != 1) {
+            overrideStatusMessage = "Use a knob/fader for this action";
+            setLearnMode(false);
+            updateStatusLabel();
+            return;
+        }
+    }
+
     mappings[learnTargetRow].channel = channel;
     mappings[learnTargetRow].messageType = messageType;
     mappings[learnTargetRow].number = number;
-    mappings[learnTargetRow].target = Midi::MidiActionTarget::None;
 
     setLearnMode(false);
     refreshMappingsTable();

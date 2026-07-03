@@ -128,6 +128,9 @@ public:
     void sendBoolFeedback(MidiActionTarget target, bool active);
     void sendValueFeedback(MidiActionTarget target, int value);
 
+    static bool isButtonAction(MidiActionTarget action);
+    static bool isContinuousAction(MidiActionTarget action);
+
     void handleIncomingMidiMessage(juce::MidiInput* source, const juce::MidiMessage& message) override;
 
 private:
@@ -140,5 +143,80 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiMapper)
 };
+
+inline bool isButtonAction(MidiActionTarget action)
+{
+    switch (action) {
+        case MidiActionTarget::Deck1_Play:
+        case MidiActionTarget::Deck2_Play:
+        case MidiActionTarget::Deck1_CueMon:
+        case MidiActionTarget::Deck2_CueMon:
+        case MidiActionTarget::Deck1_HotCueSet_1:
+        case MidiActionTarget::Deck1_HotCueSet_2:
+        case MidiActionTarget::Deck1_HotCueSet_3:
+        case MidiActionTarget::Deck1_HotCueSet_4:
+        case MidiActionTarget::Deck1_HotCueSet_5:
+        case MidiActionTarget::Deck1_HotCueSet_6:
+        case MidiActionTarget::Deck1_HotCueJump_1:
+        case MidiActionTarget::Deck1_HotCueJump_2:
+        case MidiActionTarget::Deck1_HotCueJump_3:
+        case MidiActionTarget::Deck1_HotCueJump_4:
+        case MidiActionTarget::Deck1_HotCueJump_5:
+        case MidiActionTarget::Deck1_HotCueJump_6:
+        case MidiActionTarget::Deck2_HotCueSet_1:
+        case MidiActionTarget::Deck2_HotCueSet_2:
+        case MidiActionTarget::Deck2_HotCueSet_3:
+        case MidiActionTarget::Deck2_HotCueSet_4:
+        case MidiActionTarget::Deck2_HotCueSet_5:
+        case MidiActionTarget::Deck2_HotCueSet_6:
+        case MidiActionTarget::Deck2_HotCueJump_1:
+        case MidiActionTarget::Deck2_HotCueJump_2:
+        case MidiActionTarget::Deck2_HotCueJump_3:
+        case MidiActionTarget::Deck2_HotCueJump_4:
+        case MidiActionTarget::Deck2_HotCueJump_5:
+        case MidiActionTarget::Deck2_HotCueJump_6:
+        case MidiActionTarget::Deck1_BeatFxOn:
+        case MidiActionTarget::Deck2_BeatFxOn:
+        case MidiActionTarget::Deck1_LoopIn:
+        case MidiActionTarget::Deck2_LoopIn:
+        case MidiActionTarget::Deck1_LoopOut:
+        case MidiActionTarget::Deck2_LoopOut:
+        case MidiActionTarget::Deck1_Reloop:
+        case MidiActionTarget::Deck2_Reloop:
+        case MidiActionTarget::Deck1_Sync:
+        case MidiActionTarget::Deck2_Sync:
+        case MidiActionTarget::Deck1_Master:
+        case MidiActionTarget::Deck2_Master:
+            return true;
+        default:
+            return false;
+    }
+}
+
+inline bool isContinuousAction(MidiActionTarget action)
+{
+    switch (action) {
+        case MidiActionTarget::Deck1_Volume:
+        case MidiActionTarget::Deck2_Volume:
+        case MidiActionTarget::Deck1_Filter:
+        case MidiActionTarget::Deck2_Filter:
+        case MidiActionTarget::Deck1_SpeedRel:
+        case MidiActionTarget::Deck2_SpeedRel:
+        case MidiActionTarget::Crossfader:
+        case MidiActionTarget::Deck1_EqLow:
+        case MidiActionTarget::Deck2_EqLow:
+        case MidiActionTarget::Deck1_EqMid:
+        case MidiActionTarget::Deck2_EqMid:
+        case MidiActionTarget::Deck1_EqHigh:
+        case MidiActionTarget::Deck2_EqHigh:
+        case MidiActionTarget::Deck1_JogWheel:
+        case MidiActionTarget::Deck2_JogWheel:
+        case MidiActionTarget::Deck1_BeatFxWet:
+        case MidiActionTarget::Deck2_BeatFxWet:
+            return true;
+        default:
+            return false;
+    }
+}
 
 } // namespace Midi
