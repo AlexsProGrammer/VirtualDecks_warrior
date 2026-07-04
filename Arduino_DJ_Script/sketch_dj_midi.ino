@@ -1,47 +1,74 @@
-// Needed Libraries
-// - MIDI Library by Francois Best
-// - Control Surface by Pieter P
 #include <Control_Surface.h>
 
 // 1. Instantiate the MIDI Interface
-// Since your Uno's USB chip is flashed to be a MIDI device, 
-// we use standard hardware serial at the MIDI baud rate (31250).
 USBMIDI_Interface midi;
 
-// --- BUTTONS ---
-// Define an array of multiple buttons
-NoteButton buttons[] {
-  {10, {MIDI_Notes::C(4), CHANNEL_1}}, // Button on Pin 10 sends C4
-  {9,  {MIDI_Notes::D(4), CHANNEL_1}}, // Button on Pin 9 sends D4
-  {8,  {MIDI_Notes::E(4), CHANNEL_1}}  // Button on Pin 8 sends E4
+// ==========================================
+// DECK CONTROL (2 Decks)
+// ==========================================
+// Create a Bank with 2 slots (Deck 1 and Deck 2)
+Bank<2> deckBank;
+
+// Pin 9 will toggle between the two banks (wraps around automatically)
+IncrementSelector<2> deckSelector {deckBank, 9};
+
+// Play/Pause Button (Pin 12)
+// Bank 0 = Note 60 (C4) | Bank 1 = Note 61 (C#4)
+Bankable::NoteButton playButton {deckBank, 12, {MIDI_Notes::C(4), CHANNEL_1}};
+
+// Cue Button (Pin 11)
+// Bank 0 = Note 62 (D4) | Bank 1 = Note 63 (D#4)
+Bankable::NoteButton cueButton {deckBank, 11, {MIDI_Notes::D(4), CHANNEL_1}};
+
+
+// ==========================================
+// PARAMETER CONTROL (5 Modes for Pots)
+// ==========================================
+// Create a Bank with 5 slots for the potentiometers
+Bank<5> paramBank;
+
+// This incredible class handles the 5 buttons AND their 5 LEDs automatically.
+// When you press a button, it switches the bank and turns on only that specific LED.
+ManyButtonsSelectorLEDs<5> paramSelector {
+  paramBank,
+  {{7, 5, 3, A2, A4}}, // Mod Buttons: Filter, Vol, EQ High, EQ Mid, EQ Low (Moved to A4!)
+  {{8, 6, 4, 2, A3}}   // Mod LEDs:    Filter, Vol, EQ High, EQ Mid, EQ Low
 };
 
-// 3. Define the Potentiometers
-// Sends MIDI Control Change (CC) messages when turned.
-// Map Pin A4 to CC 16, and Pin A5 to CC 17.
-CCPotentiometer potentiometers[] {
-  {A0, {MIDI_CC::Pan, CHANNEL_1}},
-  {A1, {MIDI_CC::Channel_Volume, CHANNEL_1}},
-};
+// Left Potentiometer (Pin A1)
+// Base CC is 10. The Bank shifts it automatically: 10, 11, 12, 13, 14
+Bankable::CCPotentiometer leftPot {paramBank, A1, {10, CHANNEL_1}};
 
-// --- LEDS ---
-// Define an array of multiple LEDs
-NoteLED leds[] {
-  {11, {MIDI_Notes::C(4), CHANNEL_1}}, // LED on Pin 11 listens for C4 (Note 60)
-  {12, {MIDI_Notes::D(4), CHANNEL_1}}, // LED on Pin 12 listens for D4 (Note 62)
-  {13, {MIDI_Notes::E(4), CHANNEL_1}}  // LED on Pin 13 listens for E4 (Note 64)
-};
+// Right Potentiometer (Pin A0)
+// Base CC is 20. The Bank shifts it automatically: 20, 21, 22, 23, 24
+Bankable::CCPotentiometer rightPot {paramBank, A0, {20, CHANNEL_1}};
+
+
+// ==========================================
+// SOFTWARE-CONTROLLED LEDS
+// ==========================================
+// These listen to your DJ app to know when a track is actually playing
+NoteLED playDeck1LED {A5, {MIDI_Notes::C(4), CHANNEL_1}};  // Listens to Note 60
+NoteLED playDeck2LED {13, {MIDI_Notes::Db(4), CHANNEL_1}}; // Listens to Note 61
+
 
 void setup() {
-  randomSeed(micros());
-
-  // Control_Surface.begin() automatically sets up all pin modes, 
-  // starts the serial connection, and initializes the components.
+  // Set up Pin 10 manually to act as our Deck Modifier indicator
+  pinMode(10, OUTPUT);
+  
+  // Initialize Control Surface
   Control_Surface.begin();
 }
 
 void loop() {
-  // Control_Surface.loop() continuously checks the pots and buttons, 
-  // sends MIDI if they changed, and listens for incoming MIDI to update the LED.
+  // Process all MIDI, buttons, pots, and standard LEDs
   Control_Surface.loop();
+
+  // Manually update the Deck Modifier LED (Pin 10)
+  // getSelection() returns 0 for Deck 1, and 1 for Deck 2.
+  if (deckBank.getSelection() == 1) {
+    digitalWrite(10, HIGH); // LED ON when on Deck 2
+  } else {
+    digitalWrite(10, LOW);  // LED OFF when on Deck 1
+  }
 }
