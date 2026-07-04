@@ -2813,6 +2813,9 @@ void DeckGUI::handleTransportCuePress()
 	if (player == nullptr)
 		return;
 
+	// Mark that we're actively previewing (for visual feedback)
+	transportCuePreviewActive = true;
+
 	// Case 1: No cue set yet - store current playback position as the cue point.
 	if (transportCuePos < 0.0) {
 		transportCuePos = player->getPositionRelative();
@@ -2840,12 +2843,17 @@ void DeckGUI::handleTransportCuePress()
 		if (onCuePreviewStart)
 			onCuePreviewStart(deckIndex);
 	}
+	// Update button visual to show theme color during hold
+	updateCuePointBtn();
 }
 
 void DeckGUI::handleTransportCueRelease()
 {
 	if (player == nullptr)
 		return;
+
+	// Clear preview-active flag before updating visuals
+	transportCuePreviewActive = false;
 
 	if (transportCuePreviewing) {
 		player->stop();
@@ -2862,10 +2870,15 @@ void DeckGUI::updateCuePointBtn()
 {
 	const bool hasCue = transportCuePos >= 0.0;
 	cuePointBtn.setToggleState(hasCue, juce::dontSendNotification);
-	// Darken the button slightly when a cue is set
-	cuePointBtn.setColour(juce::TextButton::buttonColourId,
-	                       hasCue ? juce::Colours::white.darker(0.15f)
-	                               : juce::Colours::white);
+	// Show active deck color during preview hold, otherwise white or darkened
+	juce::Colour btnColor;
+	if (transportCuePreviewActive)
+		btnColor = theme.withAlpha(0.85f);  // Deck theme (aqua/hotpink) during hold
+	else if (hasCue)
+		btnColor = juce::Colours::white.darker(0.15f);  // Darkened white when cue is set
+	else
+		btnColor = juce::Colours::white;  // Normal white
+	cuePointBtn.setColour(juce::TextButton::buttonColourId, btnColor);
 	cuePointBtn.repaint();
 }
 

@@ -105,6 +105,11 @@ MainComponent::MainComponent()
 	deckGUI1.onCueButtonClicked = cueCb;
 	deckGUI2.onCueButtonClicked = cueCb;
 
+	deckGUI1.onCuePreviewStart = [this](int) { startCuePreview(0); };
+	deckGUI1.onCuePreviewStop = [this](int) { stopCuePreview(0); };
+	deckGUI2.onCuePreviewStart = [this](int) { startCuePreview(1); };
+	deckGUI2.onCuePreviewStop = [this](int) { stopCuePreview(1); };
+
 	// Headphone / cue output device manager.
 	cueCallback.setEngine(&audioEngine);
 	{

@@ -656,6 +656,9 @@ public:
 	/// True while holding the cue button for hold-to-preview behavior
 	bool transportCuePreviewing { false };
 
+	/// True while actively previewing (mouse hold or MIDI hold); used for button visual feedback
+	bool transportCuePreviewActive { false };
+
 	/// Guard to capture mouseDown/mouseUp on cuePointBtn for hold-to-preview
 	CuePointGuard cuePointGuard;
 
