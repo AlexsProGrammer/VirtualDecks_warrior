@@ -152,8 +152,8 @@ MainComponent::MainComponent()
 	deckGUI1.setStartAtFirstHotCue(startAtFirstHotCueSetting);
 	deckGUI2.setStartAtFirstHotCue(startAtFirstHotCueSetting);
 
-	midiMapper.setActionCallback([this](Midi::MidiActionTarget target, int value) {
-		onMidiAction(target, value);
+	midiMapper.setActionCallback([this](Midi::MidiActionTarget target, int value, bool isPress) {
+		onMidiAction(target, value, isPress);
 	});
 	juce::String savedDevice = AppSettings::loadMidiDeviceId();
 	juce::String fileDeviceId;
@@ -667,9 +667,41 @@ void MainComponent::toggleCue(int deckIndex)
 	}
 }
 
-void MainComponent::onMidiAction(Midi::MidiActionTarget target, int value)
+void MainComponent::startCuePreview(int deckIndex)
 {
-	juce::MessageManager::callAsync([this, target, value]() {
+	if (cuePreviewActive)
+		return;
+
+	cuePreviewSavedDeckIndex = audioEngine.getCuedDeckIndex();
+	cuePreviewActive = true;
+	audioEngine.setCueDeck(deckIndex);
+	deckGUI1.setCueActive(deckIndex == 0);
+	deckGUI2.setCueActive(deckIndex == 1);
+}
+
+void MainComponent::stopCuePreview(int deckIndex)
+{
+	if (!cuePreviewActive)
+		return;
+
+	cuePreviewActive = false;
+	if (cuePreviewSavedDeckIndex == deckIndex || cuePreviewSavedDeckIndex == -1)
+	{
+		audioEngine.setCueDeck(-1);
+		deckGUI1.setCueActive(false);
+		deckGUI2.setCueActive(false);
+	}
+	else
+	{
+		audioEngine.setCueDeck(cuePreviewSavedDeckIndex);
+		deckGUI1.setCueActive(cuePreviewSavedDeckIndex == 0);
+		deckGUI2.setCueActive(cuePreviewSavedDeckIndex == 1);
+	}
+}
+
+void MainComponent::onMidiAction(Midi::MidiActionTarget target, int value, bool isPress)
+{
+	juce::MessageManager::callAsync([this, target, value, isPress]() {
 		const double normalized = juce::jlimit(0.0, 1.0, value / 127.0);
 		const double cross = juce::jlimit(-1.0, 1.0, value / 127.0 * 2.0 - 1.0);
 		const double filterValue = juce::jlimit(-20000.0, 20000.0, value / 127.0 * 40000.0 - 20000.0);
@@ -683,11 +715,23 @@ void MainComponent::onMidiAction(Midi::MidiActionTarget target, int value)
 			case Midi::MidiActionTarget::Deck2_Play:
 				deckGUI2.triggerPlayStop();
 				break;
-			case Midi::MidiActionTarget::Deck1_CueMon:
+			case Midi::MidiActionTarget::Deck1_HeadphoneCue:
 				toggleCue(0);
 				break;
-			case Midi::MidiActionTarget::Deck2_CueMon:
+			case Midi::MidiActionTarget::Deck2_HeadphoneCue:
 				toggleCue(1);
+				break;
+			case Midi::MidiActionTarget::Deck1_Cue:
+				if (isPress)
+					deckGUI1.handleTransportCuePress();
+				else
+					deckGUI1.handleTransportCueRelease();
+				break;
+			case Midi::MidiActionTarget::Deck2_Cue:
+				if (isPress)
+					deckGUI2.handleTransportCuePress();
+				else
+					deckGUI2.handleTransportCueRelease();
 				break;
 			case Midi::MidiActionTarget::Deck1_HotCueSet_1:
 				deckGUI1.setHotCue(0);
@@ -912,8 +956,8 @@ void MainComponent::timerCallback()
 				currentState.playing[deck]);
 
 		if (forceSendAll || currentState.cueActive[deck] != midiFeedbackState.cueActive[deck])
-			midiMapper.sendBoolFeedback(deck == 0 ? Midi::MidiActionTarget::Deck1_CueMon
-				: Midi::MidiActionTarget::Deck2_CueMon,
+			midiMapper.sendBoolFeedback(deck == 0 ? Midi::MidiActionTarget::Deck1_HeadphoneCue
+				: Midi::MidiActionTarget::Deck2_HeadphoneCue,
 				currentState.cueActive[deck]);
 
 		if (forceSendAll || currentState.beatFxOn[deck] != midiFeedbackState.beatFxOn[deck])

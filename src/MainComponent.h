@@ -60,10 +60,22 @@ public:
 	bool keyPressed(const juce::KeyPress& key, Component* originatingComponent);
 
 	/// Handle a decoded MIDI action from the MIDI mapper.
-	void onMidiAction(Midi::MidiActionTarget target, int value);
+	void onMidiAction(Midi::MidiActionTarget target, int value, bool isPress);
 
 	/// Toggle headphone cue routing for the requested deck.
 	void toggleCue(int deckIndex);
+
+	/// Start the hold-to-preview transport cue on the requested deck.
+	void startCuePreview(int deckIndex);
+
+	/// Stop the hold-to-preview transport cue and restore prior headphone routing.
+	void stopCuePreview(int deckIndex);
+
+	/// Saved deck index before a preview started, used to restore headphone routing.
+	int cuePreviewSavedDeckIndex { -1 };
+
+	/// True while a hold-to-preview cue is active.
+	bool cuePreviewActive { false };
 	//==============================================================================
 
 	/**

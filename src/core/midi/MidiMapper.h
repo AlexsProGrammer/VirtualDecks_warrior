@@ -15,8 +15,10 @@ enum class MidiActionTarget
     None,
     Deck1_Play,
     Deck2_Play,
-    Deck1_CueMon,
-    Deck2_CueMon,
+    Deck1_HeadphoneCue,
+    Deck1_Cue,
+    Deck2_HeadphoneCue,
+    Deck2_Cue,
     Deck1_HotCueSet_1,
     Deck1_HotCueSet_2,
     Deck1_HotCueSet_3,
@@ -107,8 +109,8 @@ public:
     MidiMapper();
     ~MidiMapper() override;
 
-    void setActionCallback(std::function<void(MidiActionTarget, int)> cb);
-    std::function<void(MidiActionTarget, int)> getActionCallback() const noexcept;
+    void setActionCallback(std::function<void(MidiActionTarget, int, bool)> cb);
+    std::function<void(MidiActionTarget, int, bool)> getActionCallback() const noexcept;
     void setLearnCallback(std::function<void(int channel, int messageType, int number)> cb);
     void clearLearnCallback() noexcept;
     void setMappings(std::vector<MidiMappingEntry> newMappings);
@@ -130,6 +132,7 @@ public:
 
     static bool isButtonAction(MidiActionTarget action);
     static bool isContinuousAction(MidiActionTarget action);
+    static bool isMomentaryAction(MidiActionTarget action);
 
     void handleIncomingMidiMessage(juce::MidiInput* source, const juce::MidiMessage& message) override;
 
@@ -138,7 +141,7 @@ private:
     std::unique_ptr<juce::MidiOutput> midiOutput;
     std::vector<MidiMappingEntry> mappings;
     std::vector<MidiOutputEntry> outputMappings;
-    std::function<void(MidiActionTarget, int)> actionCallback;
+    std::function<void(MidiActionTarget, int, bool)> actionCallback;
     std::function<void(int channel, int messageType, int number)> learnCallback;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiMapper)
@@ -148,8 +151,10 @@ inline bool isButtonAction(MidiActionTarget action)
 {
     return action == MidiActionTarget::Deck1_Play
         || action == MidiActionTarget::Deck2_Play
-        || action == MidiActionTarget::Deck1_CueMon
-        || action == MidiActionTarget::Deck2_CueMon
+        || action == MidiActionTarget::Deck1_HeadphoneCue
+        || action == MidiActionTarget::Deck1_Cue
+        || action == MidiActionTarget::Deck2_HeadphoneCue
+        || action == MidiActionTarget::Deck2_Cue
         || action == MidiActionTarget::Deck1_HotCueSet_1
         || action == MidiActionTarget::Deck1_HotCueSet_2
         || action == MidiActionTarget::Deck1_HotCueSet_3
@@ -186,6 +191,12 @@ inline bool isButtonAction(MidiActionTarget action)
         || action == MidiActionTarget::Deck2_Sync
         || action == MidiActionTarget::Deck1_Master
         || action == MidiActionTarget::Deck2_Master;
+}
+
+inline bool isMomentaryAction(MidiActionTarget action)
+{
+    return action == MidiActionTarget::Deck1_Cue
+        || action == MidiActionTarget::Deck2_Cue;
 }
 
 inline bool isContinuousAction(MidiActionTarget action)

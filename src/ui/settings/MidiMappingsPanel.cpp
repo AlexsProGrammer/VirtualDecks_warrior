@@ -563,7 +563,8 @@ juce::String MidiMappingsPanel::getDeckLabel(Midi::MidiActionTarget target)
 {
     switch (target) {
         case Midi::MidiActionTarget::Deck1_Play:
-        case Midi::MidiActionTarget::Deck1_CueMon:
+        case Midi::MidiActionTarget::Deck1_HeadphoneCue:
+        case Midi::MidiActionTarget::Deck1_Cue:
         case Midi::MidiActionTarget::Deck1_Filter:
         case Midi::MidiActionTarget::Deck1_Volume:
         case Midi::MidiActionTarget::Deck1_SpeedRel:
@@ -580,7 +581,8 @@ juce::String MidiMappingsPanel::getDeckLabel(Midi::MidiActionTarget target)
         case Midi::MidiActionTarget::Deck1_Master:
             return "Deck 1";
         case Midi::MidiActionTarget::Deck2_Play:
-        case Midi::MidiActionTarget::Deck2_CueMon:
+        case Midi::MidiActionTarget::Deck2_HeadphoneCue:
+        case Midi::MidiActionTarget::Deck2_Cue:
         case Midi::MidiActionTarget::Deck2_Filter:
         case Midi::MidiActionTarget::Deck2_Volume:
         case Midi::MidiActionTarget::Deck2_SpeedRel:
@@ -622,8 +624,10 @@ std::vector<std::pair<Midi::MidiActionTarget, juce::String>> MidiMappingsPanel::
         { Midi::MidiActionTarget::None, "None" },
         { Midi::MidiActionTarget::Deck1_Play, "Deck1 Play/Pause (BTN)" },
         { Midi::MidiActionTarget::Deck2_Play, "Deck2 Play/Pause (BTN)" },
-        { Midi::MidiActionTarget::Deck1_CueMon, "Deck1 Cue (BTN)" },
-        { Midi::MidiActionTarget::Deck2_CueMon, "Deck2 Cue (BTN)" },
+        { Midi::MidiActionTarget::Deck1_HeadphoneCue, "Deck1 Headphone Cue (BTN)" },
+        { Midi::MidiActionTarget::Deck1_Cue, "Deck1 Cue - Hold Preview (BTN)" },
+        { Midi::MidiActionTarget::Deck2_HeadphoneCue, "Deck2 Headphone Cue (BTN)" },
+        { Midi::MidiActionTarget::Deck2_Cue, "Deck2 Cue - Hold Preview (BTN)" },
         { Midi::MidiActionTarget::Deck1_Volume, "Deck1 Volume (KNOB)" },
         { Midi::MidiActionTarget::Deck2_Volume, "Deck2 Volume (KNOB)" },
         { Midi::MidiActionTarget::Deck1_Filter, "Deck1 Filter (KNOB)" },
@@ -832,8 +836,8 @@ std::vector<std::pair<Midi::MidiActionTarget, juce::String>> MidiMappingsPanel::
         { Midi::MidiActionTarget::None, "None" },
         { Midi::MidiActionTarget::Deck1_Play, "Deck1 Play/Pause (BTN)" },
         { Midi::MidiActionTarget::Deck2_Play, "Deck2 Play/Pause (BTN)" },
-        { Midi::MidiActionTarget::Deck1_CueMon, "Deck1 Cue (BTN)" },
-        { Midi::MidiActionTarget::Deck2_CueMon, "Deck2 Cue (BTN)" },
+        { Midi::MidiActionTarget::Deck1_HeadphoneCue, "Deck1 Headphone Cue (BTN)" },
+        { Midi::MidiActionTarget::Deck2_HeadphoneCue, "Deck2 Headphone Cue (BTN)" },
         { Midi::MidiActionTarget::Deck1_BeatFxOn, "Deck1 Beat FX On/Off (BTN)" },
         { Midi::MidiActionTarget::Deck2_BeatFxOn, "Deck2 Beat FX On/Off (BTN)" },
         { Midi::MidiActionTarget::Deck1_Reloop, "Deck1 Reloop (BTN)" },

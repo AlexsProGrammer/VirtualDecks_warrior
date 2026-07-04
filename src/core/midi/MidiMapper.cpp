@@ -5,12 +5,12 @@ namespace Midi {
 MidiMapper::MidiMapper() = default;
 MidiMapper::~MidiMapper() = default;
 
-void MidiMapper::setActionCallback(std::function<void(MidiActionTarget, int)> cb)
+void MidiMapper::setActionCallback(std::function<void(MidiActionTarget, int, bool)> cb)
 {
     actionCallback = std::move(cb);
 }
 
-std::function<void(MidiActionTarget, int)> MidiMapper::getActionCallback() const noexcept
+std::function<void(MidiActionTarget, int, bool)> MidiMapper::getActionCallback() const noexcept
 {
     return actionCallback;
 }
@@ -181,11 +181,6 @@ void MidiMapper::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMes
     if (actionCallback == nullptr)
         return;
 
-    // Only trigger the mapped action on the press so momentary buttons behave
-    // as a single toggle instead of firing twice per physical press.
-    if (isNoteRelease)
-        return;
-
     for (const auto& mapping : mappings)
     {
         if (mapping.target == MidiActionTarget::None)
@@ -200,6 +195,15 @@ void MidiMapper::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMes
         if (mapping.channel != 0 && mapping.channel != channel)
             continue;
 
+        if (isNoteRelease)
+        {
+            if (!Midi::isMomentaryAction(mapping.target))
+                continue;
+
+            actionCallback(mapping.target, 0, false);
+            continue;
+        }
+
         // Defense-in-depth: if a button-type action ever ends up mapped to a
         // CC (e.g. a hand-edited/imported MidiMappings.xml), ignore the
         // "off" value (0) so it still behaves as a single press-to-toggle
@@ -207,7 +211,7 @@ void MidiMapper::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMes
         if (Midi::isButtonAction(mapping.target) && value == 0)
             continue;
 
-        actionCallback(mapping.target, value);
+        actionCallback(mapping.target, value, true);
     }
 }
 

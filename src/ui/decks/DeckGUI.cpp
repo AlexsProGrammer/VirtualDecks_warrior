@@ -2795,16 +2795,10 @@ void DeckGUI::CuePointGuard::mouseDown(const juce::MouseEvent& /* e */)
  */
 void DeckGUI::CuePointGuard::mouseUp(const juce::MouseEvent& /* e */)
 {
-	if (owner == nullptr || owner->player == nullptr) return;
+	if (owner == nullptr)
+		return;
 
-	// If we started a preview on mouseDown, now stop it
-	if (owner->transportCuePreviewing) {
-		owner->player->stop();
-		owner->player->setPositionRelative(owner->transportCuePos);
-		owner->transportCuePreviewing = false;
-	}
-
-	owner->updateCuePointBtn();
+	owner->handleTransportCueRelease();
 }
 
 //==============================================================================
@@ -2814,6 +2808,56 @@ void DeckGUI::CuePointGuard::mouseUp(const juce::MouseEvent& /* e */)
  * When a cue is set (transportCuePos >= 0), the button background darkens slightly.
  * When no cue is set, the button stays white.
  */
+void DeckGUI::handleTransportCuePress()
+{
+	if (player == nullptr)
+		return;
+
+	// Case 1: No cue set yet - store current playback position as the cue point.
+	if (transportCuePos < 0.0) {
+		transportCuePos = player->getPositionRelative();
+		updateCuePointBtn();
+		if (!player->isPlaying()) {
+			player->setPositionRelative(transportCuePos);
+			player->start();
+			transportCuePreviewing = true;
+			if (onCuePreviewStart)
+				onCuePreviewStart(deckIndex);
+		}
+		return;
+	}
+
+	// Case 2: Cue is set - handle preview logic based on playback state
+	if (player->isPlaying()) {
+		// Playing: jump to cue and stop
+		player->setPositionRelative(transportCuePos);
+		player->stop();
+	} else {
+		// Stopped: jump to cue and start preview
+		player->setPositionRelative(transportCuePos);
+		player->start();
+		transportCuePreviewing = true;
+		if (onCuePreviewStart)
+			onCuePreviewStart(deckIndex);
+	}
+}
+
+void DeckGUI::handleTransportCueRelease()
+{
+	if (player == nullptr)
+		return;
+
+	if (transportCuePreviewing) {
+		player->stop();
+		player->setPositionRelative(transportCuePos);
+		transportCuePreviewing = false;
+		if (onCuePreviewStop)
+			onCuePreviewStop(deckIndex);
+	}
+
+	updateCuePointBtn();
+}
+
 void DeckGUI::updateCuePointBtn()
 {
 	const bool hasCue = transportCuePos >= 0.0;

@@ -76,9 +76,23 @@ public:
 	/// load button is a no-op.
 	std::function<void(int deckIndex)> onLoadButtonClicked;
 
-	/// Optional callback fired when the user clicks the CUE button.
+	/// Optional callback fired when the user clicks the headphone CUE button.
 	/// MainComponent wires this to toggle headphone cue routing via AudioEngine.
 	std::function<void(int deckIndex)> onCueButtonClicked;
+
+	/// Optional callback fired when the user presses the transport CUE button.
+	/// MainComponent uses this to start hold-to-preview cue playback via headphones.
+	std::function<void(int deckIndex)> onCuePreviewStart;
+
+	/// Optional callback fired when the transport CUE button is released.
+	/// MainComponent uses this to restore prior headphone routing.
+	std::function<void(int deckIndex)> onCuePreviewStop;
+
+	/// Handle a press on the transport CUE button.
+	void handleTransportCuePress();
+
+	/// Handle release of the transport CUE button.
+	void handleTransportCueRelease();
 
 	/// Optional callback fired when an EQ filter knob value changes (band 0-2, value 0.01-2.0).
 	/// MainComponent uses this to mirror the other deck's knob when a band is locked.

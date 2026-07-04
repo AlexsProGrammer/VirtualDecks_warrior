@@ -28,8 +28,10 @@ namespace MidiMappings
             case Midi::MidiActionTarget::None: return "None";
             case Midi::MidiActionTarget::Deck1_Play: return "Deck1_Play";
             case Midi::MidiActionTarget::Deck2_Play: return "Deck2_Play";
-            case Midi::MidiActionTarget::Deck1_CueMon: return "Deck1_CueMon";
-            case Midi::MidiActionTarget::Deck2_CueMon: return "Deck2_CueMon";
+            case Midi::MidiActionTarget::Deck1_HeadphoneCue: return "Deck1_HeadphoneCue";
+            case Midi::MidiActionTarget::Deck1_Cue: return "Deck1_Cue";
+            case Midi::MidiActionTarget::Deck2_HeadphoneCue: return "Deck2_HeadphoneCue";
+            case Midi::MidiActionTarget::Deck2_Cue: return "Deck2_Cue";
             case Midi::MidiActionTarget::Deck1_HotCueSet_1: return "Deck1_HotCueSet_1";
             case Midi::MidiActionTarget::Deck1_HotCueSet_2: return "Deck1_HotCueSet_2";
             case Midi::MidiActionTarget::Deck1_HotCueSet_3: return "Deck1_HotCueSet_3";
@@ -93,8 +95,10 @@ namespace MidiMappings
     {
         if (actionString == "Deck1_Play") return Midi::MidiActionTarget::Deck1_Play;
         if (actionString == "Deck2_Play") return Midi::MidiActionTarget::Deck2_Play;
-        if (actionString == "Deck1_CueMon") return Midi::MidiActionTarget::Deck1_CueMon;
-        if (actionString == "Deck2_CueMon") return Midi::MidiActionTarget::Deck2_CueMon;
+        if (actionString == "Deck1_HeadphoneCue") return Midi::MidiActionTarget::Deck1_HeadphoneCue;
+        if (actionString == "Deck1_Cue") return Midi::MidiActionTarget::Deck1_Cue;
+        if (actionString == "Deck2_HeadphoneCue") return Midi::MidiActionTarget::Deck2_HeadphoneCue;
+        if (actionString == "Deck2_Cue") return Midi::MidiActionTarget::Deck2_Cue;
         if (actionString == "Deck1_HotCueSet_1") return Midi::MidiActionTarget::Deck1_HotCueSet_1;
         if (actionString == "Deck1_HotCueSet_2") return Midi::MidiActionTarget::Deck1_HotCueSet_2;
         if (actionString == "Deck1_HotCueSet_3") return Midi::MidiActionTarget::Deck1_HotCueSet_3;
