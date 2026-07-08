@@ -290,18 +290,7 @@ All UI-to-audio communication passes through `AudioCommandFifo<256>` - a trivial
 
 ## Building
 
-Dependencies are fetched automatically via CMake `FetchContent` (JUCE, TagLib, xwax). The first build will take longer while dependencies are downloaded and compiled.
-
-```bash
-# Configure
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
-
-# Build
-cmake --build build
-
-# Run
-./build/juceDjApp_artefacts/Debug/juceDjApp
-```
+Relase Build: Read `Build.md`
 
 **Requirements:**
 
